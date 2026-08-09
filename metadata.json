@@ -1,0 +1,6 @@
+{
+  "name": "Royal Academy Student Result Portal",
+  "description": "A premium, modern SaaS-style result portal and verification system for Royal Academy students, parents, and administrators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

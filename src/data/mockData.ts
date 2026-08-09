@@ -1,0 +1,357 @@
+import { StudentResult, FAQItem, Testimonial, Feature, StatItem, AdminStudentSummary } from '../types';
+
+export const MOCK_STUDENTS: Record<string, StudentResult> = {
+  'RA/2025/1042': {
+    studentId: 'RA/2025/1042',
+    fullName: 'David Alexander Okon',
+    passportUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400',
+    gender: 'Male',
+    className: 'Senior Secondary School 3 (SSS 3 - Science)',
+    academicSession: '2024/2025 Academic Session',
+    term: '3rd Term (Final Session)',
+    dateOfBirth: '2007-04-14',
+    attendance: {
+      timesOpened: 120,
+      timesPresent: 118,
+      timesAbsent: 2
+    },
+    behavioralTraits: {
+      punctuality: 5,
+      neatness: 5,
+      leadership: 5,
+      honesty: 5
+    },
+    subjects: [
+      { id: '1', subject: 'Mathematics', caScore: 38, examScore: 57, total: 95, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '2', subject: 'English Language', caScore: 35, examScore: 54, total: 89, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '3', subject: 'Physics', caScore: 36, examScore: 56, total: 92, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '4', subject: 'Chemistry', caScore: 34, examScore: 53, total: 87, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '5', subject: 'Biology', caScore: 33, examScore: 52, total: 85, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '6', subject: 'Computer Studies (ICT)', caScore: 39, examScore: 59, total: 98, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '7', subject: 'Further Mathematics', caScore: 36, examScore: 54, total: 90, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '8', subject: 'Civic Education', caScore: 37, examScore: 51, total: 88, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '9', subject: 'Technical Drawing', caScore: 32, examScore: 49, total: 81, grade: 'B2', remark: 'VERY GOOD' }
+    ],
+    overallTotal: 805,
+    overallAverage: 89.44,
+    gpa: 3.92,
+    position: 1,
+    totalInClass: 42,
+    status: 'GRADUATED',
+    classTeacherRemark: 'David has consistently demonstrated exceptional intellectual curiosity and academic discipline throughout the session. A brilliant role model for his peers.',
+    principalRemark: 'An outstanding academic record. Highly recommended for university admission with distinction honors.',
+    verificationHash: 'RA-SEC-89A4B290C7D1',
+    issueDate: 'August 05, 2025'
+  },
+
+  'RA/2025/1089': {
+    studentId: 'RA/2025/1089',
+    fullName: 'Sophia Isabella Martinez',
+    passportUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
+    gender: 'Female',
+    className: 'Senior Secondary School 2 (SSS 2 - Arts)',
+    academicSession: '2024/2025 Academic Session',
+    term: '3rd Term (Final Session)',
+    dateOfBirth: '2008-09-22',
+    attendance: {
+      timesOpened: 120,
+      timesPresent: 115,
+      timesAbsent: 5
+    },
+    behavioralTraits: {
+      punctuality: 4,
+      neatness: 5,
+      leadership: 5,
+      honesty: 5
+    },
+    subjects: [
+      { id: '1', subject: 'Literature in English', caScore: 37, examScore: 56, total: 93, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '2', subject: 'English Language', caScore: 36, examScore: 55, total: 91, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '3', subject: 'Government', caScore: 35, examScore: 50, total: 85, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '4', subject: 'Economics', caScore: 32, examScore: 48, total: 80, grade: 'B2', remark: 'VERY GOOD' },
+      { id: '5', subject: 'Mathematics', caScore: 28, examScore: 44, total: 72, grade: 'B3', remark: 'GOOD' },
+      { id: '6', subject: 'Civic Education', caScore: 38, examScore: 57, total: 95, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '7', subject: 'Visual Art & Design', caScore: 39, examScore: 58, total: 97, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '8', subject: 'French Language', caScore: 34, examScore: 51, total: 85, grade: 'A1', remark: 'EXCELLENT' }
+    ],
+    overallTotal: 698,
+    overallAverage: 87.25,
+    gpa: 3.78,
+    position: 2,
+    totalInClass: 38,
+    status: 'PROMOTED',
+    classTeacherRemark: 'Sophia is a natural communicator with impressive creative insight. Her dedication to excellence in humanities is commendable.',
+    principalRemark: 'Promoted to SSS 3. Keep up the high standard of excellence.',
+    verificationHash: 'RA-SEC-92C8F310B4E8',
+    issueDate: 'August 05, 2025'
+  },
+
+  'RA/2025/1105': {
+    studentId: 'RA/2025/1105',
+    fullName: 'Marcus Sterling Vance',
+    passportUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400',
+    gender: 'Male',
+    className: 'Junior Secondary School 3 (JSS 3 - B)',
+    academicSession: '2024/2025 Academic Session',
+    term: '3rd Term (Final Session)',
+    dateOfBirth: '2010-11-05',
+    attendance: {
+      timesOpened: 120,
+      timesPresent: 119,
+      timesAbsent: 1
+    },
+    behavioralTraits: {
+      punctuality: 5,
+      neatness: 4,
+      leadership: 4,
+      honesty: 5
+    },
+    subjects: [
+      { id: '1', subject: 'Basic Science', caScore: 35, examScore: 53, total: 88, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '2', subject: 'Basic Technology', caScore: 34, examScore: 50, total: 84, grade: 'B2', remark: 'VERY GOOD' },
+      { id: '3', subject: 'Mathematics', caScore: 37, examScore: 55, total: 92, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '4', subject: 'English Studies', caScore: 31, examScore: 47, total: 78, grade: 'B2', remark: 'VERY GOOD' },
+      { id: '5', subject: 'Social Studies', caScore: 33, examScore: 48, total: 81, grade: 'B2', remark: 'VERY GOOD' },
+      { id: '6', subject: 'Information Technology', caScore: 38, examScore: 57, total: 95, grade: 'A1', remark: 'EXCELLENT' },
+      { id: '7', subject: 'Business Studies', caScore: 35, examScore: 51, total: 86, grade: 'A1', remark: 'EXCELLENT' }
+    ],
+    overallTotal: 604,
+    overallAverage: 86.28,
+    gpa: 3.71,
+    position: 3,
+    totalInClass: 45,
+    status: 'PROMOTED',
+    classTeacherRemark: 'Marcus shows great promise in stem subjects. Very polite and disciplined student.',
+    principalRemark: 'Promoted to Senior Secondary School 1 (SSS 1 Science Stream). Congratulations!',
+    verificationHash: 'RA-SEC-11D9E421A9C3',
+    issueDate: 'August 05, 2025'
+  }
+};
+
+export const SESSIONS_LIST = [
+  '2024/2025 Academic Session',
+  '2023/2024 Academic Session',
+  '2022/2023 Academic Session'
+];
+
+export const TERMS_LIST = [
+  '3rd Term (Final Session)',
+  '2nd Term (Mid-Session)',
+  '1st Term (First Session)'
+];
+
+export const CLASSES_LIST = [
+  'Senior Secondary School 3 (SSS 3 - Science)',
+  'Senior Secondary School 2 (SSS 2 - Arts)',
+  'Senior Secondary School 1 (SSS 1 - Commercial)',
+  'Junior Secondary School 3 (JSS 3 - B)',
+  'Junior Secondary School 2 (JSS 2 - A)',
+  'Junior Secondary School 1 (JSS 1 - C)'
+];
+
+export const STATS_DATA: StatItem[] = [
+  {
+    id: '1',
+    value: '99.8%',
+    numberValue: 99.8,
+    suffix: '%',
+    label: 'Result Processing Speed',
+    description: 'Instant lookup within <0.2 seconds across all devices.'
+  },
+  {
+    id: '2',
+    value: '12,500+',
+    numberValue: 12500,
+    suffix: '+',
+    label: 'Verified Students',
+    description: 'Active students and alumni accessing digital transcripts.'
+  },
+  {
+    id: '3',
+    value: '100%',
+    numberValue: 100,
+    suffix: '%',
+    label: 'Tamper-Proof Security',
+    description: 'Encrypted SHA-256 signatures & QR code verification.'
+  },
+  {
+    id: '4',
+    value: '24/7',
+    numberValue: 24,
+    suffix: '/7',
+    label: 'Global Online Access',
+    description: 'Zero downtime result retrieval for parents and guardians.'
+  }
+];
+
+export const FEATURES_DATA: Feature[] = [
+  {
+    id: '1',
+    iconName: 'Zap',
+    title: 'Instant Result Checking',
+    description: 'Access complete academic scorecards in seconds from any smartphone, tablet, or desktop.',
+    badge: 'Real-Time',
+    highlight: true
+  },
+  {
+    id: '2',
+    iconName: 'UserCheck',
+    title: 'No Student Login Required',
+    description: 'Zero complex passwords or forgotten credentials. Simple Reg ID validation gets you in instantly.',
+    badge: 'Seamless'
+  },
+  {
+    id: '3',
+    iconName: 'ShieldCheck',
+    title: 'Secure QR Verification',
+    description: 'Every printed report card features a scannable cryptographic QR code to prevent fraud and forgery.',
+    badge: 'Encrypted',
+    highlight: true
+  },
+  {
+    id: '4',
+    iconName: 'Printer',
+    title: 'Professional Printable Format',
+    description: 'Generate high-resolution, official Royal Academy report slips complete with signatures and school stamp.',
+    badge: 'Official'
+  },
+  {
+    id: '5',
+    iconName: 'Cpu',
+    title: 'Fast Automated Processing',
+    description: 'Enterprise grade infrastructure capable of serving thousands of simultaneous requests during release days.',
+    badge: 'Scalable'
+  },
+  {
+    id: '6',
+    iconName: 'LayoutDashboard',
+    title: 'Admin Result Management',
+    description: 'Comprehensive portal for school administrators to upload bulk CSV results, edit grades, and publish instantly.',
+    badge: 'Enterprise'
+  },
+  {
+    id: '7',
+    iconName: 'Smartphone',
+    title: 'Responsive & Accessible',
+    description: 'Engineered desktop-down and mobile-up for flawless performance on all modern screens.',
+    badge: 'Mobile First'
+  },
+  {
+    id: '8',
+    iconName: 'History',
+    title: 'Academic History Archive',
+    description: 'Seamlessly query past academic sessions, terms, and historical performance trends over time.',
+    badge: 'Archive'
+  }
+];
+
+export const WORKFLOW_STEPS = [
+  {
+    step: '01',
+    title: 'Administrator Uploads Results',
+    description: 'Teachers and exam officers upload verified grade spreadsheets into the encrypted admin portal.',
+    iconName: 'UploadCloud'
+  },
+  {
+    step: '02',
+    title: 'Automated Cryptographic Hash',
+    description: 'System automatically verifies grade weightings, computes GPAs, and generates unique QR security hashes.',
+    iconName: 'CheckCircle2'
+  },
+  {
+    step: '03',
+    title: 'Portal Release Notification',
+    description: 'Official results are published instantly. Parents and students receive notification alerts.',
+    iconName: 'Bell'
+  },
+  {
+    step: '04',
+    title: 'Enter Student ID & Term',
+    description: 'Users enter their official registration number and select session/term parameters.',
+    iconName: 'Search'
+  },
+  {
+    step: '05',
+    title: 'View & Print Authentic Slip',
+    description: 'Instantly view, download, or print official academic result slips with digital seals.',
+    iconName: 'FileCheck2'
+  }
+];
+
+export const TESTIMONIALS_DATA: Testimonial[] = [
+  {
+    id: '1',
+    name: 'Dr. Elizabeth Sterling',
+    role: 'Parent of Senior High Graduate',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200',
+    quote: 'Checking my son’s final examination results was ridiculously fast and smooth. The printed report slip looked as official as university transcripts!',
+    rating: 5,
+    tag: 'Parent'
+  },
+  {
+    id: '2',
+    name: 'Michael Chen',
+    role: 'Vice Principal (Academics)',
+    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200',
+    quote: 'The admin dashboard cut our result processing time from weeks down to under two hours. The automated QR verification eliminated result tampering completely.',
+    rating: 5,
+    tag: 'Teacher'
+  },
+  {
+    id: '3',
+    name: 'Samantha Vance',
+    role: 'Head Girl & SSS 3 Honor Student',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200',
+    quote: 'I love that I can check my grades on my smartphone the second they are released without logging into complicated accounts or facing crashed servers.',
+    rating: 5,
+    tag: 'Student'
+  }
+];
+
+export const FAQ_DATA: FAQItem[] = [
+  {
+    id: 'faq-1',
+    question: 'How do students check their examination results?',
+    answer: 'Students simply navigate to the Result Checking demo section on this portal, input their official Registration Number (e.g., RA/2025/1042), select their session, term, and class, and click "Check Result". Your result slip will load instantly.',
+    category: 'Results'
+  },
+  {
+    id: 'faq-2',
+    question: 'Do students or parents need a user account or password?',
+    answer: 'No password is required! The portal is designed for maximum convenience while maintaining security. By validating unique Student Registration IDs and session details, results are fetched securely without password friction.',
+    category: 'General'
+  },
+  {
+    id: 'faq-3',
+    question: 'Can result slips be printed or downloaded as PDF?',
+    answer: 'Yes! Every result slip includes a dedicated "Print Result Slip" and "Download PDF" button. It renders in a high-resolution, print-ready format with school crest, official signatures, and QR verification stamp.',
+    category: 'Results'
+  },
+  {
+    id: 'faq-4',
+    question: 'How secure is the result verification system?',
+    answer: 'Extremely secure. Every generated report includes a unique cryptographic SHA-256 hash and a dynamic QR code. Anyone scanning the QR code can immediately verify the result against Royal Academy’s master database to confirm authenticity.',
+    category: 'Security'
+  },
+  {
+    id: 'faq-5',
+    question: 'Can we access results from previous academic sessions?',
+    answer: 'Yes, the portal archives all academic records. Simply select the past Academic Session (e.g., 2023/2024) and Term from the search parameters.',
+    category: 'Results'
+  },
+  {
+    id: 'faq-6',
+    question: 'Who uploads and manages the student results?',
+    answer: 'Authorized school administrators and exam officers manage results through the secure Admin Portal. Results undergo double verification before being published to the public portal.',
+    category: 'Technical'
+  }
+];
+
+export const ADMIN_MOCK_STUDENTS: AdminStudentSummary[] = [
+  { studentId: 'RA/2025/1042', name: 'David Alexander Okon', className: 'SSS 3 Science A', gpa: 3.92, status: 'Published', lastUpdated: 'Today, 08:30 AM', averageScore: 89.4 },
+  { studentId: 'RA/2025/1089', name: 'Sophia Isabella Martinez', className: 'SSS 2 Arts B', gpa: 3.78, status: 'Published', lastUpdated: 'Today, 09:15 AM', averageScore: 87.2 },
+  { studentId: 'RA/2025/1105', name: 'Marcus Sterling Vance', className: 'JSS 3 B', gpa: 3.71, status: 'Published', lastUpdated: 'Yesterday', averageScore: 86.2 },
+  { studentId: 'RA/2025/1140', name: 'Amara Grace Washington', className: 'SSS 1 Commercial', gpa: 3.65, status: 'Pending Review', lastUpdated: 'Yesterday', averageScore: 84.8 },
+  { studentId: 'RA/2025/1201', name: 'Julian Benedict Vance', className: 'JSS 1 A', gpa: 3.50, status: 'Draft', lastUpdated: '2 days ago', averageScore: 81.0 },
+  { studentId: 'RA/2025/1255', name: 'Claire Eleanor DuPont', className: 'SSS 3 Science B', gpa: 3.95, status: 'Published', lastUpdated: '3 days ago', averageScore: 91.5 }
+];

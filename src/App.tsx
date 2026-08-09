@@ -1,0 +1,147 @@
+import React, { useState } from 'react';
+import { Navbar } from './components/Navbar';
+import { HeroSection } from './components/HeroSection';
+import { FloatingStats } from './components/FloatingStats';
+import { FeaturesSection } from './components/FeaturesSection';
+import { ResultSearchDemo } from './components/ResultSearchDemo';
+import { AdminDashboardPreview } from './components/AdminDashboardPreview';
+import { WorkflowSection } from './components/WorkflowSection';
+import { TestimonialsSection } from './components/TestimonialsSection';
+import { SecuritySection } from './components/SecuritySection';
+import { FAQSection } from './components/FAQSection';
+import { CallToAction } from './components/CallToAction';
+import { Footer } from './components/Footer';
+
+import { ResultSlipModal } from './components/ResultSlipModal';
+import { QRVerificationModal } from './components/QRVerificationModal';
+import { ContactModal } from './components/ContactModal';
+
+import { StudentResult } from './types';
+import { MOCK_STUDENTS } from './data/mockData';
+
+export default function App() {
+  const [selectedResult, setSelectedResult] = useState<StudentResult | null>(null);
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+
+  const [qrStudentId, setQrStudentId] = useState<string | null>(null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+
+  const handleCheckResultClick = () => {
+    const el = document.getElementById('result-search');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleAdminPortalClick = () => {
+    const el = document.getElementById('admin-portal');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleLearnMoreClick = () => {
+    const el = document.getElementById('how-it-works');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleOpenResultSlip = (result: StudentResult) => {
+    setSelectedResult(result);
+    setIsResultModalOpen(true);
+  };
+
+  const handleOpenQRModal = (studentId: string) => {
+    setQrStudentId(studentId);
+    setIsQrModalOpen(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-white text-[#0F172A] font-['Inter',sans-serif] selection:bg-[#60A5FA]/20 selection:text-[#1E3A8A]">
+      
+      {/* Sticky Navigation */}
+      <Navbar
+        onCheckResultClick={handleCheckResultClick}
+        onAdminPortalClick={handleAdminPortalClick}
+      />
+
+      {/* Hero Section */}
+      <main>
+        <HeroSection
+          onCheckResultClick={handleCheckResultClick}
+          onLearnMoreClick={handleLearnMoreClick}
+          onQuickVerifyClick={handleOpenQRModal}
+        />
+
+        {/* Floating Statistics Counters */}
+        <FloatingStats />
+
+        {/* Features Capabilities */}
+        <FeaturesSection />
+
+        {/* Interactive Live Result Search Demo */}
+        <ResultSearchDemo
+          onOpenResultSlip={handleOpenResultSlip}
+          onVerifyQR={handleOpenQRModal}
+        />
+
+        {/* Admin Dashboard Preview Simulator */}
+        <AdminDashboardPreview />
+
+        {/* Workflow Timeline */}
+        <WorkflowSection />
+
+        {/* Testimonials */}
+        <TestimonialsSection />
+
+        {/* Security & Reliability */}
+        <SecuritySection />
+
+        {/* FAQ Accordion */}
+        <FAQSection />
+
+        {/* Call To Action */}
+        <CallToAction
+          onCheckResultClick={handleCheckResultClick}
+          onContactClick={() => setIsContactModalOpen(true)}
+        />
+      </main>
+
+      {/* Footer */}
+      <Footer
+        onCheckResultClick={handleCheckResultClick}
+        onAdminPortalClick={handleAdminPortalClick}
+        onContactClick={() => setIsContactModalOpen(true)}
+      />
+
+      {/* Official Student Result Slip Modal (Print-ready) */}
+      <ResultSlipModal
+        result={selectedResult}
+        isOpen={isResultModalOpen}
+        onClose={() => setIsResultModalOpen(false)}
+        onVerifyQR={() => {
+          if (selectedResult) {
+            handleOpenQRModal(selectedResult.studentId);
+          }
+        }}
+      />
+
+      {/* Cryptographic QR Verification Modal */}
+      <QRVerificationModal
+        studentId={qrStudentId}
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+      />
+
+      {/* Support / Discrepancy Inquiry Modal */}
+      <ContactModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+      />
+
+    </div>
+  );
+}
