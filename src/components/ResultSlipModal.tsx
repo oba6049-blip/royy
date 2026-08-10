@@ -507,16 +507,16 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
 
           {/* 4. RESULT TABLE */}
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-black border-collapse border border-black" style={{ borderCollapse: 'collapse' }}>
+            <table className="result-table w-full text-xs text-black border-collapse border border-black" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead>
                 <tr className="bg-gray-200 text-black font-bold text-[11px] uppercase border-b border-black">
-                  <th className="p-2 border border-black text-center" style={{ width: '6%' }}>S/N</th>
-                  <th className="p-2 border border-black text-left" style={{ width: '40%' }}>SUBJECT</th>
-                  <th className="p-2 border border-black text-center" style={{ width: '10%' }}>CA (40)</th>
-                  <th className="p-2 border border-black text-center" style={{ width: '10%' }}>EXAM (60)</th>
-                  <th className="p-2 border border-black text-center" style={{ width: '10%' }}>TOTAL (100)</th>
-                  <th className="p-2 border border-black text-center" style={{ width: '10%' }}>GRADE</th>
-                  <th className="p-2 border border-black text-center" style={{ width: '14%' }}>REMARK</th>
+                  <th className="border border-black text-center" style={{ width: '6%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>S/N</th>
+                  <th className="border border-black text-left" style={{ width: '40%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>SUBJECT</th>
+                  <th className="border border-black text-center" style={{ width: '10%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>CA (40)</th>
+                  <th className="border border-black text-center" style={{ width: '10%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>EXAM (60)</th>
+                  <th className="border border-black text-center" style={{ width: '10%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>TOTAL (100)</th>
+                  <th className="border border-black text-center" style={{ width: '10%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>GRADE</th>
+                  <th className="border border-black text-center" style={{ width: '14%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>REMARK</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black font-medium">
@@ -528,13 +528,13 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
 
                     return (
                       <tr key={sub.id || idx} className="hover:bg-slate-50">
-                        <td className="p-1.5 border border-black text-center font-mono">{idx + 1}</td>
-                        <td className="p-1.5 border border-black font-bold text-left">{sub.subject}</td>
-                        <td className="p-1.5 border border-black text-center font-mono">{caDisplay}</td>
-                        <td className="p-1.5 border border-black text-center font-mono">{examDisplay}</td>
-                        <td className="p-1.5 border border-black text-center font-bold font-mono text-sm">{totalVal}</td>
-                        <td className="p-1.5 border border-black text-center font-black">{sub.grade}</td>
-                        <td className="p-1.5 border border-black text-center uppercase text-[10px] font-bold">{sub.remark}</td>
+                        <td className="border border-black text-center font-mono" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{idx + 1}</td>
+                        <td className="border border-black font-bold text-left" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{sub.subject}</td>
+                        <td className="border border-black text-center font-mono" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{caDisplay}</td>
+                        <td className="border border-black text-center font-mono" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{examDisplay}</td>
+                        <td className="border border-black text-center font-bold font-mono text-sm" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{totalVal}</td>
+                        <td className="border border-black text-center font-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{sub.grade}</td>
+                        <td className="border border-black text-center uppercase text-[10px] font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{sub.remark}</td>
                       </tr>
                     );
                   })
@@ -586,37 +586,37 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
               <h4 className="font-black text-[11px] uppercase border-b border-black pb-1 mb-1 text-black text-center">
                 GRADING SCALE
               </h4>
-              <table className="w-full text-[10px] text-center border-collapse border border-black">
+              <table className="grading-scale w-full text-[10px] text-center border-collapse border border-black" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="bg-gray-100 font-bold border-b border-black">
-                    <th className="p-1 border border-black">SCORE</th>
-                    <th className="p-1 border border-black">GRADE</th>
+                    <th className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>SCORE</th>
+                    <th className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>GRADE</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black font-semibold">
                   <tr>
-                    <td className="p-1 border border-black">100 - 80</td>
-                    <td className="p-1 border border-black font-bold">A1 (Excellent)</td>
+                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>100 - 80</td>
+                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>A1 (Excellent)</td>
                   </tr>
                   <tr>
-                    <td className="p-1 border border-black">79 - 70</td>
-                    <td className="p-1 border border-black font-bold">B2 (Very Good)</td>
+                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>79 - 70</td>
+                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>B2 (Very Good)</td>
                   </tr>
                   <tr>
-                    <td className="p-1 border border-black">69 - 60</td>
-                    <td className="p-1 border border-black font-bold">B3 (Good)</td>
+                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>69 - 60</td>
+                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>B3 (Good)</td>
                   </tr>
                   <tr>
-                    <td className="p-1 border border-black">59 - 55</td>
-                    <td className="p-1 border border-black font-bold">C4 (Credit)</td>
+                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>59 - 55</td>
+                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>C4 (Credit)</td>
                   </tr>
                   <tr>
-                    <td className="p-1 border border-black">54 - 50</td>
-                    <td className="p-1 border border-black font-bold">C6 (Credit)</td>
+                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>54 - 50</td>
+                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>C6 (Credit)</td>
                   </tr>
                   <tr>
-                    <td className="p-1 border border-black">Below 50</td>
-                    <td className="p-1 border border-black font-bold text-red-700">F9 (Fail)</td>
+                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>Below 50</td>
+                    <td className="border border-black font-bold text-red-700" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>F9 (Fail)</td>
                   </tr>
                 </tbody>
               </table>
