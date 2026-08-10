@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   Award,
   BookOpen,
   Lock,
@@ -93,7 +92,7 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
         }
       } else {
         setErrorMessage(
-          `No student record found for 7-digit Registration ID "${cleanRegId}". Please verify your details or use one of the quick test badges below.`
+          `No student record found for 7-digit Registration ID "${cleanRegId}". Please verify your details.`
         );
       }
     } catch {
@@ -135,15 +134,6 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
             <span>Student Academic Result Portal</span>
           </div>
         </div>
-
-        {onOpenAdminPortal && (
-          <button
-            onClick={onOpenAdminPortal}
-            className="text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer hidden sm:block"
-          >
-            Switch to Admin Portal Login &rarr;
-          </button>
-        )}
       </header>
 
       {/* Main Login Body */}
@@ -159,7 +149,7 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
             {/* School Logo & Title */}
             <div className="text-center space-y-3 mb-8">
               <div className="inline-flex p-3 rounded-2xl bg-slate-950 border border-slate-800 shadow-inner">
-                <SchoolLogo size="md" />
+                <SchoolLogo size="md" lightMode={false} />
               </div>
 
               <div>
@@ -291,55 +281,6 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
               </button>
 
             </form>
-
-            {/* Quick Demo Fill Credentials Section */}
-            <div className="mt-8 pt-6 border-t border-slate-800/80 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#F59E0B]" />
-                  Quick Test Student Credentials
-                </span>
-                <span className="text-[10px] text-slate-500">Click to autofill</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('Okon', '2025104')}
-                  className="p-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800 text-left transition-all cursor-pointer group"
-                >
-                  <p className="text-xs font-bold text-white group-hover:text-blue-300">David Okon</p>
-                  <p className="text-[10px] font-mono text-slate-400">Reg ID: <strong className="text-amber-400">2025104</strong></p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('Martinez', '2025108')}
-                  className="p-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800 text-left transition-all cursor-pointer group"
-                >
-                  <p className="text-xs font-bold text-white group-hover:text-blue-300">Sophia Martinez</p>
-                  <p className="text-[10px] font-mono text-slate-400">Reg ID: <strong className="text-amber-400">2025108</strong></p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('Vance', '2025110')}
-                  className="p-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800 text-left transition-all cursor-pointer group"
-                >
-                  <p className="text-xs font-bold text-white group-hover:text-blue-300">Marcus Vance</p>
-                  <p className="text-[10px] font-mono text-slate-400">Reg ID: <strong className="text-amber-400">2025110</strong></p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('Washington', '2025114')}
-                  className="p-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800 text-left transition-all cursor-pointer group"
-                >
-                  <p className="text-xs font-bold text-white group-hover:text-blue-300">Amara Washington</p>
-                  <p className="text-[10px] font-mono text-slate-400">Reg ID: <strong className="text-amber-400">2025114</strong></p>
-                </button>
-              </div>
-            </div>
 
           </div>
 

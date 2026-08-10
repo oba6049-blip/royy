@@ -108,16 +108,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [newClassName, setNewClassName] = useState('');
   const [newClassTeacher, setNewClassTeacher] = useState('');
 
-  // Subject State
-  const [subjectList, setSubjectList] = useState([
-    { code: 'MTH 101', name: 'Mathematics', category: 'General Core', teacher: 'Dr. C. Nwosu' },
-    { code: 'ENG 101', name: 'English Language', category: 'General Core', teacher: 'Mrs. O. Adeleke' },
-    { code: 'PHY 101', name: 'Physics', category: 'Sciences', teacher: 'Engr. T. Balogun' },
-    { code: 'CHM 101', name: 'Chemistry', category: 'Sciences', teacher: 'Prof. A. Bamidele' },
-    { code: 'BIO 101', name: 'Biology', category: 'Sciences', teacher: 'Dr. M. Chen' },
-    { code: 'ECO 101', name: 'Economics', category: 'Social Sciences', teacher: 'Mr. B. Danjuma' },
-    { code: 'GOV 101', name: 'Government', category: 'Arts & Humanities', teacher: 'Mrs. A. Ibrahim' },
-  ]);
+  // Subject State (Only displays subjects added by Admin)
+  const [subjectList, setSubjectList] = useState<Array<{ code: string; name: string; category?: string; teacher?: string }>>([]);
   const [newSubCode, setNewSubCode] = useState('');
   const [newSubName, setNewSubName] = useState('');
 
@@ -133,7 +125,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     { id: 't3', name: 'Third Term (Summer)', status: 'Active Current Term', resumption: 'Apr 28, 2025' },
   ]);
 
-  // Dynamic Class and Subject Options derived from master state and students list
+  // Dynamic Class and Subject Options derived from master state
   const allClassNames = Array.from(
     new Set([
       ...classList.map(c => c.name),
@@ -144,13 +136,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const allSubjectNames = Array.from(
     new Set([
       ...subjectList.map(s => s.name),
-      ...students.flatMap(s => (s.subjects || []).map((sub: any) => sub.subject)).filter(Boolean),
     ])
   );
 
   // Enter / Edit Results State
   const [scoreClass, setScoreClass] = useState('JSS 1 Gold');
-  const [scoreSubject, setScoreSubject] = useState('Mathematics');
+  const [scoreSubject, setScoreSubject] = useState('');
   const [scoreEntries, setScoreEntries] = useState<Array<{
     id: string;
     name: string;
@@ -159,6 +150,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     midterm: number;
     exam: number;
   }>>([]);
+
+  // Auto-select first available subject if scoreSubject is unselected or invalid
+  useEffect(() => {
+    if (allSubjectNames.length > 0 && (!scoreSubject || !allSubjectNames.includes(scoreSubject))) {
+      setScoreSubject(allSubjectNames[0]);
+    }
+  }, [allSubjectNames, scoreSubject]);
 
   // Auto-sync score entries sheet when class, subject, or student records update
   useEffect(() => {
@@ -715,11 +713,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         dateOfBirth: studentData.dateOfBirth || '2008-05-12',
         attendance: studentData.attendance || { timesOpened: 120, timesPresent: 118, timesAbsent: 2 },
         behavioralTraits: studentData.behavioralTraits || { punctuality: 5, neatness: 5, leadership: 5, honesty: 5 },
-        subjects: studentData.subjects && studentData.subjects.length > 0 ? studentData.subjects : [
-          { id: '1', subject: 'Mathematics', caScore: 38, examScore: 58, total: 96, grade: 'A1', remark: 'EXCELLENT' },
-          { id: '2', subject: 'English Language', caScore: 35, examScore: 52, total: 87, grade: 'A1', remark: 'EXCELLENT' },
-          { id: '3', subject: 'Physics', caScore: 34, examScore: 50, total: 84, grade: 'A1', remark: 'EXCELLENT' },
-        ],
+        subjects: studentData.subjects && studentData.subjects.length > 0 ? studentData.subjects : [],
         overallTotal: studentData.overallTotal || 267,
         overallAverage: studentData.overallAverage || studentData.averageScore || 89.0,
         gpa: studentData.gpa || 3.88,
@@ -879,17 +873,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       ? subjectList.map((s, idx) => ({
           id: String(idx + 1),
           subject: s.name,
-          caScore: 35,
-          examScore: 50,
-          total: 85,
-          grade: 'A1',
-          remark: 'EXCELLENT'
+          caScore: 0,
+          examScore: 0,
+          total: 0,
+          grade: 'F9',
+          remark: 'PENDING'
         }))
-      : [
-          { id: '1', subject: 'Mathematics', caScore: 38, examScore: 58, total: 96, grade: 'A1', remark: 'EXCELLENT' },
-          { id: '2', subject: 'English Language', caScore: 35, examScore: 52, total: 87, grade: 'A1', remark: 'EXCELLENT' },
-          { id: '3', subject: 'Physics', caScore: 34, examScore: 50, total: 84, grade: 'A1', remark: 'EXCELLENT' },
-        ];
+      : [];
 
     const createdStudent = {
       studentId: cleanRegId,
@@ -945,15 +935,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           <div className="hidden sm:block h-6 w-px bg-slate-200" />
 
           <div className="flex items-center gap-3">
-            <SchoolLogo size="sm" />
+            <SchoolLogo size="sm" showText={false} />
             <div>
-              <h1 className="text-sm font-black text-[#1E3A8A] tracking-tight font-['Plus_Jakarta_Sans']">
-                ROYAL ACADEMY ADMINISTRATIVE PORTAL
+              <h1 className="text-sm font-bold text-[#1E3A8A] tracking-tight font-['Plus_Jakarta_Sans']">
+                ROYAL ACADEMY
               </h1>
-              <span className="text-[10px] text-emerald-600 font-bold font-mono flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live Cloud Gateway • Secured Session
-              </span>
+              <p className="text-xs text-slate-500 font-medium leading-tight">
+                Excellence & Integrity
+              </p>
             </div>
           </div>
         </div>
@@ -987,10 +976,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         <aside className="w-full md:w-72 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 p-4 space-y-6">
           <div className="space-y-5">
             <div className="px-2 pb-3 border-b border-slate-100">
-              <span className="text-[10px] font-black text-[#1E3A8A] uppercase tracking-wider block">
-                Royal Portal System Navigation
+              <span className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider block font-['Plus_Jakarta_Sans']">
+                Admin Control Panel
               </span>
-              <p className="text-xs text-slate-500 font-medium">15 Management Modules</p>
+              <p className="text-[11px] text-slate-500 font-medium">System Management</p>
             </div>
 
             <nav className="space-y-4">
@@ -1630,9 +1619,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       onChange={(e) => setScoreSubject(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-[#0F172A]"
                     >
-                      {allSubjectNames.map((sub) => (
-                        <option key={sub} value={sub}>{sub}</option>
-                      ))}
+                      {allSubjectNames.length > 0 ? (
+                        allSubjectNames.map((sub) => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))
+                      ) : (
+                        <option value="" disabled>No subjects added yet — Add subjects under Manage Subjects tab</option>
+                      )}
                     </select>
                   </div>
 

@@ -4,6 +4,7 @@ interface SchoolLogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showSubtext?: boolean;
+  showText?: boolean;
   lightMode?: boolean;
 }
 
@@ -11,6 +12,7 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
   className = '',
   size = 'md',
   showSubtext = true,
+  showText = true,
   lightMode = true,
 }) => {
   const sizeClasses = {
@@ -55,24 +57,26 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
         <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#F59E0B] animate-pulse" />
       </div>
 
-      <div className="flex flex-col">
-        <span
-          className={`font-extrabold tracking-tight font-['Plus_Jakarta_Sans'] ${textSizes[size]} ${
-            lightMode ? 'text-[#0F172A]' : 'text-white'
-          }`}
-        >
-          ROYAL ACADEMY
-        </span>
-        {showSubtext && (
+      {showText && (
+        <div className="flex flex-col">
           <span
-            className={`text-[11px] font-semibold tracking-wider uppercase ${
-              lightMode ? 'text-[#64748B]' : 'text-[#94A3B8]'
+            className={`font-extrabold tracking-tight font-['Plus_Jakarta_Sans'] ${textSizes[size]} ${
+              lightMode ? 'text-[#0F172A]' : 'text-white'
             }`}
           >
-            Excellence & Integrity
+            ROYAL ACADEMY
           </span>
-        )}
-      </div>
+          {showSubtext && (
+            <span
+              className={`text-[11px] font-semibold tracking-wider uppercase ${
+                lightMode ? 'text-[#64748B]' : 'text-[#94A3B8]'
+              }`}
+            >
+              Excellence & Integrity
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -34,7 +34,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { name: 'Home', href: '#home' },
     { name: 'Features', href: '#features' },
     { name: 'Student Login', href: '#student-login' },
-    { name: 'Result Search', href: '#result-search' },
     { name: 'Admin Portal', href: '#admin-portal' },
     { name: 'How It Works', href: '#how-it-works' },
     { name: 'FAQ', href: '#faq' },
@@ -82,13 +81,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Student Login Portal */}
             <button
               onClick={onStudentPortalClick}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all border border-slate-700 cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all border border-slate-700 cursor-pointer active:scale-95"
             >
               <UserCheck className="w-3.5 h-3.5 text-[#F59E0B]" />
               <span>Student Login</span>
             </button>
 
-            {/* Secondary CTA: Admin Portal */}
+            {/* Admin Portal */}
             <button
               onClick={onAdminPortalClick}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all border border-slate-200/80 cursor-pointer active:scale-95"
@@ -96,25 +95,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Shield className="w-3.5 h-3.5 text-[#1E3A8A]" />
               <span>Admin</span>
             </button>
-
-            {/* Primary CTA: Check Result */}
-            <button
-              onClick={onCheckResultClick}
-              className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#1e40af] rounded-xl shadow-md royal-glow hover:shadow-lg transition-all active:scale-95 border border-[#60A5FA]/30 cursor-pointer"
-            >
-              <Search className="w-3.5 h-3.5 text-[#F59E0B]" />
-              <span>Check Result</span>
-            </button>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 lg:hidden">
-            <button
-              onClick={onCheckResultClick}
-              className="sm:hidden px-3 py-1.5 text-xs font-bold text-white bg-[#1E3A8A] rounded-lg shadow-sm"
-            >
-              Result
-            </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
@@ -139,6 +123,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   if (link.name === 'Admin Portal') {
                     e.preventDefault();
                     onAdminPortalClick();
+                  } else if (link.name === 'Student Login') {
+                    e.preventDefault();
+                    onStudentPortalClick();
                   }
                 }}
                 className="px-4 py-2.5 text-sm font-semibold text-slate-700 hover:text-[#1E3A8A] hover:bg-slate-50 rounded-lg transition-colors"
@@ -157,16 +144,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <UserCheck className="w-4 h-4 text-[#F59E0B]" />
               Student Portal Sign In
-            </button>
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onCheckResultClick();
-              }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-[#1E3A8A] rounded-xl shadow-sm"
-            >
-              <Search className="w-4 h-4 text-[#F59E0B]" />
-              Check Student Result
             </button>
             <button
               onClick={() => {

@@ -172,15 +172,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 </div>
 
                 <div className="space-y-1.5 text-xs font-medium">
-                  {sampleStudent.subjects.slice(0, 3).map((sub) => (
-                    <div key={sub.id} className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-xl border border-slate-100 shadow-xs">
-                      <span className="font-semibold text-slate-800">{sub.subject}</span>
-                      <span className="font-mono text-slate-600">{sub.total}/100</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-[#1E3A8A] font-bold text-[11px] border border-blue-100">
-                        {sub.grade}
-                      </span>
-                    </div>
-                  ))}
+                  {(sampleStudent?.subjects || []).length > 0 ? (
+                    sampleStudent.subjects.slice(0, 3).map((sub) => (
+                      <div key={sub.id} className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-xl border border-slate-100 shadow-xs">
+                        <span className="font-semibold text-slate-800">{sub.subject}</span>
+                        <span className="font-mono text-slate-600">{sub.total}/100</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-[#1E3A8A] font-bold text-[11px] border border-blue-100">
+                          {sub.grade}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-slate-400 py-2 text-xs italic">No subject scores published yet</p>
+                  )}
                 </div>
               </div>
 

@@ -106,7 +106,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
           {/* Brand & Badge Header */}
           <div className="text-center space-y-3">
             <div className="inline-block mx-auto">
-              <SchoolLogo size="lg" />
+              <SchoolLogo size="lg" lightMode={false} />
             </div>
 
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1E3A8A]/40 text-[#60A5FA] text-[11px] font-extrabold uppercase tracking-wider border border-[#1E3A8A]">

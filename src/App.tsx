@@ -3,8 +3,6 @@ import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { FloatingStats } from './components/FloatingStats';
 import { FeaturesSection } from './components/FeaturesSection';
-import { ResultSearchDemo } from './components/ResultSearchDemo';
-import { AdminDashboardPreview } from './components/AdminDashboardPreview';
 import { WorkflowSection } from './components/WorkflowSection';
 import { TestimonialsSection } from './components/TestimonialsSection';
 import { SecuritySection } from './components/SecuritySection';
@@ -38,9 +36,9 @@ export default function App() {
 
   // Admin authentication state
   const [adminUser, setAdminUser] = useState<{ name: string; email: string; role: string } | null>({
-    name: 'Dr. M. Chen',
-    email: 'admin@royalacademy.edu.ng',
-    role: 'Vice Principal (Academics)'
+    name: 'Adewale (System Admin)',
+    email: 'fariat@gmail.com',
+    role: 'System Super Administrator'
   });
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
 
@@ -177,23 +175,6 @@ export default function App() {
 
         {/* Features Capabilities */}
         <FeaturesSection />
-
-        {/* Interactive Live Result Search Demo */}
-        <ResultSearchDemo
-          onOpenResultSlip={handleOpenResultSlip}
-          onVerifyQR={handleOpenQRModal}
-        />
-
-        {/* Admin Dashboard Preview Simulator */}
-        <AdminDashboardPreview
-          adminUser={adminUser}
-          onOpenLoginModal={() => setCurrentView('admin-login')}
-          onLogout={() => setAdminUser(null)}
-          onLoginSuccess={(user) => {
-            setAdminUser(user);
-            setCurrentView('admin-dashboard');
-          }}
-        />
 
         {/* Workflow Timeline */}
         <WorkflowSection />

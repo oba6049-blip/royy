@@ -20,15 +20,7 @@ let memoryStore = {
     { id: '5', name: 'SSS 2 Arts', arm: 'Arts', teacher: 'Mrs. A. Ibrahim', capacity: 30, enrolled: 25 },
     { id: '6', name: 'SSS 3 Commercial', arm: 'Commercial', teacher: 'Mr. B. Danjuma', capacity: 30, enrolled: 29 },
   ],
-  subjects: [
-    { code: 'MTH 101', name: 'Mathematics', category: 'General Core', teacher: 'Dr. C. Nwosu' },
-    { code: 'ENG 101', name: 'English Language', category: 'General Core', teacher: 'Mrs. O. Adeleke' },
-    { code: 'PHY 101', name: 'Physics', category: 'Sciences', teacher: 'Engr. T. Balogun' },
-    { code: 'CHM 101', name: 'Chemistry', category: 'Sciences', teacher: 'Prof. A. Bamidele' },
-    { code: 'BIO 101', name: 'Biology', category: 'Sciences', teacher: 'Dr. M. Chen' },
-    { code: 'ECO 101', name: 'Economics', category: 'Social Sciences', teacher: 'Mr. B. Danjuma' },
-    { code: 'GOV 101', name: 'Government', category: 'Arts & Humanities', teacher: 'Mrs. A. Ibrahim' },
-  ],
+  subjects: [] as any[],
   sessions: [
     { id: '1', year: '2023/2024', status: 'Completed', startDate: 'Sept 2023', endDate: 'July 2024' },
     { id: '2', year: '2024/2025', status: 'Active Current Session', startDate: 'Sept 2024', endDate: 'July 2025' },
@@ -47,9 +39,9 @@ let memoryStore = {
   },
   admins: [
     {
-      email: process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng',
-      password: process.env.ADMIN_PASSWORD || 'admin123',
-      name: 'System Administrator',
+      email: 'fariat@gmail.com',
+      password: 'Adewale_@09',
+      name: 'Adewale (System Admin)',
       role: 'System Super Administrator'
     }
   ]
@@ -326,28 +318,17 @@ export async function updateBranding(type: 'logoUrl' | 'stampUrl' | 'signatureUr
 // Admin Auth
 export async function verifyAdmin(email: string, pass: string) {
   const normalizedEmail = (email || '').trim().toLowerCase();
-  const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng').trim().toLowerCase();
-  const envAdminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const allowedEmail = 'fariat@gmail.com';
+  const allowedPassword = 'Adewale_@09';
 
   if (!pass) return null;
 
-  // 1. Check environment variable configured admin
-  if (normalizedEmail === envAdminEmail && pass === envAdminPassword) {
-    return { name: 'System Administrator', email: normalizedEmail, role: 'System Super Administrator' };
-  }
-
-  // 2. Check MongoDB collection
-  if (isMongoConnected && dbInstance) {
-    const admin = await dbInstance.collection('admins').findOne({ email: normalizedEmail });
-    if (admin && admin.password === pass) {
-      return { name: admin.name || 'System Admin', email: admin.email, role: admin.role || 'System Super Administrator' };
-    }
-  }
-
-  // 3. Check Memory Store
-  const memoryAdmin = memoryStore.admins.find(a => a.email.toLowerCase() === normalizedEmail);
-  if (memoryAdmin && memoryAdmin.password === pass) {
-    return { name: memoryAdmin.name, email: memoryAdmin.email, role: memoryAdmin.role };
+  if (normalizedEmail === allowedEmail && pass === allowedPassword) {
+    return {
+      name: 'Adewale (System Admin)',
+      email: allowedEmail,
+      role: 'System Super Administrator'
+    };
   }
 
   return null;

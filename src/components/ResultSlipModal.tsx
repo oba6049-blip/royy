@@ -38,8 +38,9 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
   };
 
   // Calculate subjects passed / failed
-  const subjectsPassed = result.subjects.filter(s => (s.total || 0) >= 50).length;
-  const subjectsFailed = result.subjects.filter(s => (s.total || 0) < 50).length;
+  const studentSubjects = result?.subjects || [];
+  const subjectsPassed = studentSubjects.filter(s => (s.total || 0) >= 50).length;
+  const subjectsFailed = studentSubjects.filter(s => (s.total || 0) < 50).length;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 no-print">
@@ -206,24 +207,32 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-black font-medium">
-                {result.subjects.map((sub, idx) => {
-                  // Standardize CA (max 20 or scaled) and Exam (max 80)
-                  const caDisplay = sub.caScore !== undefined ? Math.min(20, Math.round((sub.caScore / 40) * 20)) : 18;
-                  const examDisplay = sub.examScore !== undefined ? Math.min(80, Math.round((sub.examScore / 60) * 80)) : 72;
-                  const totalVal = sub.total || (caDisplay + examDisplay);
+                {studentSubjects.length > 0 ? (
+                  studentSubjects.map((sub, idx) => {
+                    // Standardize CA (max 20 or scaled) and Exam (max 80)
+                    const caDisplay = sub.caScore !== undefined ? Math.min(20, Math.round((sub.caScore / 40) * 20)) : 0;
+                    const examDisplay = sub.examScore !== undefined ? Math.min(80, Math.round((sub.examScore / 60) * 80)) : 0;
+                    const totalVal = sub.total !== undefined ? sub.total : (caDisplay + examDisplay);
 
-                  return (
-                    <tr key={sub.id || idx} className="hover:bg-slate-50">
-                      <td className="p-1.5 border border-black text-center font-mono">{idx + 1}</td>
-                      <td className="p-1.5 border border-black font-bold text-left">{sub.subject}</td>
-                      <td className="p-1.5 border border-black text-center font-mono">{caDisplay}</td>
-                      <td className="p-1.5 border border-black text-center font-mono">{examDisplay}</td>
-                      <td className="p-1.5 border border-black text-center font-bold font-mono text-sm">{totalVal}</td>
-                      <td className="p-1.5 border border-black text-center font-black">{sub.grade}</td>
-                      <td className="p-1.5 border border-black text-center uppercase text-[10px] font-bold">{sub.remark}</td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={sub.id || idx} className="hover:bg-slate-50">
+                        <td className="p-1.5 border border-black text-center font-mono">{idx + 1}</td>
+                        <td className="p-1.5 border border-black font-bold text-left">{sub.subject}</td>
+                        <td className="p-1.5 border border-black text-center font-mono">{caDisplay}</td>
+                        <td className="p-1.5 border border-black text-center font-mono">{examDisplay}</td>
+                        <td className="p-1.5 border border-black text-center font-bold font-mono text-sm">{totalVal}</td>
+                        <td className="p-1.5 border border-black text-center font-black">{sub.grade}</td>
+                        <td className="p-1.5 border border-black text-center uppercase text-[10px] font-bold">{sub.remark}</td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="p-6 text-center font-bold text-slate-500 italic uppercase tracking-wider border border-black">
+                      No subjects entered for this student yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
