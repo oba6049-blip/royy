@@ -26,8 +26,20 @@ This project is configured out of the box for zero-config deployment on **Vercel
 | `MONGODB_URI` | `mongodb+srv://<username>:<password>@cluster.mongodb.net/royal_academy?retryWrites=true&w=majority` |
 | `ADMIN_EMAIL` | `fariat@gmail.com` *(or your custom admin email)* |
 | `ADMIN_PASSWORD` | `Adewale_@09` *(or your custom admin password)* |
+| `CLOUDINARY_CLOUD_NAME` | Your Cloudinary Cloud Name *(from cloudinary.com/console)* |
+| `CLOUDINARY_API_KEY` | Your Cloudinary API Key |
+| `CLOUDINARY_API_SECRET` | Your Cloudinary API Secret |
 
 5. Click **Deploy**.
+
+---
+
+## Step 3: Cloudinary Image Storage Setup
+
+1. Create a free account at [Cloudinary](https://cloudinary.com).
+2. Copy your **Cloud Name**, **API Key**, and **API Secret** from the Cloudinary Dashboard.
+3. Add `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` to your Vercel Environment Variables.
+4. All student passport photos, school logos, official stamps, and principal signatures uploaded through the portal will automatically upload to Cloudinary and store the secure Cloudinary CDN URLs inside MongoDB.
 
 ---
 

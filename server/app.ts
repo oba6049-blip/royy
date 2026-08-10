@@ -25,6 +25,7 @@ import {
   updateBranding,
   verifyAdmin,
 } from './db.js';
+import { uploadToCloudinary, isCloudinaryConfigured } from './cloudinary.js';
 
 export const app = express();
 
@@ -49,7 +50,28 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/db/status', (req, res) => {
-  res.json(getDbStatus());
+  res.json({
+    ...getDbStatus(),
+    cloudinaryConfigured: isCloudinaryConfigured(),
+  });
+});
+
+// Cloudinary Image Upload API
+app.post('/api/upload', async (req, res) => {
+  try {
+    const { image, folder } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: 'Image string or base64 data URI required.' });
+    }
+    const uploadedUrl = await uploadToCloudinary(image, folder || 'royal_academy');
+    res.json({
+      url: uploadedUrl,
+      isCloudinary: uploadedUrl.includes('res.cloudinary.com'),
+      configured: isCloudinaryConfigured(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Students API
@@ -89,7 +111,13 @@ app.post('/api/students', async (req, res) => {
       });
     }
 
-    const student = await createStudent(req.body);
+    const studentData = { ...req.body };
+    // If passportUrl is base64 or custom image, upload to Cloudinary
+    if (studentData.passportUrl && (studentData.passportUrl.startsWith('data:') || studentData.passportUrl.length > 500)) {
+      studentData.passportUrl = await uploadToCloudinary(studentData.passportUrl, 'royal_academy/passports');
+    }
+
+    const student = await createStudent(studentData);
     res.status(201).json({ success: true, student });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -98,7 +126,12 @@ app.post('/api/students', async (req, res) => {
 
 app.put('/api/students/:id', async (req, res) => {
   try {
-    const updated = await updateStudent(req.params.id, req.body);
+    const updateData = { ...req.body };
+    if (updateData.passportUrl && (updateData.passportUrl.startsWith('data:') || updateData.passportUrl.length > 500)) {
+      updateData.passportUrl = await uploadToCloudinary(updateData.passportUrl, 'royal_academy/passports');
+    }
+
+    const updated = await updateStudent(req.params.id, updateData);
     if (!updated) {
       return res.status(404).json({ error: 'Student not found to update.' });
     }
@@ -261,8 +294,12 @@ app.post('/api/branding', async (req, res) => {
     if (!type || !url) {
       return res.status(400).json({ error: 'Type and URL required.' });
     }
-    const updated = await updateBranding(type, url);
-    res.json({ success: true, branding: updated });
+    let finalUrl = url;
+    if (url.startsWith('data:') || url.length > 500) {
+      finalUrl = await uploadToCloudinary(url, 'royal_academy/branding');
+    }
+    const updated = await updateBranding(type, finalUrl);
+    res.json({ success: true, branding: updated, url: finalUrl });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

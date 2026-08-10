@@ -352,33 +352,41 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
               <div className="lg:col-span-9 space-y-6">
                 
                 {/* Header Stats Bar */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Enrolled</span>
-                    <span className="text-2xl font-black text-white font-['Plus_Jakarta_Sans'] mt-1 block">1,250</span>
-                    <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1 font-semibold">
-                      <TrendingUp className="w-3 h-3" /> +4.2% this session
-                    </span>
-                  </div>
+                {(() => {
+                  const totalCount = students.length;
+                  const publishedCount = students.filter(s => s.subjects && s.subjects.length > 0).length;
+                  const publishedPct = totalCount > 0 ? ((publishedCount / totalCount) * 100).toFixed(1) : '0.0';
 
-                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Published Results</span>
-                    <span className="text-2xl font-black text-emerald-400 font-['Plus_Jakarta_Sans'] mt-1 block">98.4%</span>
-                    <span className="text-[10px] text-slate-400 mt-1 block">1,230 / 1,250 Slips</span>
-                  </div>
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Enrolled</span>
+                        <span className="text-2xl font-black text-white font-['Plus_Jakarta_Sans'] mt-1 block">{totalCount}</span>
+                        <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1 font-semibold">
+                          <TrendingUp className="w-3 h-3" /> {totalCount} active student{totalCount === 1 ? '' : 's'}
+                        </span>
+                      </div>
 
-                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Class Average</span>
-                    <span className="text-2xl font-black text-[#F59E0B] font-['Plus_Jakarta_Sans'] mt-1 block">84.2%</span>
-                    <span className="text-[10px] text-slate-400 mt-1 block">GPA ~3.68 Scale</span>
-                  </div>
+                      <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Published Results</span>
+                        <span className="text-2xl font-black text-emerald-400 font-['Plus_Jakarta_Sans'] mt-1 block">{publishedPct}%</span>
+                        <span className="text-[10px] text-slate-400 mt-1 block">{publishedCount} / {totalCount} Slips</span>
+                      </div>
 
-                  <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Pending Reviews</span>
-                    <span className="text-2xl font-black text-amber-400 font-['Plus_Jakarta_Sans'] mt-1 block">20</span>
-                    <span className="text-[10px] text-slate-400 mt-1 block">Awaiting Approval</span>
-                  </div>
-                </div>
+                      <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Class Average</span>
+                        <span className="text-2xl font-black text-[#F59E0B] font-['Plus_Jakarta_Sans'] mt-1 block">84.2%</span>
+                        <span className="text-[10px] text-slate-400 mt-1 block">GPA ~3.68 Scale</span>
+                      </div>
+
+                      <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Pending Reviews</span>
+                        <span className="text-2xl font-black text-amber-400 font-['Plus_Jakarta_Sans'] mt-1 block">{totalCount - publishedCount}</span>
+                        <span className="text-[10px] text-slate-400 mt-1 block">Awaiting Entry</span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Action Toolbar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800">

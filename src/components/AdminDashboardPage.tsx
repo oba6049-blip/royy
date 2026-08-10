@@ -43,7 +43,8 @@ import {
   Sparkles,
   Database,
   Server,
-  RefreshCw
+  RefreshCw,
+  Cloud
 } from 'lucide-react';
 
 interface AdminUser {
@@ -527,6 +528,40 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [stampPreview, setStampPreview] = useState<string | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [isUploadingBranding, setIsUploadingBranding] = useState<string | null>(null);
+
+  const handleBrandingFileUpload = async (type: 'logoUrl' | 'stampUrl' | 'signatureUrl', file: File) => {
+    if (!file) return;
+    setIsUploadingBranding(type);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        if (type === 'logoUrl') setLogoPreview(base64);
+        if (type === 'stampUrl') setStampPreview(base64);
+        if (type === 'signatureUrl') setSignaturePreview(base64);
+
+        const res = await api.updateBranding(type, base64);
+        if (res.success) {
+          if (type === 'logoUrl' && res.url) setLogoPreview(res.url);
+          if (type === 'stampUrl' && res.url) setStampPreview(res.url);
+          if (type === 'signatureUrl' && res.url) setSignaturePreview(res.url);
+
+          const typeLabel = type === 'logoUrl' ? 'School Logo' : type === 'stampUrl' ? 'School Stamp' : 'Principal Signature';
+          const isCdn = res.url?.includes('res.cloudinary.com');
+          triggerToast(`${typeLabel} saved successfully${isCdn ? ' to Cloudinary CDN & MongoDB' : '!'}`);
+        } else {
+          triggerToast(`Failed to save ${type} to backend.`);
+        }
+        setIsUploadingBranding(null);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      setIsUploadingBranding(null);
+      triggerToast('Error processing image file.');
+    }
+  };
 
   // Security Delete Modal
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -1205,7 +1240,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Cloudinary Integration Status Badge */}
+                  <div
+                    className={`px-3.5 py-2 rounded-2xl border flex items-center gap-2 text-xs font-bold transition-all ${
+                      dbStatus?.cloudinaryConfigured
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-xs'
+                        : 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
+                    }`}
+                  >
+                    <Cloud className={`w-4 h-4 ${dbStatus?.cloudinaryConfigured ? 'text-emerald-600' : 'text-amber-600'}`} />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-extrabold block">Cloudinary Media CDN</span>
+                        <span className={`w-2 h-2 rounded-full ${dbStatus?.cloudinaryConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                      </div>
+                      <span className="font-extrabold text-[11px] block">
+                        {dbStatus?.cloudinaryConfigured ? 'Connected & Live' : 'Not Connected (Add Keys)'}
+                      </span>
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => setActiveTab('enter-results')}
                     className="px-4 py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md border border-blue-400/30 flex items-center gap-2 cursor-pointer transition-all"
@@ -1216,107 +1271,73 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </div>
               </div>
 
-              {/* MongoDB Real Database Status Widget */}
-              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-[#1E3A8A] text-white p-6 rounded-3xl border border-emerald-500/30 shadow-lg space-y-4 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-                
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative">
-                  <div className="flex items-start gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
-                      <Database className="w-6 h-6 text-emerald-400" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-base font-black text-white font-['Plus_Jakarta_Sans']">
-                          MongoDB Engine & Real Data Storage
-                        </h3>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-mono">
-                          {dbStatus?.connected ? 'Atlas Cluster Live' : 'Express API Active'}
-                        </span>
+              {/* Metric Cards Grid */}
+              {(() => {
+                const totalStudentsCount = students.length;
+                const publishedCount = students.filter(s => s.subjects && s.subjects.length > 0).length;
+                const publishedPercentage = totalStudentsCount > 0 ? ((publishedCount / totalStudentsCount) * 100).toFixed(1) : '0.0';
+                const totalClassesCount = classList.length;
+                const firstClassGroup = classList[0]?.name.split(' ')[0] || 'JSS1';
+                const lastClassGroup = classList[classList.length - 1]?.name.split(' ')[0] || 'SSS3';
+                const classStreamsLabel = classList.length > 0 ? `${firstClassGroup} to ${lastClassGroup} streams` : 'No active streams';
+                const isStampVerified = Boolean(schoolHeader?.stampUrl);
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
+                        <span>Total Students</span>
+                        <Users className="w-4 h-4 text-[#1E3A8A]" />
                       </div>
-                      <p className="text-xs text-slate-300 mt-1">
-                        Database: <span className="font-mono text-emerald-400 font-bold">{dbStatus?.databaseName || 'royal_academy'}</span> • {dbStatus?.activeDriver || 'Native MongoDB Driver'}
+                      <p className="text-3xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
+                        {totalStudentsCount.toLocaleString()}
+                      </p>
+                      <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3" /> {totalStudentsCount} active registered student{totalStudentsCount === 1 ? '' : 's'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
+                        <span>Published Results</span>
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <p className="text-3xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
+                        {publishedPercentage}%
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono">
+                        {publishedCount} / {totalStudentsCount} verified slips
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
+                        <span>Active Academic Classes</span>
+                        <GraduationCap className="w-4 h-4 text-[#F59E0B]" />
+                      </div>
+                      <p className="text-3xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
+                        {totalClassesCount} Arms
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono">
+                        {classStreamsLabel}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
+                        <span>School Stamp & Seal</span>
+                        <Award className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <p className="text-3xl font-black text-emerald-600 font-['Plus_Jakarta_Sans']">
+                        {isStampVerified ? 'Uploaded' : 'Verified'}
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono">
+                        {isStampVerified ? 'Official Digital Stamp Set' : '256-bit QR Verification'}
                       </p>
                     </div>
                   </div>
-
-                  <button
-                    onClick={async () => {
-                      const status = await api.getDbStatus();
-                      setDbStatus(status);
-                      const realStudents = await api.getStudents();
-                      if (realStudents) setStudents(realStudents);
-                      triggerToast('Refreshed real data state from MongoDB API backend!');
-                    }}
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-emerald-300 border border-emerald-400/30 font-bold text-xs rounded-xl flex items-center gap-2 cursor-pointer transition-all"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Sync Database</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-white/10 text-xs">
-                  <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">MongoDB Collection</span>
-                    <span className="font-mono text-white font-bold">students ({students.length})</span>
-                  </div>
-                  <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">MongoDB Collection</span>
-                    <span className="font-mono text-white font-bold">classes ({classList.length})</span>
-                  </div>
-                  <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">MongoDB Collection</span>
-                    <span className="font-mono text-white font-bold">subjects ({subjectList.length})</span>
-                  </div>
-                  <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Real Data Status</span>
-                    <span className="font-bold text-emerald-400 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Persistent API
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Metric Cards Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-                    <span>Total Students</span>
-                    <Users className="w-4 h-4 text-[#1E3A8A]" />
-                  </div>
-                  <p className="text-3xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">1,250</p>
-                  <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" /> +4.2% active enrollment
-                  </p>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-                    <span>Published Results</span>
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <p className="text-3xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">98.4%</p>
-                  <p className="text-[11px] text-slate-500 font-mono">1,230 / 1,250 verified slips</p>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-                    <span>Active Academic Classes</span>
-                    <GraduationCap className="w-4 h-4 text-[#F59E0B]" />
-                  </div>
-                  <p className="text-3xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">18 Arms</p>
-                  <p className="text-[11px] text-slate-500 font-mono">JSS1 to SSS3 streams</p>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-                    <span>School Stamp & Seal</span>
-                    <Award className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <p className="text-3xl font-black text-emerald-600 font-['Plus_Jakarta_Sans']">Verified</p>
-                  <p className="text-[11px] text-slate-500 font-mono">256-bit QR Verification</p>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Quick Actions Shortcuts */}
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
@@ -1995,33 +2016,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     <span>Fetch Student Record</span>
                   </button>
                 </form>
-
-                {/* Quick Select Student Registration Badges */}
-                <div className="pt-2 border-t border-slate-100 space-y-2">
-                  <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">
-                    Select a Student Reg ID to Fetch & Edit:
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {students.slice(0, 10).map((st) => (
-                      <button
-                        key={st.studentId}
-                        type="button"
-                        onClick={() => {
-                          setRegIdSearchInput(st.studentId);
-                          handleFetchStudentByRegId(st.studentId);
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
-                          fetchedStudent?.studentId === st.studentId
-                            ? 'bg-[#1E3A8A] text-white border-[#1E3A8A] shadow-xs'
-                            : 'bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-[#1E3A8A] border-slate-200'
-                        }`}
-                      >
-                        <span className="font-mono text-[10px] text-[#F59E0B] font-bold">{st.studentId}</span>
-                        <span>• {st.fullName || (st as any).name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {/* Fetched Student Results Editor */}
@@ -2359,33 +2353,89 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           {/* TAB 10: UPLOAD SCHOOL LOGO */}
           {activeTab === 'upload-logo' && (
             <div className="space-y-6">
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <h2 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
-                  Upload School Official Logo
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Logo will appear on official student transcripts, header banners, and printable report slips.
-                </p>
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center font-bold">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
+                        Upload School Official Crest / Logo
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        The official emblem appears on result slips, header banners, transcripts, and diplomas.
+                      </p>
+                    </div>
+                  </div>
+                  {logoPreview?.includes('res.cloudinary.com') && (
+                    <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-bold flex items-center gap-1.5">
+                      <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+                      Hosted on Cloudinary CDN
+                    </span>
+                  )}
+                </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-6 p-6 border-2 border-dashed border-slate-300 rounded-3xl bg-slate-50 text-center sm:text-left">
-                  <div className="w-24 h-24 rounded-2xl bg-white border border-slate-200 flex items-center justify-center p-2 shadow-xs shrink-0">
-                    <SchoolLogo size="lg" />
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                  {/* Current Preview Card */}
+                  <div className="md:col-span-4 bg-slate-50 p-6 rounded-3xl border border-slate-200 text-center space-y-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                      Active Logo Preview
+                    </span>
+                    <div className="w-28 h-28 mx-auto rounded-2xl bg-white border border-slate-200 flex items-center justify-center p-3 shadow-sm overflow-hidden relative">
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="School Logo Preview" className="w-full h-full object-contain" />
+                      ) : (
+                        <SchoolLogo size="lg" />
+                      )}
+                    </div>
+                    {logoPreview && (
+                      <button
+                        onClick={() => {
+                          setLogoPreview(null);
+                          api.updateBranding('logoUrl', '');
+                          triggerToast('School logo reset.');
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 font-bold underline cursor-pointer"
+                      >
+                        Remove Custom Logo
+                      </button>
+                    )}
                   </div>
 
-                  <div className="space-y-2 flex-1">
-                    <p className="text-xs font-bold text-[#0F172A]">Drag & drop official PNG or SVG crest logo</p>
-                    <p className="text-[10px] text-slate-500">Recommended size: 512x512px transparent background.</p>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                          setLogoPreview(URL.createObjectURL(e.target.files[0]));
-                          triggerToast('New school logo uploaded successfully!');
-                        }
-                      }}
-                      className="text-xs text-slate-500 cursor-pointer"
-                    />
+                  {/* Upload Drop Zone */}
+                  <div className="md:col-span-8 border-2 border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/30 rounded-3xl p-6 sm:p-8 text-center space-y-4 transition-all">
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-blue-100 text-[#1E3A8A] flex items-center justify-center mx-auto shadow-xs">
+                      {isUploadingBranding === 'logoUrl' ? (
+                        <RefreshCw className="w-6 h-6 animate-spin text-[#1E3A8A]" />
+                      ) : (
+                        <Upload className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-[#0F172A]">
+                        {isUploadingBranding === 'logoUrl' ? 'Uploading to Cloudinary CDN & MongoDB...' : 'Upload New Official Logo Image'}
+                      </p>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        PNG, SVG or WEBP recommended (transparent background, minimum 512x512px).
+                      </p>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-2xl cursor-pointer shadow-md transition-all">
+                      <Upload className="w-4 h-4" />
+                      <span>{isUploadingBranding === 'logoUrl' ? 'Processing...' : 'Choose Logo File'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingBranding === 'logoUrl'}
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handleBrandingFileUpload('logoUrl', e.target.files[0]);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
                 </div>
               </div>
@@ -2395,27 +2445,94 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           {/* TAB 11: UPLOAD SCHOOL STAMP */}
           {activeTab === 'upload-stamp' && (
             <div className="space-y-6">
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <div className="flex items-center gap-3">
-                  <Award className="w-6 h-6 text-[#1E3A8A]" />
-                  <h2 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
-                    Upload School Stamp & Official Seal
-                  </h2>
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-[#F59E0B] flex items-center justify-center font-bold">
+                      <Award className="w-5 h-5 text-[#1E3A8A]" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
+                        Upload School Official Stamp & Security Seal
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Official Registrar / Examination Board ink stamp applied to printable result sheets for cryptographic validation.
+                      </p>
+                    </div>
+                  </div>
+                  {stampPreview?.includes('res.cloudinary.com') && (
+                    <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-bold flex items-center gap-1.5">
+                      <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+                      Hosted on Cloudinary CDN
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-slate-500">
-                  Upload the official Registrar / Examination Board ink stamp for cryptographic result validation.
-                </p>
 
-                <div className="p-8 border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-3xl text-center space-y-3">
-                  <Award className="w-12 h-12 text-[#1E3A8A] mx-auto" />
-                  <p className="text-xs font-bold text-[#0F172A]">Drop School Seal Stamp Image File</p>
-                  <p className="text-[10px] text-slate-500">Supported formats: PNG, WEBP with transparent layer.</p>
-                  <button
-                    onClick={() => triggerToast('Official Royal Academy Stamp applied to PDF generator.')}
-                    className="px-4 py-2 bg-[#1E3A8A] text-white font-bold text-xs rounded-xl cursor-pointer shadow-md"
-                  >
-                    Select Stamp File
-                  </button>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                  {/* Current Stamp Preview Card */}
+                  <div className="md:col-span-4 bg-slate-50 p-6 rounded-3xl border border-slate-200 text-center space-y-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                      Active Official Stamp Preview
+                    </span>
+                    <div className="w-28 h-28 mx-auto rounded-2xl bg-white border border-slate-200 flex items-center justify-center p-3 shadow-sm overflow-hidden relative">
+                      {stampPreview ? (
+                        <img src={stampPreview} alt="School Stamp Preview" className="max-w-full max-h-full object-contain" />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full border-2 border-dashed border-[#1E3A8A] flex flex-col items-center justify-center p-1 text-center bg-blue-50/50">
+                          <span className="text-[7px] font-black uppercase text-[#1E3A8A]">ROYAL ACADEMY</span>
+                          <Award className="w-4 h-4 text-[#1E3A8A] my-0.5" />
+                          <span className="text-[6px] font-bold text-[#1E3A8A]">DEFAULT STAMP</span>
+                        </div>
+                      )}
+                    </div>
+                    {stampPreview && (
+                      <button
+                        onClick={() => {
+                          setStampPreview(null);
+                          api.updateBranding('stampUrl', '');
+                          triggerToast('School stamp reset to default.');
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 font-bold underline cursor-pointer"
+                      >
+                        Remove Custom Stamp
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Stamp Upload Drop Zone */}
+                  <div className="md:col-span-8 border-2 border-dashed border-amber-200 hover:border-amber-400 bg-amber-50/20 rounded-3xl p-6 sm:p-8 text-center space-y-4 transition-all">
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-amber-100 text-[#F59E0B] flex items-center justify-center mx-auto shadow-xs">
+                      {isUploadingBranding === 'stampUrl' ? (
+                        <RefreshCw className="w-6 h-6 animate-spin text-[#F59E0B]" />
+                      ) : (
+                        <Award className="w-6 h-6 text-[#1E3A8A]" />
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-[#0F172A]">
+                        {isUploadingBranding === 'stampUrl' ? 'Uploading Stamp to Cloudinary CDN & MongoDB...' : 'Upload Official Ink Stamp Image'}
+                      </p>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        PNG or WEBP format with transparent layer recommended for crisp printout rendering.
+                      </p>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-2xl cursor-pointer shadow-md transition-all">
+                      <Upload className="w-4 h-4" />
+                      <span>{isUploadingBranding === 'stampUrl' ? 'Processing...' : 'Select Stamp Image File'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingBranding === 'stampUrl'}
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handleBrandingFileUpload('stampUrl', e.target.files[0]);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2424,26 +2541,92 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           {/* TAB 12: UPLOAD PRINCIPAL SIGNATURE */}
           {activeTab === 'upload-signature' && (
             <div className="space-y-6">
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <div className="flex items-center gap-3">
-                  <PenTool className="w-6 h-6 text-[#F59E0B]" />
-                  <h2 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
-                    Upload Principal's Digital Signature
-                  </h2>
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
+                      <PenTool className="w-5 h-5 text-[#F59E0B]" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
+                        Upload Principal's Digital Signature
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Digital signature authorization attached to published student academic report slips.
+                      </p>
+                    </div>
+                  </div>
+                  {signaturePreview?.includes('res.cloudinary.com') && (
+                    <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-bold flex items-center gap-1.5">
+                      <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+                      Hosted on Cloudinary CDN
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-slate-500">
-                  Digital signature of Vice Principal / Principal Dr. M. Chen for result slip verification.
-                </p>
 
-                <div className="p-8 border-2 border-dashed border-slate-300 bg-slate-50 rounded-3xl text-center space-y-3">
-                  <PenTool className="w-10 h-10 text-slate-400 mx-auto" />
-                  <p className="text-xs font-bold text-[#0F172A]">Upload Principal Signature Image</p>
-                  <button
-                    onClick={() => triggerToast('Principal signature authorization updated.')}
-                    className="px-4 py-2 bg-[#1E3A8A] text-white font-bold text-xs rounded-xl cursor-pointer"
-                  >
-                    Upload Signature Image
-                  </button>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                  {/* Current Signature Preview Card */}
+                  <div className="md:col-span-4 bg-slate-50 p-6 rounded-3xl border border-slate-200 text-center space-y-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                      Active Signature Preview
+                    </span>
+                    <div className="w-full h-24 rounded-2xl bg-white border border-slate-200 flex items-center justify-center p-3 shadow-sm overflow-hidden relative">
+                      {signaturePreview ? (
+                        <img src={signaturePreview} alt="Principal Signature Preview" className="max-w-full max-h-full object-contain" />
+                      ) : (
+                        <span className="font-serif italic font-bold text-lg text-[#1E3A8A]">
+                          Dr. H. E. Montgomery
+                        </span>
+                      )}
+                    </div>
+                    {signaturePreview && (
+                      <button
+                        onClick={() => {
+                          setSignaturePreview(null);
+                          api.updateBranding('signatureUrl', '');
+                          triggerToast('Principal signature reset.');
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 font-bold underline cursor-pointer"
+                      >
+                        Remove Custom Signature
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Signature Upload Drop Zone */}
+                  <div className="md:col-span-8 border-2 border-dashed border-purple-200 hover:border-purple-400 bg-purple-50/20 rounded-3xl p-6 sm:p-8 text-center space-y-4 transition-all">
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-purple-100 text-purple-600 flex items-center justify-center mx-auto shadow-xs">
+                      {isUploadingBranding === 'signatureUrl' ? (
+                        <RefreshCw className="w-6 h-6 animate-spin text-purple-600" />
+                      ) : (
+                        <PenTool className="w-6 h-6 text-[#F59E0B]" />
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-[#0F172A]">
+                        {isUploadingBranding === 'signatureUrl' ? 'Uploading Signature to Cloudinary CDN & MongoDB...' : 'Upload Principal Signature Image'}
+                      </p>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        Transparent PNG or scanned signature image file.
+                      </p>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-2xl cursor-pointer shadow-md transition-all">
+                      <Upload className="w-4 h-4" />
+                      <span>{isUploadingBranding === 'signatureUrl' ? 'Processing...' : 'Select Signature File'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingBranding === 'signatureUrl'}
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handleBrandingFileUpload('signatureUrl', e.target.files[0]);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>

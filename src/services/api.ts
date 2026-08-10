@@ -5,6 +5,7 @@ export interface DbStatus {
   databaseName: string;
   uriProvided: boolean;
   activeDriver: string;
+  cloudinaryConfigured?: boolean;
 }
 
 export const api = {
@@ -20,7 +21,24 @@ export const api = {
         databaseName: 'royal_academy',
         uriProvided: false,
         activeDriver: 'Active Node.js Memory Database',
+        cloudinaryConfigured: false,
       };
+    }
+  },
+
+  // Cloudinary Upload Helper
+  async uploadImage(image: string, folder = 'royal_academy'): Promise<string> {
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image, folder }),
+      });
+      if (!res.ok) return image;
+      const data = await res.json();
+      return data.url || image;
+    } catch {
+      return image;
     }
   },
 
@@ -257,16 +275,18 @@ export const api = {
     }
   },
 
-  async updateBranding(type: 'logoUrl' | 'stampUrl' | 'signatureUrl', url: string): Promise<boolean> {
+  async updateBranding(type: 'logoUrl' | 'stampUrl' | 'signatureUrl', url: string): Promise<{ success: boolean; url?: string; branding?: any }> {
     try {
       const res = await fetch('/api/branding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, url }),
       });
-      return res.ok;
+      if (!res.ok) return { success: false };
+      const data = await res.json();
+      return { success: true, url: data.url, branding: data.branding };
     } catch {
-      return false;
+      return { success: false };
     }
   },
 

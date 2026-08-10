@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
+import { api } from '../services/api';
 import { 
   ShieldCheck as ShieldIcon, 
   Printer as PrintIcon, 
@@ -97,6 +98,7 @@ interface ResultSlipModalProps {
   onClose: () => void;
   onVerifyQR: () => void;
   schoolHeader?: SchoolHeaderInfo;
+  branding?: { logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null };
 }
 
 export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
@@ -105,11 +107,26 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
   onClose,
   onVerifyQR,
   schoolHeader,
+  branding: initialBranding,
 }) => {
   const [copied, setCopied] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [passportBase64, setPassportBase64] = useState<string>('');
+  const [brandingState, setBrandingState] = useState<{ logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null } | null>(initialBranding || null);
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Load branding if not provided in props
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialBranding) {
+        setBrandingState(initialBranding);
+      } else {
+        api.getBranding().then((b) => {
+          if (b) setBrandingState(b);
+        });
+      }
+    }
+  }, [isOpen, initialBranding]);
 
   // Pre-convert passport photo URL to base64 Data URL for instant, error-free html2canvas PDF rendering
   React.useEffect(() => {
@@ -411,8 +428,12 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
           {/* 1. HEADER SECTION */}
           <div className="border-b-2 border-black pb-3 flex items-center justify-between gap-4">
             {/* Top Left: School Crest Logo */}
-            <div className="w-16 h-16 rounded-xl border-2 border-black bg-slate-50 flex items-center justify-center shrink-0">
-              <ShieldIcon className="w-10 h-10 text-slate-900" />
+            <div className="w-16 h-16 rounded-xl border-2 border-black bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
+              {brandingState?.logoUrl ? (
+                <img src={brandingState.logoUrl} alt="School Logo" className="w-full h-full object-contain p-1" />
+              ) : (
+                <ShieldIcon className="w-10 h-10 text-slate-900" />
+              )}
             </div>
 
             {/* Top Center: School Name and Document Title */}
@@ -677,18 +698,28 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
 
               {/* Middle: School Stamp Space */}
               <div className="flex flex-col items-center justify-center space-y-1">
-                <div className="w-16 h-16 rounded-full border-2 border-black border-dashed flex flex-col items-center justify-center p-1 text-center bg-slate-50 shrink-0">
-                  <span className="text-[7px] font-black uppercase text-black leading-none">ROYAL ACADEMY</span>
-                  <ShieldIcon className="w-4 h-4 text-slate-900 my-0.5" />
-                  <span className="text-[6px] font-bold text-black uppercase leading-none">OFFICIAL STAMP</span>
-                </div>
+                {brandingState?.stampUrl ? (
+                  <div className="w-16 h-16 flex items-center justify-center shrink-0">
+                    <img src={brandingState.stampUrl} alt="Official Stamp" className="max-w-full max-h-full object-contain" />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full border-2 border-black border-dashed flex flex-col items-center justify-center p-1 text-center bg-slate-50 shrink-0">
+                    <span className="text-[7px] font-black uppercase text-black leading-none">ROYAL ACADEMY</span>
+                    <ShieldIcon className="w-4 h-4 text-slate-900 my-0.5" />
+                    <span className="text-[6px] font-bold text-black uppercase leading-none">OFFICIAL STAMP</span>
+                  </div>
+                )}
                 <span className="text-[9px] font-bold uppercase text-slate-700">School Stamp</span>
               </div>
 
               {/* Right: Principal Signature */}
               <div className="space-y-1 text-center">
-                <div className="h-10 border-b border-black flex items-end justify-center font-serif italic font-bold text-sm text-[#1E3A8A] pb-0.5">
-                  Dr. H. E. Montgomery
+                <div className="h-10 border-b border-black flex items-end justify-center font-serif italic font-bold text-sm text-[#1E3A8A] pb-0.5 overflow-hidden">
+                  {brandingState?.signatureUrl ? (
+                    <img src={brandingState.signatureUrl} alt="Principal Signature" className="h-8 max-w-[140px] object-contain mb-0.5" />
+                  ) : (
+                    'Dr. H. E. Montgomery'
+                  )}
                 </div>
                 <span className="text-[10px] font-bold uppercase text-black block">Principal Signature</span>
               </div>
