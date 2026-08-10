@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MOCK_STUDENTS, SESSIONS_LIST, TERMS_LIST, CLASSES_LIST } from '../data/mockData';
 import { StudentResult } from '../types';
+import { api } from '../services/api';
 import {
   Search,
   CheckCircle2,
@@ -27,44 +28,62 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
   onOpenResultSlip,
   onVerifyQR,
 }) => {
-  const [studentIdInput, setStudentIdInput] = useState('RA/2025/1042');
+  const [studentIdInput, setStudentIdInput] = useState('2025104');
   const [selectedSession, setSelectedSession] = useState(SESSIONS_LIST[0]);
   const [selectedTerm, setSelectedTerm] = useState(TERMS_LIST[0]);
   const [selectedClass, setSelectedClass] = useState(CLASSES_LIST[0]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [activeResult, setActiveResult] = useState<StudentResult | null>(
-    MOCK_STUDENTS['RA/2025/1042']
+    MOCK_STUDENTS['2025104']
   );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSearch = (e?: React.FormEvent) => {
+  const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsLoading(true);
     setErrorMsg(null);
 
-    setTimeout(() => {
+    const cleaned = studentIdInput.trim();
+    try {
+      const apiResult = await api.getStudentById(cleaned);
       setIsLoading(false);
-      const cleaned = studentIdInput.trim().toUpperCase();
-      const found = MOCK_STUDENTS[cleaned];
 
-      if (found) {
-        setActiveResult(found);
+      if (apiResult) {
+        setActiveResult(apiResult);
+      } else if (MOCK_STUDENTS[cleaned]) {
+        setActiveResult(MOCK_STUDENTS[cleaned]);
       } else {
-        setErrorMsg(`No record found for Registration Number "${studentIdInput}". Try sample student IDs like "RA/2025/1042", "RA/2025/1089", or "RA/2025/1105".`);
+        setErrorMsg(`No record found for 7-digit Registration Number "${studentIdInput}". Try sample student IDs like "2025104", "2025108", or "2025110".`);
       }
-    }, 600);
+    } catch {
+      setIsLoading(false);
+      const fallback = MOCK_STUDENTS[cleaned];
+      if (fallback) {
+        setActiveResult(fallback);
+      } else {
+        setErrorMsg(`No record found for Registration Number "${studentIdInput}".`);
+      }
+    }
   };
 
-  const handleSampleSelect = (id: string) => {
+  const handleSampleSelect = async (id: string) => {
     setStudentIdInput(id);
     setIsLoading(true);
     setErrorMsg(null);
 
-    setTimeout(() => {
+    try {
+      const apiResult = await api.getStudentById(id);
       setIsLoading(false);
-      setActiveResult(MOCK_STUDENTS[id]);
-    }, 400);
+      if (apiResult) {
+        setActiveResult(apiResult);
+      } else {
+        setActiveResult(MOCK_STUDENTS[id] || null);
+      }
+    } catch {
+      setIsLoading(false);
+      setActiveResult(MOCK_STUDENTS[id] || null);
+    }
   };
 
   return (
@@ -79,7 +98,7 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
         <div className="text-center max-w-3xl mx-auto space-y-4 mb-14">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#1E3A8A] text-xs font-bold uppercase tracking-wider">
             <Search className="w-3.5 h-3.5 text-[#F59E0B]" />
-            <span>Interactive Portal Search Demo</span>
+            <span>Student Examination Search Gateway</span>
           </div>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] tracking-tight font-['Plus_Jakarta_Sans']">
@@ -135,15 +154,21 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
               <form onSubmit={handleSearch} className="space-y-4">
                 {/* Student ID Input */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                    Student Registration Number *
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      7-Digit Registration ID (Primary Key) *
+                    </label>
+                    <span className="text-[10px] font-mono font-bold text-[#1E3A8A] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                      7 Digits Required
+                    </span>
+                  </div>
                   <div className="relative">
                     <input
                       type="text"
+                      maxLength={7}
                       value={studentIdInput}
-                      onChange={(e) => setStudentIdInput(e.target.value)}
-                      placeholder="e.g. RA/2025/1042"
+                      onChange={(e) => setStudentIdInput(e.target.value.replace(/\D/g, ''))}
+                      placeholder="e.g. 2025104"
                       required
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-mono font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:bg-white transition-all shadow-xs"
                     />
@@ -280,8 +305,8 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                   <div className="grid grid-cols-12 gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs items-center">
                     <div className="col-span-3 sm:col-span-2">
                       <img
-                        src={activeResult.passportUrl}
-                        alt={activeResult.fullName}
+                        src={activeResult?.passportUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400'}
+                        alt={activeResult?.fullName || 'Student'}
                         className="w-full aspect-3/4 object-cover rounded-xl border border-slate-300 shadow-xs"
                       />
                     </div>

@@ -14,7 +14,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onLearnMoreClick,
   onQuickVerifyClick,
 }) => {
-  const sampleStudent = MOCK_STUDENTS['RA/2025/1042'];
+  const sampleStudent = MOCK_STUDENTS['2025104'] || Object.values(MOCK_STUDENTS)[0];
+
+  if (!sampleStudent) return null;
 
   return (
     <section id="home" className="relative pt-28 pb-16 lg:pt-36 lg:pb-24 overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
@@ -129,8 +131,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 <div className="col-span-4 sm:col-span-3">
                   <div className="relative rounded-2xl overflow-hidden border-2 border-[#1E3A8A]/20 shadow-sm aspect-3/4 bg-slate-100">
                     <img
-                      src={sampleStudent.passportUrl}
-                      alt={sampleStudent.fullName}
+                      src={sampleStudent?.passportUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400'}
+                      alt={sampleStudent?.fullName || 'Student Passport'}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute bottom-1 right-1 bg-[#1E3A8A] text-[#F59E0B] p-1 rounded-lg text-[9px] font-black">

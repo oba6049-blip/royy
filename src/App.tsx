@@ -15,11 +15,19 @@ import { Footer } from './components/Footer';
 import { ResultSlipModal } from './components/ResultSlipModal';
 import { QRVerificationModal } from './components/QRVerificationModal';
 import { ContactModal } from './components/ContactModal';
+import { AdminLoginModal } from './components/AdminLoginModal';
+import { AdminLoginPage } from './components/AdminLoginPage';
+import { AdminDashboardPage } from './components/AdminDashboardPage';
+import { StudentLoginPage } from './components/StudentLoginPage';
+import { StudentDashboardPage } from './components/StudentDashboardPage';
 
 import { StudentResult } from './types';
-import { MOCK_STUDENTS } from './data/mockData';
 
 export default function App() {
+  const [currentView, setCurrentView] = useState<'home' | 'student-login' | 'student-dashboard' | 'admin-login' | 'admin-dashboard'>('home');
+
+  const [loggedInStudent, setLoggedInStudent] = useState<StudentResult | null>(null);
+
   const [selectedResult, setSelectedResult] = useState<StudentResult | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
 
@@ -28,24 +36,55 @@ export default function App() {
 
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
+  // Admin authentication state
+  const [adminUser, setAdminUser] = useState<{ name: string; email: string; role: string } | null>({
+    name: 'Dr. M. Chen',
+    email: 'admin@royalacademy.edu.ng',
+    role: 'Vice Principal (Academics)'
+  });
+  const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
+
+  const handleStudentPortalClick = () => {
+    if (loggedInStudent) {
+      setCurrentView('student-dashboard');
+    } else {
+      setCurrentView('student-login');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleCheckResultClick = () => {
-    const el = document.getElementById('result-search');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+    if (currentView !== 'home') {
+      setCurrentView('home');
+      setTimeout(() => {
+        const el = document.getElementById('result-search');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      const el = document.getElementById('result-search');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   const handleAdminPortalClick = () => {
-    const el = document.getElementById('admin-portal');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+    if (adminUser) {
+      setCurrentView('admin-dashboard');
+    } else {
+      setCurrentView('admin-login');
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLearnMoreClick = () => {
-    const el = document.getElementById('how-it-works');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+    if (currentView !== 'home') {
+      setCurrentView('home');
+      setTimeout(() => {
+        const el = document.getElementById('how-it-works');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      const el = document.getElementById('how-it-works');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -59,12 +98,69 @@ export default function App() {
     setIsQrModalOpen(true);
   };
 
+  // Dedicated Full Page: Student Login Page
+  if (currentView === 'student-login') {
+    return (
+      <StudentLoginPage
+        onBackToHome={() => setCurrentView('home')}
+        onLoginSuccess={(student) => {
+          setLoggedInStudent(student);
+          setCurrentView('student-dashboard');
+        }}
+        onOpenAdminPortal={() => setCurrentView('admin-login')}
+      />
+    );
+  }
+
+  // Dedicated Full Page: Student Dashboard Page
+  if (currentView === 'student-dashboard' && loggedInStudent) {
+    return (
+      <StudentDashboardPage
+        student={loggedInStudent}
+        onLogout={() => {
+          setLoggedInStudent(null);
+          setCurrentView('student-login');
+        }}
+        onBackToWebsite={() => setCurrentView('home')}
+      />
+    );
+  }
+
+  // Dedicated Full Page: Admin Login Page
+  if (currentView === 'admin-login') {
+    return (
+      <AdminLoginPage
+        onBackToHome={() => setCurrentView('home')}
+        onLoginSuccess={(user) => {
+          setAdminUser(user);
+          setCurrentView('admin-dashboard');
+        }}
+      />
+    );
+  }
+
+  // Dedicated Full Page: Admin Dashboard Page
+  if (currentView === 'admin-dashboard' && adminUser) {
+    return (
+      <AdminDashboardPage
+        adminUser={adminUser}
+        onLogout={() => {
+          setAdminUser(null);
+          setCurrentView('admin-login');
+        }}
+        onBackToWebsite={() => setCurrentView('home')}
+      />
+    );
+  }
+
+  // Default View: Main Public Portal Home Page
   return (
     <div className="min-h-screen bg-white text-[#0F172A] font-['Inter',sans-serif] selection:bg-[#60A5FA]/20 selection:text-[#1E3A8A]">
       
       {/* Sticky Navigation */}
       <Navbar
         onCheckResultClick={handleCheckResultClick}
+        onStudentPortalClick={handleStudentPortalClick}
         onAdminPortalClick={handleAdminPortalClick}
       />
 
@@ -89,7 +185,15 @@ export default function App() {
         />
 
         {/* Admin Dashboard Preview Simulator */}
-        <AdminDashboardPreview />
+        <AdminDashboardPreview
+          adminUser={adminUser}
+          onOpenLoginModal={() => setCurrentView('admin-login')}
+          onLogout={() => setAdminUser(null)}
+          onLoginSuccess={(user) => {
+            setAdminUser(user);
+            setCurrentView('admin-dashboard');
+          }}
+        />
 
         {/* Workflow Timeline */}
         <WorkflowSection />
@@ -140,6 +244,16 @@ export default function App() {
       <ContactModal
         isOpen={isContactModalOpen}
         onClose={() => setIsContactModalOpen(false)}
+      />
+
+      {/* Admin Login Email & Password Modal */}
+      <AdminLoginModal
+        isOpen={isAdminLoginModalOpen}
+        onClose={() => setIsAdminLoginModalOpen(false)}
+        onLoginSuccess={(user) => {
+          setAdminUser(user);
+          setCurrentView('admin-dashboard');
+        }}
       />
 
     </div>

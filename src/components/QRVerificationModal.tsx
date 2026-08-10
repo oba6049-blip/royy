@@ -15,7 +15,10 @@ export const QRVerificationModal: React.FC<QRVerificationModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const student = studentId ? MOCK_STUDENTS[studentId] || MOCK_STUDENTS['RA/2025/1042'] : MOCK_STUDENTS['RA/2025/1042'];
+  const defaultStudent = MOCK_STUDENTS['2025104'] || Object.values(MOCK_STUDENTS)[0];
+  const student = studentId ? (MOCK_STUDENTS[studentId] || defaultStudent) : defaultStudent;
+
+  if (!student) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">

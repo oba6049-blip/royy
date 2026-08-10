@@ -10,14 +10,16 @@ export interface SubjectGrade {
 }
 
 export interface StudentResult {
-  studentId: string; // e.g. RA/2025/1042
+  studentId: string; // e.g. 2025104
   fullName: string;
   passportUrl: string;
   gender: 'Male' | 'Female';
   className: string; // e.g. SSS 3 Science A
-  academicSession: string; // e.g. 2024/2025 Academic Session
-  term: string; // e.g. 3rd Term (Final)
+  academicSession: string; // e.g. 2025/2026 Academic Session
+  term: string; // e.g. First Term
   dateOfBirth: string;
+  age?: string;
+  house?: string;
   attendance: {
     timesOpened: number;
     timesPresent: number;

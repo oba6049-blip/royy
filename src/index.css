@@ -45,8 +45,19 @@
   box-shadow: 0 10px 35px -10px rgba(30, 58, 138, 0.3);
 }
 
-/* Custom Print Stylesheet for Official Student Result Slip */
+/* Custom Print Stylesheet for Official Student Result Sheet */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 20px;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
   body * {
     visibility: hidden;
   }
@@ -59,7 +70,7 @@
     top: 0;
     width: 100%;
     margin: 0;
-    padding: 20px;
+    padding: 0;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
@@ -67,6 +78,19 @@
   }
   .no-print {
     display: none !important;
+  }
+  table {
+    page-break-inside: auto;
+    border-collapse: collapse !important;
+  }
+  tr {
+    page-break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
   }
 }
 

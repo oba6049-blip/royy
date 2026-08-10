@@ -1,8 +1,8 @@
 import { StudentResult, FAQItem, Testimonial, Feature, StatItem, AdminStudentSummary } from '../types';
 
 export const MOCK_STUDENTS: Record<string, StudentResult> = {
-  'RA/2025/1042': {
-    studentId: 'RA/2025/1042',
+  '2025104': {
+    studentId: '2025104',
     fullName: 'David Alexander Okon',
     passportUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400',
     gender: 'Male',
@@ -44,8 +44,8 @@ export const MOCK_STUDENTS: Record<string, StudentResult> = {
     issueDate: 'August 05, 2025'
   },
 
-  'RA/2025/1089': {
-    studentId: 'RA/2025/1089',
+  '2025108': {
+    studentId: '2025108',
     fullName: 'Sophia Isabella Martinez',
     passportUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
     gender: 'Female',
@@ -86,8 +86,8 @@ export const MOCK_STUDENTS: Record<string, StudentResult> = {
     issueDate: 'August 05, 2025'
   },
 
-  'RA/2025/1105': {
-    studentId: 'RA/2025/1105',
+  '2025110': {
+    studentId: '2025110',
     fullName: 'Marcus Sterling Vance',
     passportUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400',
     gender: 'Male',
@@ -312,13 +312,13 @@ export const FAQ_DATA: FAQItem[] = [
   {
     id: 'faq-1',
     question: 'How do students check their examination results?',
-    answer: 'Students simply navigate to the Result Checking demo section on this portal, input their official Registration Number (e.g., RA/2025/1042), select their session, term, and class, and click "Check Result". Your result slip will load instantly.',
+    answer: 'Students simply navigate to the Result Checking demo section on this portal, input their unique 7-digit Registration Number (e.g., 2025104), select their session, term, and class, and click "Check Result". Your result slip will load instantly.',
     category: 'Results'
   },
   {
     id: 'faq-2',
     question: 'Do students or parents need a user account or password?',
-    answer: 'No password is required! The portal is designed for maximum convenience while maintaining security. By validating unique Student Registration IDs and session details, results are fetched securely without password friction.',
+    answer: 'No password is required! The portal is designed for maximum convenience while maintaining security. By validating unique 7-digit Student Registration IDs and session details, results are fetched securely without password friction.',
     category: 'General'
   },
   {
@@ -348,10 +348,10 @@ export const FAQ_DATA: FAQItem[] = [
 ];
 
 export const ADMIN_MOCK_STUDENTS: AdminStudentSummary[] = [
-  { studentId: 'RA/2025/1042', name: 'David Alexander Okon', className: 'SSS 3 Science A', gpa: 3.92, status: 'Published', lastUpdated: 'Today, 08:30 AM', averageScore: 89.4 },
-  { studentId: 'RA/2025/1089', name: 'Sophia Isabella Martinez', className: 'SSS 2 Arts B', gpa: 3.78, status: 'Published', lastUpdated: 'Today, 09:15 AM', averageScore: 87.2 },
-  { studentId: 'RA/2025/1105', name: 'Marcus Sterling Vance', className: 'JSS 3 B', gpa: 3.71, status: 'Published', lastUpdated: 'Yesterday', averageScore: 86.2 },
-  { studentId: 'RA/2025/1140', name: 'Amara Grace Washington', className: 'SSS 1 Commercial', gpa: 3.65, status: 'Pending Review', lastUpdated: 'Yesterday', averageScore: 84.8 },
-  { studentId: 'RA/2025/1201', name: 'Julian Benedict Vance', className: 'JSS 1 A', gpa: 3.50, status: 'Draft', lastUpdated: '2 days ago', averageScore: 81.0 },
-  { studentId: 'RA/2025/1255', name: 'Claire Eleanor DuPont', className: 'SSS 3 Science B', gpa: 3.95, status: 'Published', lastUpdated: '3 days ago', averageScore: 91.5 }
+  { studentId: '2025104', name: 'David Alexander Okon', className: 'SSS 3 Science A', gpa: 3.92, status: 'Published', lastUpdated: 'Today, 08:30 AM', averageScore: 89.4 },
+  { studentId: '2025108', name: 'Sophia Isabella Martinez', className: 'SSS 2 Arts B', gpa: 3.78, status: 'Published', lastUpdated: 'Today, 09:15 AM', averageScore: 87.2 },
+  { studentId: '2025110', name: 'Marcus Sterling Vance', className: 'JSS 3 B', gpa: 3.71, status: 'Published', lastUpdated: 'Yesterday', averageScore: 86.2 },
+  { studentId: '2025114', name: 'Amara Grace Washington', className: 'SSS 1 Commercial', gpa: 3.65, status: 'Pending Review', lastUpdated: 'Yesterday', averageScore: 84.8 },
+  { studentId: '2025120', name: 'Julian Benedict Vance', className: 'JSS 1 A', gpa: 3.50, status: 'Draft', lastUpdated: '2 days ago', averageScore: 81.0 },
+  { studentId: '2025125', name: 'Claire Eleanor DuPont', className: 'SSS 3 Science B', gpa: 3.95, status: 'Published', lastUpdated: '3 days ago', averageScore: 91.5 }
 ];
