@@ -35,19 +35,11 @@ export default function App() {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   // Admin authentication state
-  const [adminUser, setAdminUser] = useState<{ name: string; email: string; role: string } | null>({
-    name: 'Adewale (System Admin)',
-    email: 'fariat@gmail.com',
-    role: 'System Super Administrator'
-  });
+  const [adminUser, setAdminUser] = useState<{ name: string; email: string; role: string } | null>(null);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
 
   const handleStudentPortalClick = () => {
-    if (loggedInStudent) {
-      setCurrentView('student-dashboard');
-    } else {
-      setCurrentView('student-login');
-    }
+    setCurrentView('student-login');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -65,11 +57,7 @@ export default function App() {
   };
 
   const handleAdminPortalClick = () => {
-    if (adminUser) {
-      setCurrentView('admin-dashboard');
-    } else {
-      setCurrentView('admin-login');
-    }
+    setCurrentView('admin-login');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
