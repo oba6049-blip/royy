@@ -4,7 +4,7 @@ import { ResultSlipModal } from './ResultSlipModal';
 import { QRVerificationModal } from './QRVerificationModal';
 import { ADMIN_MOCK_STUDENTS } from '../data/mockData';
 import { api, DbStatus } from '../services/api';
-import { StudentResult } from '../types';
+import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
 import {
   LayoutDashboard,
   Users,
@@ -88,11 +88,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('All');
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<StudentResult | null>(null);
+  const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
+
+  // School Header Settings State
+  const [schoolHeader, setSchoolHeader] = useState<SchoolHeaderInfo>(() => {
+    try {
+      const saved = localStorage.getItem('royal_academy_school_header');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return DEFAULT_SCHOOL_HEADER;
+  });
+  const [isEditSchoolHeaderOpen, setIsEditSchoolHeaderOpen] = useState(false);
+
   const [newStudent, setNewStudent] = useState({
     name: '',
     studentId: '',
     className: 'JSS 1 Gold',
-    gender: 'Male',
+    gender: 'Male' as 'Male' | 'Female',
+    house: 'Blue House',
+    age: '15',
+    passportUrl: '',
     parentContact: '+234 803 000 1234',
   });
 
@@ -313,7 +329,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       setRegIdSearchInput(match.studentId);
 
       // Normalize subjects for editing
-      const normSubs = (match.subjects || []).map(sub => {
+      let rawStudentSubjects = match.subjects || [];
+      if (subjectList.length > 0) {
+        const validAdminSubjectNames = new Set(subjectList.map(s => s.name.trim().toLowerCase()));
+        const adminAdded = rawStudentSubjects.filter(sub => validAdminSubjectNames.has((sub.subject || '').trim().toLowerCase()));
+        if (adminAdded.length > 0) {
+          rawStudentSubjects = adminAdded;
+        }
+      }
+
+      const normSubs = rawStudentSubjects.map(sub => {
         let ca1 = sub.ca1 !== undefined ? Number(sub.ca1) : 0;
         let ca2 = sub.ca2 !== undefined ? Number(sub.ca2) : 0;
         let midterm = sub.midterm !== undefined ? Number(sub.midterm) : 0;
@@ -478,13 +503,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     const newSubObj = {
       id: String(Date.now()),
       subject: subName,
-      ca1: 8,
-      ca2: 8,
-      midterm: 16,
-      exam: 52,
-      total: 84,
-      grade: 'A1',
-      remark: 'EXCELLENT',
+      ca1: 0,
+      ca2: 0,
+      midterm: 0,
+      exam: 0,
+      total: 0,
+      grade: 'F9',
+      remark: 'PENDING',
     };
 
     setFetchedStudentSubjects(prev => [...prev, newSubObj]);
@@ -700,7 +725,45 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setIsLoadingStudentDetails(true);
     try {
       const fetched = await api.getStudentById(st.studentId);
-      const studentData = fetched || st;
+      const fetchedSubs = fetched?.subjects || [];
+      const stSubs = st?.subjects || [];
+      let subjectsToUse = fetchedSubs.length > 0 ? fetchedSubs : stSubs;
+
+      // Filter to only show subjects created or entered by the Admin
+      if (subjectList.length > 0) {
+        const validAdminSubjectNames = new Set(subjectList.map(s => s.name.trim().toLowerCase()));
+        const adminAddedSubs = subjectsToUse.filter((sub: any) =>
+          validAdminSubjectNames.has((sub.subject || '').trim().toLowerCase())
+        );
+
+        if (adminAddedSubs.length > 0) {
+          subjectsToUse = adminAddedSubs;
+        } else {
+          // If no scores entered for admin subjects yet, auto-populate placeholders for the Admin's created subjects
+          subjectsToUse = subjectList.map((s, idx) => ({
+            id: `sub-${idx + 1}`,
+            subject: s.name,
+            ca1: 0,
+            ca2: 0,
+            midterm: 0,
+            caScore: 0,
+            examScore: 0,
+            total: 0,
+            grade: 'F9',
+            remark: 'PENDING',
+          }));
+        }
+      }
+
+      const studentData = {
+        ...(st || {}),
+        ...(fetched || {}),
+        subjects: subjectsToUse,
+      };
+
+      const calculatedTotal = subjectsToUse.reduce((acc: number, sub: any) => acc + (Number(sub.total) || 0), 0);
+      const calculatedAvg = subjectsToUse.length > 0 ? Number((calculatedTotal / subjectsToUse.length).toFixed(1)) : (studentData.overallAverage || studentData.averageScore || 0);
+      const calculatedGpa = subjectsToUse.length > 0 ? Number((calculatedAvg / 25).toFixed(2)) : (studentData.gpa || 0);
 
       const fullResult: StudentResult = {
         studentId: studentData.studentId,
@@ -713,10 +776,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         dateOfBirth: studentData.dateOfBirth || '2008-05-12',
         attendance: studentData.attendance || { timesOpened: 120, timesPresent: 118, timesAbsent: 2 },
         behavioralTraits: studentData.behavioralTraits || { punctuality: 5, neatness: 5, leadership: 5, honesty: 5 },
-        subjects: studentData.subjects && studentData.subjects.length > 0 ? studentData.subjects : [],
-        overallTotal: studentData.overallTotal || 267,
-        overallAverage: studentData.overallAverage || studentData.averageScore || 89.0,
-        gpa: studentData.gpa || 3.88,
+        subjects: subjectsToUse,
+        overallTotal: calculatedTotal,
+        overallAverage: calculatedAvg,
+        gpa: calculatedGpa,
         position: studentData.position || 1,
         totalInClass: studentData.totalInClass || 35,
         status: studentData.status || 'PROMOTED',
@@ -842,6 +905,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       studentId: autoId,
       className: allClassNames[0] || 'JSS 1 Gold',
       gender: 'Male',
+      house: 'Blue House',
+      age: '15',
+      passportUrl: '',
       parentContact: '+234 803 000 1234'
     });
     setIsAddStudentOpen(true);
@@ -881,6 +947,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         }))
       : [];
 
+    const finalAge = newStudent.age 
+      ? (newStudent.age.toLowerCase().includes('yr') ? newStudent.age : `${newStudent.age} Yrs`) 
+      : '15 Yrs';
+
+    const defaultAvatar = newStudent.gender === 'Female' 
+      ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'
+      : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250';
+
     const createdStudent = {
       studentId: cleanRegId,
       name: newStudent.name,
@@ -898,6 +972,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       teacherRemark: 'Outstanding performance across subjects.',
       status: 'Published' as const,
       gender: newStudent.gender as 'Male' | 'Female',
+      house: newStudent.house || 'Blue House',
+      age: finalAge,
+      passportUrl: newStudent.passportUrl.trim() || defaultAvatar,
       dateOfBirth: '2008-01-01',
       attendance: { timesOpened: 120, timesPresent: 118, timesAbsent: 2 },
       behavioralTraits: { punctuality: 5, neatness: 5, leadership: 5, honesty: 5 },
@@ -911,11 +988,72 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       setStudents([createdStudent, ...students]);
       setScoreClass(createdStudent.className);
       setIsAddStudentOpen(false);
-      setNewStudent({ name: '', studentId: '', className: allClassNames[0] || 'JSS 1 Gold', gender: 'Male', parentContact: '+234 803 000 1234' });
+      setNewStudent({
+        name: '',
+        studentId: '',
+        className: allClassNames[0] || 'JSS 1 Gold',
+        gender: 'Male',
+        house: 'Blue House',
+        age: '15',
+        passportUrl: '',
+        parentContact: '+234 803 000 1234'
+      });
       triggerToast(`Student record for "${newStudent.name}" registered with unique Reg ID ${cleanRegId}!`);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to register student record.');
     }
+  };
+
+  const handleSaveEditStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+
+    try {
+      const finalAge = editingStudent.age 
+        ? (editingStudent.age.toLowerCase().includes('yr') ? editingStudent.age : `${editingStudent.age} Yrs`) 
+        : '15 Yrs';
+
+      const defaultAvatar = editingStudent.gender === 'Female' 
+        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'
+        : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250';
+
+      const updatedObj = {
+        ...editingStudent,
+        name: editingStudent.fullName || (editingStudent as any).name,
+        fullName: editingStudent.fullName || (editingStudent as any).name,
+        age: finalAge,
+        house: editingStudent.house || 'Blue House',
+        passportUrl: editingStudent.passportUrl?.trim() || defaultAvatar,
+      };
+
+      await api.updateStudent(editingStudent.studentId, updatedObj);
+      setStudents(prev => prev.map(s => s.studentId === editingStudent.studentId ? updatedObj : s));
+      if (fetchedStudent && fetchedStudent.studentId === editingStudent.studentId) {
+        setFetchedStudent(updatedObj);
+      }
+      setIsEditStudentOpen(false);
+      setEditingStudent(null);
+      triggerToast(`Successfully updated profile details for "${updatedObj.fullName}"!`);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to update student profile.');
+    }
+  };
+
+  const handleSaveSchoolHeader = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      localStorage.setItem('royal_academy_school_header', JSON.stringify(schoolHeader));
+      triggerToast('School Name & Report Card Header saved successfully!');
+      setIsEditSchoolHeaderOpen(false);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to save school header.');
+    }
+  };
+
+  const handleResetSchoolHeader = () => {
+    setSchoolHeader(DEFAULT_SCHOOL_HEADER);
+    localStorage.setItem('royal_academy_school_header', JSON.stringify(DEFAULT_SCHOOL_HEADER));
+    triggerToast('School header reset to default ROYAL ACADEMY layout.');
   };
 
   return (
@@ -938,12 +1076,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             <SchoolLogo size="sm" showText={false} />
             <div>
               <h1 className="text-sm font-bold text-[#1E3A8A] tracking-tight font-['Plus_Jakarta_Sans']">
-                ROYAL ACADEMY
+                {schoolHeader.schoolName || 'ROYAL ACADEMY'}
               </h1>
               <p className="text-xs text-slate-500 font-medium leading-tight">
                 Excellence & Integrity
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsEditSchoolHeaderOpen(true)}
+              className="ml-2 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-[#1E3A8A] border border-amber-200/80 rounded-xl transition-all cursor-pointer shadow-2xs font-bold text-xs flex items-center gap-1.5"
+              title="Edit School Name, Report Card Title & Address"
+            >
+              <Building2 className="w-3.5 h-3.5 text-[#F59E0B]" />
+              <span className="hidden md:inline">Edit Report Header</span>
+            </button>
           </div>
         </div>
 
@@ -1310,6 +1457,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                               >
                                 <Eye className="w-3.5 h-3.5" />
                                 <span>View</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingStudent(st as any);
+                                  setIsEditStudentOpen(true);
+                                }}
+                                className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg cursor-pointer inline-flex items-center gap-1"
+                              >
+                                <FileEdit className="w-3.5 h-3.5" />
+                                <span>Edit Profile</span>
                               </button>
                               <button
                                 onClick={() => setDeleteCandidateId(st.studentId)}
@@ -1872,22 +2029,31 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs space-y-6 p-6">
                   {/* Header Student Overview */}
                   <div className="bg-gradient-to-r from-[#1E3A8A] to-slate-900 p-5 rounded-2xl text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-black font-['Plus_Jakarta_Sans']">
-                          {fetchedStudent.fullName || (fetchedStudent as any).name}
-                        </h3>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#F59E0B] text-slate-900 font-mono">
-                          {fetchedStudent.studentId}
-                        </span>
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-14 rounded-xl border-2 border-[#F59E0B] overflow-hidden bg-white shrink-0 shadow-xs">
+                        <img
+                          src={fetchedStudent.passportUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
+                          alt={fetchedStudent.fullName || (fetchedStudent as any).name}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <p className="text-xs text-slate-300">
-                        Class: <strong className="text-white">{fetchedStudent.className}</strong> • Gender: <strong className="text-white">{fetchedStudent.gender || 'N/A'}</strong> • Contact: <strong className="text-white">{fetchedStudent.parentContact || 'N/A'}</strong>
-                      </p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-black font-['Plus_Jakarta_Sans']">
+                            {fetchedStudent.fullName || (fetchedStudent as any).name}
+                          </h3>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#F59E0B] text-slate-900 font-mono">
+                            {fetchedStudent.studentId}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-300">
+                          Class: <strong className="text-white">{fetchedStudent.className}</strong> • Gender: <strong className="text-white">{fetchedStudent.gender || 'N/A'}</strong> • House: <strong className="text-white">{fetchedStudent.house || 'N/A'}</strong> • Age: <strong className="text-white">{fetchedStudent.age || 'N/A'}</strong>
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/10 text-center">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <div className="bg-white/10 px-3.5 py-2 rounded-xl border border-white/10 text-center">
                         <span className="text-[10px] uppercase text-slate-300 font-bold block">Overall Avg %</span>
                         <span className="text-base font-black font-mono text-emerald-400">
                           {fetchedStudentSubjects.length > 0
@@ -1896,7 +2062,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         </span>
                       </div>
 
-                      <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/10 text-center">
+                      <div className="bg-white/10 px-3.5 py-2 rounded-xl border border-white/10 text-center">
                         <span className="text-[10px] uppercase text-slate-300 font-bold block">GPA (4.0)</span>
                         <span className="text-base font-black font-mono text-[#F59E0B]">
                           {fetchedStudentSubjects.length > 0
@@ -1908,7 +2074,57 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          setSelectedStudentResult(fetchedStudent);
+                          setEditingStudent(fetchedStudent);
+                          setIsEditStudentOpen(true);
+                        }}
+                        className="px-3.5 py-2.5 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs"
+                      >
+                        <FileEdit className="w-4 h-4" />
+                        <span>Edit Profile</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!fetchedStudent) return;
+                          const updatedSubjects = fetchedStudentSubjects.map(sub => {
+                            const ca1 = Math.min(10, Math.max(0, Number(sub.ca1) || 0));
+                            const ca2 = Math.min(10, Math.max(0, Number(sub.ca2) || 0));
+                            const midterm = Math.min(20, Math.max(0, Number(sub.midterm) || 0));
+                            const exam = Math.min(60, Math.max(0, Number(sub.exam) || 0));
+                            const caScore = ca1 + ca2 + midterm;
+                            const examScore = exam;
+                            const total = caScore + examScore;
+                            let grade = 'F9';
+                            let remark = 'FAIL';
+                            if (total >= 80) { grade = 'A1'; remark = 'EXCELLENT'; }
+                            else if (total >= 70) { grade = 'B2'; remark = 'VERY GOOD'; }
+                            else if (total >= 65) { grade = 'B3'; remark = 'GOOD'; }
+                            else if (total >= 60) { grade = 'C4'; remark = 'CREDIT'; }
+                            else if (total >= 55) { grade = 'C5'; remark = 'CREDIT'; }
+                            else if (total >= 50) { grade = 'C6'; remark = 'CREDIT'; }
+                            else if (total >= 45) { grade = 'D7'; remark = 'PASS'; }
+                            else if (total >= 40) { grade = 'E8'; remark = 'PASS'; }
+
+                            return {
+                              id: sub.id,
+                              subject: sub.subject,
+                              ca1, ca2, midterm, caScore, examScore, total, grade, remark,
+                            };
+                          });
+
+                          const overallTotal = updatedSubjects.reduce((acc, s) => acc + s.total, 0);
+                          const overallAverage = updatedSubjects.length > 0 ? Number((overallTotal / updatedSubjects.length).toFixed(1)) : 0;
+                          const gpa = Number((overallAverage / 25).toFixed(2));
+
+                          setSelectedStudentResult({
+                            ...fetchedStudent,
+                            subjects: updatedSubjects,
+                            overallTotal,
+                            overallAverage,
+                            averageScore: overallAverage,
+                            gpa,
+                          });
                           setIsViewResultOpen(true);
                         }}
                         className="px-3.5 py-2.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl cursor-pointer border border-white/20 flex items-center gap-1.5 shrink-0"
@@ -2306,24 +2522,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       {/* Add Student Modal */}
       {isAddStudentOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-[#0F172A]">Register New Student</h3>
-              <button onClick={() => setIsAddStudentOpen(false)} className="text-slate-400 hover:text-slate-700">
+              <div>
+                <h3 className="text-base font-bold text-[#0F172A]">Register New Student</h3>
+                <p className="text-[11px] text-slate-500">Create new student record with demographic and photo information.</p>
+              </div>
+              <button onClick={() => setIsAddStudentOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddStudentSubmit} className="space-y-3">
+            <form onSubmit={handleAddStudentSubmit} className="space-y-3.5">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Full Student Name</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Full Student Name *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Adebayo Oluwaseun"
                   value={newStudent.name}
                   onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                 />
               </div>
 
@@ -2357,9 +2576,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-mono font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Must be exactly 7 digits. Serves as unique Primary Key across all academic records.
-                </p>
               </div>
 
               <div>
@@ -2367,7 +2583,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <select
                   value={newStudent.className}
                   onChange={(e) => setNewStudent({ ...newStudent, className: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                 >
                   {allClassNames.map((cls) => (
                     <option key={cls} value={cls}>{cls}</option>
@@ -2375,19 +2591,289 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </select>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              {/* Gender and Age Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Gender *</label>
+                  <select
+                    value={newStudent.gender}
+                    onChange={(e) => setNewStudent({ ...newStudent, gender: e.target.value as 'Male' | 'Female' })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Age (Years) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 15 or 15 Yrs"
+                    value={newStudent.age}
+                    onChange={(e) => setNewStudent({ ...newStudent, age: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  />
+                </div>
+              </div>
+
+              {/* House */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Sports House *</label>
+                <select
+                  value={newStudent.house}
+                  onChange={(e) => setNewStudent({ ...newStudent, house: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                >
+                  <option value="Blue House">Blue House (Sapphire)</option>
+                  <option value="Red House">Red House (Ruby)</option>
+                  <option value="Yellow House">Yellow House (Gold)</option>
+                  <option value="Green House">Green House (Emerald)</option>
+                  <option value="Purple House">Purple House (Amethyst)</option>
+                </select>
+              </div>
+
+              {/* Student Passport / Image URL */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Student Photo / Image URL</label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/photo-... or enter photo URL"
+                  value={newStudent.passportUrl}
+                  onChange={(e) => setNewStudent({ ...newStudent, passportUrl: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                />
+                
+                {/* Live Image Preview & Presets */}
+                <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+                  <div className="w-12 h-14 rounded-lg overflow-hidden border border-slate-300 shrink-0 bg-white shadow-2xs">
+                    <img
+                      src={newStudent.passportUrl.trim() || (newStudent.gender === 'Female' 
+                        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'
+                        : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250')}
+                      alt="Student Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as any).src = 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250';
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold text-slate-700">Photo Live Preview</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] text-slate-400">Quick Avatars:</span>
+                      <button
+                        type="button"
+                        onClick={() => setNewStudent({
+                          ...newStudent,
+                          passportUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250',
+                          gender: 'Male'
+                        })}
+                        className="text-[10px] px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold rounded cursor-pointer"
+                      >
+                        Male Preset
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewStudent({
+                          ...newStudent,
+                          passportUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+                          gender: 'Female'
+                        })}
+                        className="text-[10px] px-2 py-0.5 bg-pink-100 hover:bg-pink-200 text-pink-800 font-bold rounded cursor-pointer"
+                      >
+                        Female Preset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsAddStudentOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800"
+                  className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#1E3A8A] text-white font-bold text-xs rounded-xl shadow-md"
+                  className="px-5 py-2 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all"
                 >
                   Confirm Registration
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Student Profile Modal */}
+      {isEditStudentOpen && editingStudent && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
+                  <FileEdit className="w-4 h-4 text-[#F59E0B]" />
+                  <span>Edit Student Profile</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 font-mono">
+                  Registration ID: <strong className="text-[#1E3A8A]">{editingStudent.studentId}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsEditStudentOpen(false);
+                  setEditingStudent(null);
+                }}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditStudent} className="space-y-3.5">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Full Student Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingStudent.fullName || (editingStudent as any).name || ''}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, fullName: e.target.value, name: e.target.value } as any)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Assigned Class Stream</label>
+                <select
+                  value={editingStudent.className}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, className: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                >
+                  {allClassNames.map((cls) => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Gender and Age Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Gender *</label>
+                  <select
+                    value={editingStudent.gender || 'Male'}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, gender: e.target.value as 'Male' | 'Female' })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Age *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 15 or 15 Yrs"
+                    value={editingStudent.age || ''}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, age: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  />
+                </div>
+              </div>
+
+              {/* House */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Sports House *</label>
+                <select
+                  value={editingStudent.house || 'Blue House'}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, house: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                >
+                  <option value="Blue House">Blue House (Sapphire)</option>
+                  <option value="Red House">Red House (Ruby)</option>
+                  <option value="Yellow House">Yellow House (Gold)</option>
+                  <option value="Green House">Green House (Emerald)</option>
+                  <option value="Purple House">Purple House (Amethyst)</option>
+                </select>
+              </div>
+
+              {/* Student Photo / Image URL */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Student Photo / Image URL</label>
+                <input
+                  type="url"
+                  placeholder="Enter image URL e.g. https://images.unsplash.com/..."
+                  value={editingStudent.passportUrl || ''}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, passportUrl: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                />
+
+                {/* Live Image Preview & Quick Presets */}
+                <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+                  <div className="w-12 h-14 rounded-lg overflow-hidden border border-slate-300 shrink-0 bg-white shadow-2xs">
+                    <img
+                      src={editingStudent.passportUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250'}
+                      alt="Student Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as any).src = 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250';
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold text-slate-700">Photo Live Preview</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] text-slate-400">Quick Presets:</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingStudent({
+                          ...editingStudent,
+                          passportUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250',
+                          gender: 'Male'
+                        })}
+                        className="text-[10px] px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold rounded cursor-pointer"
+                      >
+                        Male Photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingStudent({
+                          ...editingStudent,
+                          passportUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+                          gender: 'Female'
+                        })}
+                        className="text-[10px] px-2 py-0.5 bg-pink-100 hover:bg-pink-200 text-pink-800 font-bold rounded cursor-pointer"
+                      >
+                        Female Photo
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditStudentOpen(false);
+                    setEditingStudent(null);
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Profile Updates</span>
                 </button>
               </div>
             </form>
@@ -2401,7 +2887,134 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         isOpen={isViewResultOpen}
         onClose={() => setIsViewResultOpen(false)}
         onVerifyQR={() => setIsQRModalOpen(true)}
+        schoolHeader={schoolHeader}
       />
+
+      {/* Edit School & Report Card Header Modal */}
+      {isEditSchoolHeaderOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-[#F59E0B]" />
+                  <span>Edit Report Card Header</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Update the official school name, report title, and address line displayed on all student result slips.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditSchoolHeaderOpen(false)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSchoolHeader} className="space-y-4">
+              {/* School Name */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                  School Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. ROYAL ACADEMY"
+                  value={schoolHeader.schoolName}
+                  onChange={(e) => setSchoolHeader({ ...schoolHeader, schoolName: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-black tracking-wide text-[#0F172A] uppercase font-serif focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                />
+              </div>
+
+              {/* Report Title */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                  Report Slip Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Student Mid-Term Report"
+                  value={schoolHeader.reportTitle}
+                  onChange={(e) => setSchoolHeader({ ...schoolHeader, reportTitle: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                />
+              </div>
+
+              {/* Address / Subtitle */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                  School Address & Official Subtitle *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Victoria Island, Lagos, Nigeria • Official Academic Record"
+                  value={schoolHeader.addressSubtitle}
+                  onChange={(e) => setSchoolHeader({ ...schoolHeader, addressSubtitle: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                />
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="p-4 bg-slate-50 border-2 border-slate-800 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <span className="text-[10px] font-black uppercase text-[#1E3A8A] tracking-wider flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-[#F59E0B]" />
+                    <span>Report Slip Header Live Preview</span>
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-mono">Printed Header Format</span>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-xl border border-slate-300 text-center space-y-1 shadow-2xs">
+                  <div className="w-10 h-10 mx-auto rounded-lg border border-slate-800 bg-slate-50 flex items-center justify-center text-slate-800 mb-1">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <h1 className="text-xl font-black text-black tracking-tight uppercase font-serif">
+                    {schoolHeader.schoolName || 'ROYAL ACADEMY'}
+                  </h1>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-800">
+                    {schoolHeader.reportTitle || 'Student Mid-Term Report'}
+                  </p>
+                  <p className="text-[9px] text-slate-600 font-mono">
+                    {schoolHeader.addressSubtitle || 'Victoria Island, Lagos, Nigeria • Official Academic Record'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetSchoolHeader}
+                  className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-all"
+                >
+                  Reset Defaults
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditSchoolHeaderOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Header Changes</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* QR Verification Modal */}
       <QRVerificationModal

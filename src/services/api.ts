@@ -283,13 +283,6 @@ export const api = {
       const data = await res.json();
       return data.admin;
     } catch {
-      if (cleanEmail === 'fariat@gmail.com' && pass === 'Adewale_@09') {
-        return {
-          name: 'Adewale (System Admin)',
-          email: 'fariat@gmail.com',
-          role: 'System Super Administrator'
-        };
-      }
       return null;
     }
   }

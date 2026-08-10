@@ -1,19 +1,102 @@
-import React, { useState } from 'react';
-import { StudentResult } from '../types';
+import React, { useState, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
 import { 
   ShieldCheck as ShieldIcon, 
   Printer as PrintIcon, 
   Download as DownloadIcon, 
   Share2 as ShareIcon, 
   X as CloseIcon, 
-  Check as CheckIcon 
+  Check as CheckIcon,
+  Loader2 as SpinnerIcon
 } from 'lucide-react';
+
+// Helper to convert oklch CSS color functions to standard rgb/rgba for html2canvas compatibility
+const oklchCache = new Map<string, string>();
+
+const parseOklchToRgb = (colorStr: string): string => {
+  if (!colorStr || typeof colorStr !== 'string' || !colorStr.includes('oklch')) {
+    return colorStr || '';
+  }
+  if (oklchCache.has(colorStr)) {
+    return oklchCache.get(colorStr)!;
+  }
+
+  const replaced = colorStr.replace(/oklch\(\s*([\d.%]+)\s+([\d.%]+)\s+([\d.%]+)(?:\s*\/\s*([\d.%]+))?\s*\)/gi, (fullMatch, lRaw, cRaw, hRaw, aRaw) => {
+    try {
+      let L = lRaw.endsWith('%') ? parseFloat(lRaw) / 100 : parseFloat(lRaw);
+      let C = cRaw.endsWith('%') ? parseFloat(cRaw) / 100 : parseFloat(cRaw);
+      let H = parseFloat(hRaw);
+      let A = 1;
+      if (aRaw) {
+        A = aRaw.endsWith('%') ? parseFloat(aRaw) / 100 : parseFloat(aRaw);
+      }
+
+      if (isNaN(L) || isNaN(C) || isNaN(H)) return 'rgb(0,0,0)';
+
+      const hRad = (H * Math.PI) / 180;
+      const a = C * Math.cos(hRad);
+      const b = C * Math.sin(hRad);
+
+      const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+      const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+      const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+
+      const lComp = l_ * l_ * l_;
+      const mComp = m_ * m_ * m_;
+      const sComp = s_ * s_ * s_;
+
+      const r_lin = +4.0767416621 * lComp - 3.3077115913 * mComp + 0.2309699292 * sComp;
+      const g_lin = -1.2684380046 * lComp + 2.6097574011 * mComp - 0.3413193965 * sComp;
+      const b_lin = -0.0041960863 * lComp - 0.7034186147 * mComp + 1.7076147010 * sComp;
+
+      const toSRGB = (val: number) => {
+        const clamped = Math.max(0, Math.min(1, val));
+        return clamped > 0.0031308
+          ? 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055
+          : 12.92 * clamped;
+      };
+
+      const rInt = Math.round(toSRGB(r_lin) * 255);
+      const gInt = Math.round(toSRGB(g_lin) * 255);
+      const bInt = Math.round(toSRGB(b_lin) * 255);
+
+      return A >= 0.99
+        ? `rgb(${rInt}, ${gInt}, ${bInt})`
+        : `rgba(${rInt}, ${gInt}, ${bInt}, ${A.toFixed(2)})`;
+    } catch {
+      return 'rgb(0,0,0)';
+    }
+  });
+
+  oklchCache.set(colorStr, replaced);
+  return replaced;
+};
+
+// Helper to generate a crisp SVG avatar data URI for fallback
+const createDefaultAvatarDataUrl = (name: string): string => {
+  const initials = (name || 'ST')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="240" viewBox="0 0 200 240">
+    <rect width="100%" height="100%" fill="#e2e8f0"/>
+    <circle cx="100" cy="85" r="45" fill="#475569"/>
+    <path d="M 30 220 C 30 155, 170 155, 170 220 Z" fill="#475569"/>
+    <text x="100" y="95" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">${initials}</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+};
 
 interface ResultSlipModalProps {
   result: StudentResult | null;
   isOpen: boolean;
   onClose: () => void;
   onVerifyQR: () => void;
+  schoolHeader?: SchoolHeaderInfo;
 }
 
 export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
@@ -21,13 +104,226 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
   isOpen,
   onClose,
   onVerifyQR,
+  schoolHeader,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [passportBase64, setPassportBase64] = useState<string>('');
+  const printRef = useRef<HTMLDivElement>(null);
+
+  // Pre-convert passport photo URL to base64 Data URL for instant, error-free html2canvas PDF rendering
+  React.useEffect(() => {
+    let isMounted = true;
+    const defaultAvatar = createDefaultAvatarDataUrl(result?.fullName || 'Student');
+
+    if (!result?.passportUrl) {
+      setPassportBase64(defaultAvatar);
+      return;
+    }
+
+    const src = result.passportUrl;
+    if (src.startsWith('data:')) {
+      setPassportBase64(src);
+      return;
+    }
+
+    // Try converting image URL to base64 via fetch or canvas
+    fetch(src, { mode: 'cors' })
+      .then((res) => {
+        if (!res.ok) throw new Error('Network response was not ok');
+        return res.blob();
+      })
+      .then((blob) => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      })
+      .then((dataUrl) => {
+        if (isMounted && dataUrl) {
+          setPassportBase64(dataUrl);
+        }
+      })
+      .catch(() => {
+        // Fallback to Image canvas loading
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = src;
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || 200;
+            canvas.height = img.naturalHeight || 200;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+              if (isMounted) setPassportBase64(dataUrl);
+            }
+          } catch {
+            if (isMounted) setPassportBase64(defaultAvatar);
+          }
+        };
+        img.onerror = () => {
+          if (isMounted) setPassportBase64(defaultAvatar);
+        };
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [result?.passportUrl, result?.fullName, isOpen]);
+
+  // Retrieve current school header settings from prop or localStorage or fallback
+  const getHeaderInfo = (): SchoolHeaderInfo => {
+    if (schoolHeader) return schoolHeader;
+    try {
+      const saved = localStorage.getItem('royal_academy_school_header');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return DEFAULT_SCHOOL_HEADER;
+  };
+
+  const headerInfo = getHeaderInfo();
 
   if (!isOpen || !result) return null;
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!printRef.current || !result) return;
+    setIsDownloadingPdf(true);
+
+    try {
+      const element = printRef.current;
+
+      // Timeout safety promise (8 seconds max)
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PDF generation timed out')), 8000)
+      );
+
+      // Render crisp HD canvas using html2canvas scale: 2 for high DPI resolution
+      const renderPromise = html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 4000,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        onclone: (clonedDoc) => {
+          // Add crossOrigin = 'anonymous' to cloned images
+          const images = clonedDoc.querySelectorAll('img');
+          images.forEach((img) => {
+            img.crossOrigin = 'anonymous';
+          });
+
+          // Convert any oklch color definitions in style tags to standard rgb
+          const styleTags = clonedDoc.querySelectorAll('style');
+          styleTags.forEach((styleEl) => {
+            if (styleEl.textContent && styleEl.textContent.includes('oklch')) {
+              styleEl.textContent = parseOklchToRgb(styleEl.textContent);
+            }
+          });
+
+          // Convert inline style attributes on all cloned elements
+          const allEls = clonedDoc.querySelectorAll('*');
+          allEls.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            if (htmlEl.getAttribute) {
+              const styleAttr = htmlEl.getAttribute('style');
+              if (styleAttr && styleAttr.includes('oklch')) {
+                htmlEl.setAttribute('style', parseOklchToRgb(styleAttr));
+              }
+            }
+          });
+
+          // Intercept getComputedStyle in cloned window so html2canvas color parser never encounters oklch strings
+          if (clonedDoc.defaultView) {
+            const origGetComputedStyle = clonedDoc.defaultView.getComputedStyle;
+            clonedDoc.defaultView.getComputedStyle = function (el: Element, pseudoElt?: string | null) {
+              const style = origGetComputedStyle.call(clonedDoc.defaultView, el, pseudoElt);
+              return new Proxy(style, {
+                get(target, prop, receiver) {
+                  if (prop === 'getPropertyValue') {
+                    return function (propertyName: string) {
+                      const val = target.getPropertyValue(propertyName);
+                      if (typeof val === 'string' && val.includes('oklch')) {
+                        return parseOklchToRgb(val);
+                      }
+                      return val;
+                    };
+                  }
+                  const val = Reflect.get(target, prop, receiver);
+                  if (typeof val === 'string' && val.includes('oklch')) {
+                    return parseOklchToRgb(val);
+                  }
+                  if (typeof val === 'function') {
+                    return val.bind(target);
+                  }
+                  return val;
+                }
+              });
+            };
+          }
+        },
+      });
+
+      const canvas = await Promise.race([renderPromise, timeoutPromise]);
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      // Create A4 PDF document
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
+      const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
+
+      const margin = 5;
+      const imgWidth = pageWidth - (margin * 2); // 200mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      if (imgHeight <= (pageHeight - (margin * 2))) {
+        pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight, undefined, 'FAST');
+      } else {
+        let heightLeft = imgHeight;
+        let position = margin;
+
+        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= (pageHeight - (margin * 2));
+
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight + margin;
+          pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= (pageHeight - (margin * 2));
+        }
+      }
+
+      const cleanName = (result.fullName || result.studentId || 'Student')
+        .replace(/[^a-zA-Z0-9_-]/g, '_');
+      pdf.save(`ROYAL_ACADEMY_${cleanName}_Result_Slip.pdf`);
+    } catch (error) {
+      console.error('HD PDF generation error:', error);
+      // Fallback to browser print dialog if html2canvas/jsPDF encounters issues
+      window.print();
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   const handleShare = () => {
@@ -37,14 +333,16 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  // Calculate subjects passed / failed
+  // Calculate subjects passed / failed & totals dynamically
   const studentSubjects = result?.subjects || [];
   const subjectsPassed = studentSubjects.filter(s => (s.total || 0) >= 50).length;
   const subjectsFailed = studentSubjects.filter(s => (s.total || 0) < 50).length;
+  const totalScoreCalculated = studentSubjects.reduce((acc, s) => acc + (s.total || 0), 0);
+  const averageScoreCalculated = studentSubjects.length > 0 ? (totalScoreCalculated / studentSubjects.length) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 no-print">
-      <div className="relative bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-4 sm:my-8 max-h-[94vh] flex flex-col">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 result-slip-modal-wrapper">
+      <div className="relative bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-4 sm:my-8 max-h-[94vh] flex flex-col result-slip-modal-content">
         
         {/* Top Control Bar (Hidden when printing) */}
         <div className="bg-[#1E3A8A] text-white px-6 py-3.5 flex items-center justify-between shrink-0 no-print border-b border-blue-400/20">
@@ -71,12 +369,22 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             </button>
 
             <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-white text-[#1E3A8A] hover:bg-slate-100 rounded-xl transition-all shadow-xs cursor-pointer hidden sm:inline-flex"
-              title="Save as PDF using browser print dialog"
+              onClick={handleDownloadPdf}
+              disabled={isDownloadingPdf}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-60"
+              title="Download high-definition PDF result slip"
             >
-              <DownloadIcon className="w-4 h-4" />
-              <span>Download PDF</span>
+              {isDownloadingPdf ? (
+                <>
+                  <SpinnerIcon className="w-4 h-4 animate-spin text-white" />
+                  <span>Generating HD PDF...</span>
+                </>
+              ) : (
+                <>
+                  <DownloadIcon className="w-4 h-4" />
+                  <span>Download HD PDF</span>
+                </>
+              )}
             </button>
 
             <button
@@ -98,7 +406,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
         </div>
 
         {/* Printable Result Sheet Body (A4 Portrait Template Specification) */}
-        <div className="p-6 sm:p-8 overflow-y-auto space-y-4 print-area bg-white text-black font-sans">
+        <div ref={printRef} className="p-6 sm:p-8 overflow-y-auto space-y-4 print-area bg-white text-black font-sans">
           
           {/* 1. HEADER SECTION */}
           <div className="border-b-2 border-black pb-3 flex items-center justify-between gap-4">
@@ -110,13 +418,13 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             {/* Top Center: School Name and Document Title */}
             <div className="text-center flex-1">
               <h1 className="text-2xl sm:text-3xl font-black text-black tracking-tight uppercase font-serif">
-                ROYAL ACADEMY
+                {headerInfo.schoolName || 'ROYAL ACADEMY'}
               </h1>
               <p className="text-xs font-bold uppercase tracking-widest text-slate-800">
-                Student Mid-Term Report
+                {headerInfo.reportTitle || 'Student Mid-Term Report'}
               </p>
               <p className="text-[10px] text-slate-700 font-mono">
-                Victoria Island, Lagos, Nigeria • Official Academic Record
+                {headerInfo.addressSubtitle || 'Victoria Island, Lagos, Nigeria • Official Academic Record'}
               </p>
             </div>
 
@@ -170,9 +478,14 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
               <div className="col-span-3 flex justify-end">
                 <div className="w-20 h-24 border-2 border-black bg-slate-100 overflow-hidden shrink-0">
                   <img
-                    src={result.passportUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400'}
+                    src={passportBase64 || result.passportUrl || createDefaultAvatarDataUrl(result.fullName)}
                     alt={result.fullName}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.onerror = null;
+                      target.src = createDefaultAvatarDataUrl(result.fullName);
+                    }}
                   />
                 </div>
               </div>
@@ -199,8 +512,8 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                 <tr className="bg-gray-200 text-black font-bold text-[11px] uppercase border-b border-black">
                   <th className="p-2 border border-black text-center" style={{ width: '6%' }}>S/N</th>
                   <th className="p-2 border border-black text-left" style={{ width: '40%' }}>SUBJECT</th>
-                  <th className="p-2 border border-black text-center" style={{ width: '10%' }}>CA (20)</th>
-                  <th className="p-2 border border-black text-center" style={{ width: '10%' }}>EXAM (80)</th>
+                  <th className="p-2 border border-black text-center" style={{ width: '10%' }}>CA (40)</th>
+                  <th className="p-2 border border-black text-center" style={{ width: '10%' }}>EXAM (60)</th>
                   <th className="p-2 border border-black text-center" style={{ width: '10%' }}>TOTAL (100)</th>
                   <th className="p-2 border border-black text-center" style={{ width: '10%' }}>GRADE</th>
                   <th className="p-2 border border-black text-center" style={{ width: '14%' }}>REMARK</th>
@@ -209,9 +522,8 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
               <tbody className="divide-y divide-black font-medium">
                 {studentSubjects.length > 0 ? (
                   studentSubjects.map((sub, idx) => {
-                    // Standardize CA (max 20 or scaled) and Exam (max 80)
-                    const caDisplay = sub.caScore !== undefined ? Math.min(20, Math.round((sub.caScore / 40) * 20)) : 0;
-                    const examDisplay = sub.examScore !== undefined ? Math.min(80, Math.round((sub.examScore / 60) * 80)) : 0;
+                    const caDisplay = sub.caScore !== undefined ? sub.caScore : ((sub.ca1 || 0) + (sub.ca2 || 0) + (sub.midterm || 0));
+                    const examDisplay = sub.examScore !== undefined ? sub.examScore : (sub.exam || 0);
                     const totalVal = sub.total !== undefined ? sub.total : (caDisplay + examDisplay);
 
                     return (
@@ -318,15 +630,15 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
               <div className="space-y-1 text-[11px]">
                 <div className="flex justify-between">
                   <span>Total Subjects:</span>
-                  <strong className="font-mono">{result.subjects.length}</strong>
+                  <strong className="font-mono">{studentSubjects.length}</strong>
                 </div>
                 <div className="flex justify-between">
                   <span>Total Score:</span>
-                  <strong className="font-mono">{result.overallTotal}</strong>
+                  <strong className="font-mono">{totalScoreCalculated}</strong>
                 </div>
                 <div className="flex justify-between">
                   <span>Average:</span>
-                  <strong className="font-mono">{result.overallAverage.toFixed(1)}%</strong>
+                  <strong className="font-mono">{averageScoreCalculated.toFixed(1)}%</strong>
                 </div>
                 <div className="flex justify-between">
                   <span>Position:</span>

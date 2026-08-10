@@ -88,3 +88,15 @@ export interface AdminStudentSummary {
   lastUpdated: string;
   averageScore: number;
 }
+
+export interface SchoolHeaderInfo {
+  schoolName: string;
+  reportTitle: string;
+  addressSubtitle: string;
+}
+
+export const DEFAULT_SCHOOL_HEADER: SchoolHeaderInfo = {
+  schoolName: 'ROYAL ACADEMY',
+  reportTitle: 'Student Mid-Term Report',
+  addressSubtitle: 'Victoria Island, Lagos, Nigeria • Official Academic Record',
+};

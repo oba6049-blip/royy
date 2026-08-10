@@ -48,6 +48,10 @@ let memoryStore = {
 };
 
 export async function connectToMongoDB() {
+  if (isMongoConnected && dbInstance) {
+    return true;
+  }
+
   const mongoUri = process.env.MONGODB_URI;
 
   if (!mongoUri || mongoUri.includes('username:password')) {
@@ -57,10 +61,13 @@ export async function connectToMongoDB() {
   }
 
   try {
-    mongoClient = new MongoClient(mongoUri, {
-      serverSelectionTimeoutMS: 5000,
-    });
-    await mongoClient.connect();
+    if (!mongoClient) {
+      mongoClient = new MongoClient(mongoUri, {
+        serverSelectionTimeoutMS: 5000,
+        maxPoolSize: 10,
+      });
+      await mongoClient.connect();
+    }
     dbInstance = mongoClient.db('royal_academy');
     isMongoConnected = true;
     console.log('[MongoDB] Successfully connected to MongoDB database "royal_academy"!');
@@ -318,17 +325,36 @@ export async function updateBranding(type: 'logoUrl' | 'stampUrl' | 'signatureUr
 // Admin Auth
 export async function verifyAdmin(email: string, pass: string) {
   const normalizedEmail = (email || '').trim().toLowerCase();
-  const allowedEmail = 'fariat@gmail.com';
-  const allowedPassword = 'Adewale_@09';
+  const envAdminEmail = (process.env.ADMIN_EMAIL || 'fariat@gmail.com').trim().toLowerCase();
+  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Adewale_@09';
 
   if (!pass) return null;
 
-  if (normalizedEmail === allowedEmail && pass === allowedPassword) {
+  // 1. Check environment variable configured admin
+  if (normalizedEmail === envAdminEmail && pass === envAdminPassword) {
     return {
       name: 'Adewale (System Admin)',
-      email: allowedEmail,
+      email: normalizedEmail,
       role: 'System Super Administrator'
     };
+  }
+
+  // 2. Check MongoDB collection
+  if (isMongoConnected && dbInstance) {
+    const admin = await dbInstance.collection('admins').findOne({ email: normalizedEmail });
+    if (admin && admin.password === pass) {
+      return {
+        name: admin.name || 'System Admin',
+        email: admin.email,
+        role: admin.role || 'System Super Administrator'
+      };
+    }
+  }
+
+  // 3. Check Memory Store
+  const memoryAdmin = memoryStore.admins.find(a => a.email.toLowerCase() === normalizedEmail);
+  if (memoryAdmin && memoryAdmin.password === pass) {
+    return { name: memoryAdmin.name, email: memoryAdmin.email, role: memoryAdmin.role };
   }
 
   return null;

@@ -119,12 +119,18 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
   };
 
   const handlePrintResult = () => {
-    window.print();
+    setIsResultSlipModalOpen(true);
+    setTimeout(() => {
+      window.print();
+    }, 250);
   };
 
   const studentSubjects = activeStudent?.subjects || [];
   const subjectsPassed = studentSubjects.filter(s => (s.total || 0) >= 50).length;
   const subjectsFailed = studentSubjects.filter(s => (s.total || 0) < 50).length;
+  const totalScoreCalculated = studentSubjects.reduce((acc, s) => acc + (s.total || 0), 0);
+  const averageScoreCalculated = studentSubjects.length > 0 ? (totalScoreCalculated / studentSubjects.length) : (activeStudent?.overallAverage || 0);
+  const gpaCalculated = Number((averageScoreCalculated / 25).toFixed(2));
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-['Inter',sans-serif] flex flex-col md:flex-row selection:bg-[#1E3A8A]/10 selection:text-[#1E3A8A]">
@@ -456,9 +462,9 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Overall Average</span>
                   <div className="text-2xl font-black text-slate-900 font-mono">
-                    {activeStudent.overallAverage.toFixed(1)}%
+                    {averageScoreCalculated.toFixed(1)}%
                   </div>
-                  <p className="text-[10px] text-emerald-600 font-bold">GPA: {activeStudent.gpa.toFixed(2)} / 4.0</p>
+                  <p className="text-[10px] text-emerald-600 font-bold">GPA: {gpaCalculated.toFixed(2)} / 4.0</p>
                 </div>
 
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
@@ -724,20 +730,28 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-800">
-                      {activeStudent.subjects.map((sub, idx) => (
-                        <tr key={sub.id || idx} className="hover:bg-slate-50/80">
-                          <td className="py-2.5 px-3 font-bold text-slate-900">{sub.subject}</td>
-                          <td className="py-2.5 px-3 text-center font-mono text-slate-600">{sub.caScore}</td>
-                          <td className="py-2.5 px-3 text-center font-mono text-slate-600">{sub.examScore}</td>
-                          <td className="py-2.5 px-3 text-center font-mono font-black text-slate-900">{sub.total}</td>
-                          <td className="py-2.5 px-3 text-center">
-                            <span className="px-2 py-0.5 rounded font-black font-mono text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              {sub.grade}
-                            </span>
+                      {studentSubjects.length > 0 ? (
+                        studentSubjects.map((sub, idx) => (
+                          <tr key={sub.id || idx} className="hover:bg-slate-50/80">
+                            <td className="py-2.5 px-3 font-bold text-slate-900">{sub.subject}</td>
+                            <td className="py-2.5 px-3 text-center font-mono text-slate-600">{sub.caScore}</td>
+                            <td className="py-2.5 px-3 text-center font-mono text-slate-600">{sub.examScore}</td>
+                            <td className="py-2.5 px-3 text-center font-mono font-black text-slate-900">{sub.total}</td>
+                            <td className="py-2.5 px-3 text-center">
+                              <span className="px-2 py-0.5 rounded font-black font-mono text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {sub.grade}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-bold text-slate-500 text-[10px] uppercase">{sub.remark}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="py-6 text-center text-slate-500 font-medium italic">
+                            No subjects created or entered for this student yet.
                           </td>
-                          <td className="py-2.5 px-3 text-right font-bold text-slate-500 text-[10px] uppercase">{sub.remark}</td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -826,10 +840,10 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                     Print Result
                   </button>
                   <button
-                    onClick={handlePrintResult}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl border border-slate-200 cursor-pointer"
+                    onClick={() => setIsResultSlipModalOpen(true)}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl border border-emerald-500 cursor-pointer shadow-xs"
                   >
-                    Save as PDF
+                    Download HD PDF
                   </button>
                 </div>
               </div>
@@ -877,17 +891,25 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {activeStudent.subjects.map((sub, idx) => (
-                      <tr key={sub.id || idx}>
-                        <td className="p-1.5 border border-black text-center font-mono">{idx + 1}</td>
-                        <td className="p-1.5 border border-black font-bold">{sub.subject}</td>
-                        <td className="p-1.5 border border-black text-center font-mono">{sub.caScore}</td>
-                        <td className="p-1.5 border border-black text-center font-mono">{sub.examScore}</td>
-                        <td className="p-1.5 border border-black text-center font-bold font-mono">{sub.total}</td>
-                        <td className="p-1.5 border border-black text-center font-black">{sub.grade}</td>
-                        <td className="p-1.5 border border-black text-center text-[10px] uppercase">{sub.remark}</td>
+                    {studentSubjects.length > 0 ? (
+                      studentSubjects.map((sub, idx) => (
+                        <tr key={sub.id || idx}>
+                          <td className="p-1.5 border border-black text-center font-mono">{idx + 1}</td>
+                          <td className="p-1.5 border border-black font-bold">{sub.subject}</td>
+                          <td className="p-1.5 border border-black text-center font-mono">{sub.caScore}</td>
+                          <td className="p-1.5 border border-black text-center font-mono">{sub.examScore}</td>
+                          <td className="p-1.5 border border-black text-center font-bold font-mono">{sub.total}</td>
+                          <td className="p-1.5 border border-black text-center font-black">{sub.grade}</td>
+                          <td className="p-1.5 border border-black text-center text-[10px] uppercase">{sub.remark}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="p-4 border border-black text-center font-medium italic text-slate-500">
+                          No subjects created or recorded yet.
+                        </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>

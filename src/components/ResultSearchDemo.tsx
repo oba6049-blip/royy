@@ -342,22 +342,28 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                     </h5>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {activeResult.subjects.slice(0, 6).map((sub) => (
-                        <div key={sub.id} className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-bold text-slate-900 block">{sub.subject}</span>
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              CA: {sub.caScore} | Exam: {sub.examScore}
-                            </span>
+                      {(activeResult.subjects || []).length > 0 ? (
+                        activeResult.subjects.slice(0, 6).map((sub) => (
+                          <div key={sub.id} className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                            <div>
+                              <span className="text-xs font-bold text-slate-900 block">{sub.subject}</span>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                CA: {sub.caScore} | Exam: {sub.examScore}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs font-mono font-bold text-[#1E3A8A] block">{sub.total}/100</span>
+                              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
+                                {sub.grade}
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-xs font-mono font-bold text-[#1E3A8A] block">{sub.total}/100</span>
-                            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
-                              {sub.grade}
-                            </span>
-                          </div>
+                        ))
+                      ) : (
+                        <div className="col-span-2 bg-white p-3 rounded-xl border border-slate-200/80 text-center text-xs text-slate-400 italic">
+                          No subjects recorded for this result yet.
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
 
