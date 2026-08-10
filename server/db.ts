@@ -46,7 +46,12 @@ let memoryStore = {
     updatedAt: new Date().toISOString()
   },
   admins: [
-    { email: 'fariat@gmail.com', password: 'fariat123', name: 'Fariat Admin', role: 'System Super Administrator' }
+    {
+      email: process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng',
+      password: process.env.ADMIN_PASSWORD || 'admin123',
+      name: 'System Administrator',
+      role: 'System Super Administrator'
+    }
   ]
 };
 
@@ -321,22 +326,29 @@ export async function updateBranding(type: 'logoUrl' | 'stampUrl' | 'signatureUr
 // Admin Auth
 export async function verifyAdmin(email: string, pass: string) {
   const normalizedEmail = (email || '').trim().toLowerCase();
-  
-  if (normalizedEmail !== 'fariat@gmail.com' || pass !== 'fariat123') {
-    return null;
+  const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng').trim().toLowerCase();
+  const envAdminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+  if (!pass) return null;
+
+  // 1. Check environment variable configured admin
+  if (normalizedEmail === envAdminEmail && pass === envAdminPassword) {
+    return { name: 'System Administrator', email: normalizedEmail, role: 'System Super Administrator' };
   }
 
+  // 2. Check MongoDB collection
   if (isMongoConnected && dbInstance) {
-    const admin = await dbInstance.collection('admins').findOne({ email: 'fariat@gmail.com' });
-    if (admin && admin.password === 'fariat123') {
-      return { name: admin.name || 'Fariat Admin', email: admin.email, role: admin.role || 'System Super Administrator' };
+    const admin = await dbInstance.collection('admins').findOne({ email: normalizedEmail });
+    if (admin && admin.password === pass) {
+      return { name: admin.name || 'System Admin', email: admin.email, role: admin.role || 'System Super Administrator' };
     }
   }
 
-  const memoryAdmin = memoryStore.admins.find(a => a.email.toLowerCase() === 'fariat@gmail.com');
-  if (memoryAdmin && memoryAdmin.password === 'fariat123') {
+  // 3. Check Memory Store
+  const memoryAdmin = memoryStore.admins.find(a => a.email.toLowerCase() === normalizedEmail);
+  if (memoryAdmin && memoryAdmin.password === pass) {
     return { name: memoryAdmin.name, email: memoryAdmin.email, role: memoryAdmin.role };
   }
 
-  return { name: 'Fariat Admin', email: 'fariat@gmail.com', role: 'System Super Administrator' };
+  return null;
 }

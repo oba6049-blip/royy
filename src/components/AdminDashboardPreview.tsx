@@ -107,16 +107,8 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
           setInternalAdmin(verifiedAdmin);
         }
         triggerToast(`Welcome back, ${verifiedAdmin.name}! Admin portal unlocked.`);
-      } else if (cleanEmail === 'fariat@gmail.com' && loginPassword === 'fariat123') {
-        const user = { name: 'Fariat Admin', email: 'fariat@gmail.com', role: 'System Super Administrator' };
-        if (externalOnLoginSuccess) {
-          externalOnLoginSuccess(user);
-        } else {
-          setInternalAdmin(user);
-        }
-        triggerToast('Welcome back, Fariat Admin!');
       } else {
-        setAuthError('Access Denied: Only fariat@gmail.com with password fariat123 is authorized to log in.');
+        setAuthError('Access Denied: Invalid email or administrator password.');
       }
     } catch {
       setIsAuthenticating(false);

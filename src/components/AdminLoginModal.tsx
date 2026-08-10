@@ -47,20 +47,12 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       if (adminData) {
         onLoginSuccess(adminData);
         onClose();
-      } else if (cleanEmail === 'fariat@gmail.com' && password === 'fariat123') {
-        onLoginSuccess({ name: 'Fariat Admin', email: 'fariat@gmail.com', role: 'System Super Administrator' });
-        onClose();
       } else {
-        setErrorMessage('Access Denied: Only authorized admin (fariat@gmail.com) can log in.');
+        setErrorMessage('Access Denied: Invalid email or administrator password.');
       }
     } catch {
       setIsLoading(false);
-      if (cleanEmail === 'fariat@gmail.com' && password === 'fariat123') {
-        onLoginSuccess({ name: 'Fariat Admin', email: 'fariat@gmail.com', role: 'System Super Administrator' });
-        onClose();
-      } else {
-        setErrorMessage('Access Denied: Invalid admin credentials.');
-      }
+      setErrorMessage('Access Denied: Invalid administrator credentials.');
     }
   };
 
