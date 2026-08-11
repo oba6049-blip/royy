@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { SchoolLogo } from './SchoolLogo';
 import { ResultSlipModal } from './ResultSlipModal';
 import { QRVerificationModal } from './QRVerificationModal';
+import { ClassBroadsheetModal } from './ClassBroadsheetModal';
+import { SchoolAnalyticsView } from './SchoolAnalyticsView';
 import { ADMIN_MOCK_STUDENTS } from '../data/mockData';
 import { api, DbStatus } from '../services/api';
 import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
@@ -92,6 +94,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentResult | null>(null);
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
+
+  // Reports & Class Broadsheet State
+  const [selectedReportClass, setSelectedReportClass] = useState('JSS 1 Gold');
+  const [reportSearchQuery, setReportSearchQuery] = useState('');
+  const [selectedReportTerm, setSelectedReportTerm] = useState('1st Term (Midterm Report)');
+  const [isClassBroadsheetOpen, setIsClassBroadsheetOpen] = useState(false);
 
   // School Header Settings State
   const [schoolHeader, setSchoolHeader] = useState<SchoolHeaderInfo>(() => {
@@ -2950,71 +2958,316 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             </div>
           )}
 
-          {/* TAB 13: GENERATE REPORTS */}
-          {activeTab === 'reports' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <h2 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
-                  Generate Class Broadsheet & Transcripts
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Export term performance reports, ranking tables, and PDF master slips.
-                </p>
+          {/* TAB 13: GENERATE REPORTS & CLASS BROADSHEETS */}
+          {activeTab === 'reports' && (() => {
+            const currentClassInfo = classList.find(c => c.name === selectedReportClass);
+            const currentClassTeacher = currentClassInfo?.teacher || 'Mrs. O. Adeleke';
+            
+            const classFilteredStudents = students.filter(s => {
+              const matchesClass = selectedReportClass === 'All' || s.className === selectedReportClass || s.className?.includes(selectedReportClass);
+              const matchesSearch = !reportSearchQuery || s.name.toLowerCase().includes(reportSearchQuery.toLowerCase()) || s.studentId.toLowerCase().includes(reportSearchQuery.toLowerCase());
+              return matchesClass && matchesSearch;
+            });
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                    <p className="text-xs font-bold text-[#0F172A]">Term Broadsheet (Excel / CSV)</p>
-                    <p className="text-[10px] text-slate-500">Includes subject scores for all 35 students in JSS 1 Gold.</p>
-                    <button
-                      onClick={() => triggerToast('Downloading Broadsheet Excel file...')}
-                      className="w-full py-2 bg-[#1E3A8A] text-white text-xs font-bold rounded-xl cursor-pointer"
-                    >
-                      Export Broadsheet
-                    </button>
+            // Sort by score for ranking
+            const rankedClassStudents = [...classFilteredStudents].sort((a, b) => {
+              const scoreA = Number(a.averageScore || a.overallAverage || (a.gpa ? a.gpa * 25 : 0)) || 0;
+              const scoreB = Number(b.averageScore || b.overallAverage || (b.gpa ? b.gpa * 25 : 0)) || 0;
+              return scoreB - scoreA;
+            });
+
+            const uniqueTeachers = Array.from(new Set(subjectList.map(s => s.teacher).filter(Boolean)));
+            const totalTeachersCount = uniqueTeachers.length > 0 ? uniqueTeachers.length : (subjectList.length || 5);
+
+            const totalClassCount = classFilteredStudents.length;
+            const avgSum = classFilteredStudents.reduce((acc, s) => acc + (Number(s.averageScore || s.overallAverage || (s.gpa ? s.gpa * 25 : 75)) || 75), 0);
+            const classAvg = totalClassCount > 0 ? (avgSum / totalClassCount).toFixed(1) : '0.0';
+            const passCount = classFilteredStudents.filter(s => Number(s.averageScore || s.overallAverage || 75) >= 50).length;
+            const passRatePct = totalClassCount > 0 ? ((passCount / totalClassCount) * 100).toFixed(1) : '100.0';
+
+            const handleExportCSVReport = () => {
+              const headers = ['Rank,Student ID,Full Name,Class,Gender,Average Score (%),Standing,Form Teacher'];
+              const rows = rankedClassStudents.map((st, idx) => {
+                const avg = Number(st.averageScore || st.overallAverage || (st.gpa ? st.gpa * 25 : 75)).toFixed(1);
+                const isGS = Number(avg) >= 50;
+                return `"${idx + 1}","${st.studentId || ''}","${st.name || st.fullName || ''}","${st.className || selectedReportClass}","${st.gender || 'N/A'}","${avg}%","${isGS ? 'GS (Good Standing)' : 'NGS'}","${currentClassTeacher}"`;
+              });
+
+              const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join('\n'), ...rows].join('\n');
+              const encodedUri = encodeURI(csvContent);
+              const link = document.createElement('a');
+              link.setAttribute('href', encodedUri);
+              link.setAttribute('download', `Class_Report_${selectedReportClass.replace(/\s+/g, '_')}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              triggerToast(`Exported CSV Broadsheet for ${selectedReportClass}!`);
+            };
+
+            return (
+              <div className="space-y-6">
+                {/* TOP HEADER & CONTROLS */}
+                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                      <h2 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans'] flex items-center gap-2">
+                        <FileSpreadsheet className="w-6 h-6 text-[#1E3A8A]" />
+                        Class Academic Reports & Master Broadsheets
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Select a class (e.g. JSS 1, JSS 2, SSS 1) to generate student score lists, teacher allocations, and printable master broadsheets.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsClassBroadsheetOpen(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#1E3A8A] hover:bg-[#0F172A] text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
+                      >
+                        <Printer className="w-4 h-4 text-[#F59E0B]" />
+                        <span>Print Class Broadsheet (A4)</span>
+                      </button>
+
+                      <button
+                        onClick={handleExportCSVReport}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Export CSV</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                    <p className="text-xs font-bold text-[#0F172A]">Class Merit Honor Roll (PDF)</p>
-                    <p className="text-[10px] text-slate-500">Top 10 academic achievers for graduation bulletin.</p>
-                    <button
-                      onClick={() => triggerToast('Generating Honor Roll PDF...')}
-                      className="w-full py-2 bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer"
-                    >
-                      Generate Honor Roll PDF
-                    </button>
+                  {/* SELECTOR CONTROLS ROW */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                    {/* Class Selector */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5 flex items-center gap-1">
+                        <Filter className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                        Select Academic Class Stream *
+                      </label>
+                      <select
+                        value={selectedReportClass}
+                        onChange={(e) => setSelectedReportClass(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                      >
+                        <option value="All">All Classes Stream ({students.length} Total Students)</option>
+                        {allClassNames.map((cls) => (
+                          <option key={cls} value={cls}>
+                            {cls} ({students.filter(s => s.className === cls || s.className?.includes(cls)).length} Students)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Academic Session / Term Selector */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                        Academic Term & Session *
+                      </label>
+                      <select
+                        value={selectedReportTerm}
+                        onChange={(e) => setSelectedReportTerm(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                      >
+                        <option value="1st Term (Midterm Report)">2024/2025 Session — 1st Term (Midterm Report)</option>
+                        <option value="2nd Term (Full Session)">2024/2025 Session — 2nd Term (Winter/Spring)</option>
+                        <option value="3rd Term (Final Promotion)">2024/2025 Session — 3rd Term (Promotion Exam)</option>
+                      </select>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5 flex items-center gap-1">
+                        <Search className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                        Search Student in {selectedReportClass}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search by name or registration ID..."
+                          value={reportSearchQuery}
+                          onChange={(e) => setReportSearchQuery(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs font-semibold text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                        />
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* STATS & TEACHERS SUMMARY CARDS */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400">Class Stream</span>
+                      <GraduationCap className="w-4 h-4 text-[#1E3A8A]" />
+                    </div>
+                    <p className="text-lg font-black text-[#0F172A]">{selectedReportClass}</p>
+                    <p className="text-[11px] font-bold text-slate-500">
+                      Form Master: <span className="text-[#1E3A8A]">{currentClassTeacher}</span>
+                    </p>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400">Class Enrolled Students</span>
+                      <Users className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <p className="text-lg font-black text-[#0F172A]">{totalClassCount} Students</p>
+                    <p className="text-[11px] font-bold text-emerald-600">{passRatePct}% Good Standing (GS)</p>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400">Assigned Faculty Teachers</span>
+                      <PenTool className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <p className="text-lg font-black text-[#0F172A]">{totalTeachersCount} Subject Instructors</p>
+                    <p className="text-[11px] font-bold text-slate-500">+ 1 Form Master Teacher</p>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400">Class Average Score</span>
+                      <Award className="w-4 h-4 text-[#F59E0B]" />
+                    </div>
+                    <p className="text-lg font-black text-[#0F172A]">{classAvg}%</p>
+                    <p className="text-[11px] font-bold text-slate-500">{selectedReportTerm}</p>
+                  </div>
+                </div>
+
+                {/* TEACHERS ALLOCATION BREAKDOWN */}
+                <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <h3 className="text-xs font-bold uppercase text-[#0F172A] tracking-wider flex items-center gap-2">
+                      <Users className="w-4 h-4 text-[#1E3A8A]" />
+                      Assigned Subject Teachers for {selectedReportClass}
+                    </h3>
+                    <span className="text-[10px] font-extrabold bg-blue-50 text-[#1E3A8A] px-2.5 py-1 rounded-full border border-blue-100">
+                      {subjectList.length} Core Curriculum Subjects
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {subjectList.length > 0 ? (
+                      subjectList.map((sub, i) => (
+                        <div key={sub.code || i} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between text-xs">
+                          <div>
+                            <span className="font-extrabold text-[#0F172A] block">{sub.name}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">{sub.code} ({sub.category || 'Core'})</span>
+                          </div>
+                          <span className="text-[11px] font-bold text-[#1E3A8A] bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                            {sub.teacher || 'Mrs. O. Adeleke'}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-3 p-4 text-center text-xs text-slate-500 italic bg-slate-50 rounded-xl">
+                        No subject teachers configured yet. Add subjects in the "Manage Subjects" tab to assign teachers.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CLASS STUDENT SCORES & RANKING TABLE */}
+                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs space-y-3 p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+                        <GraduationCap className="w-4 h-4 text-[#1E3A8A]" />
+                        Student Scores & Academic Positions — {selectedReportClass}
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        Ranked automatically by total average score for {selectedReportTerm}.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500">
+                        Showing {rankedClassStudents.length} Students
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 uppercase text-[10px] tracking-wider">
+                          <th className="p-3.5 text-center">Rank</th>
+                          <th className="p-3.5">Reg ID</th>
+                          <th className="p-3.5">Student Full Name</th>
+                          <th className="p-3.5">Class Stream</th>
+                          <th className="p-3.5 text-center">Gender</th>
+                          <th className="p-3.5 text-center">Average Score (%)</th>
+                          <th className="p-3.5 text-center">Standing</th>
+                          <th className="p-3.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                        {rankedClassStudents.length > 0 ? (
+                          rankedClassStudents.map((st, idx) => {
+                            const avg = Number(st.averageScore || st.overallAverage || (st.gpa ? st.gpa * 25 : 75)).toFixed(1);
+                            const isGS = Number(avg) >= 50;
+
+                            return (
+                              <tr key={st.studentId || idx} className="hover:bg-blue-50/40 transition-colors">
+                                <td className="p-3.5 text-center font-black text-[#1E3A8A]">
+                                  {idx === 0 ? '1st 🥇' : idx === 1 ? '2nd 🥈' : idx === 2 ? '3rd 🥉' : `${idx + 1}th`}
+                                </td>
+                                <td className="p-3.5 font-mono text-[#1E3A8A] font-bold">{st.studentId || `STU00${idx + 1}`}</td>
+                                <td className="p-3.5 font-bold text-[#0F172A]">{st.name || st.fullName}</td>
+                                <td className="p-3.5">{st.className || selectedReportClass}</td>
+                                <td className="p-3.5 text-center uppercase font-bold text-slate-500">{st.gender || 'M/F'}</td>
+                                <td className="p-3.5 text-center font-black font-mono text-emerald-700">{avg}%</td>
+                                <td className="p-3.5 text-center">
+                                  {isGS ? (
+                                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" /> GS
+                                    </span>
+                                  ) : (
+                                    <span className="bg-amber-50 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200">
+                                      NGS
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-3.5 text-right">
+                                  <button
+                                    onClick={() => handleViewStudent(st)}
+                                    className="px-2.5 py-1 text-[11px] font-bold bg-blue-50 hover:bg-[#1E3A8A] text-[#1E3A8A] hover:text-white rounded-lg transition-all cursor-pointer border border-blue-200/60"
+                                  >
+                                    View Slip
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={8} className="p-8 text-center text-slate-500">
+                              No student records found matching "{selectedReportClass}". Register students in the "Manage Students" tab to populate this class.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* TAB 14: VIEW ANALYTICS */}
           {activeTab === 'analytics' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <h2 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
-                  School Performance Analytics
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Term pass distribution and subject performance metrics.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl text-center">
-                    <p className="text-xs font-bold text-[#1E3A8A]">Mathematics Pass Rate</p>
-                    <p className="text-2xl font-black text-[#0F172A] mt-1">94.2%</p>
-                  </div>
-                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-center">
-                    <p className="text-xs font-bold text-emerald-800">English Language Pass Rate</p>
-                    <p className="text-2xl font-black text-[#0F172A] mt-1">98.1%</p>
-                  </div>
-                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-center">
-                    <p className="text-xs font-bold text-amber-900">Sciences Average GPA</p>
-                    <p className="text-2xl font-black text-[#0F172A] mt-1">3.72 / 4.0</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SchoolAnalyticsView
+              students={students}
+              classList={classList}
+              subjectList={subjectList}
+              schoolHeader={schoolHeader}
+              onViewStudent={(st) => handleViewStudent(st)}
+              onNavigateToTab={(tab) => setActiveTab(tab as any)}
+            />
           )}
 
         </main>
@@ -4226,6 +4479,22 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Class Broadsheet Printable Modal */}
+      <ClassBroadsheetModal
+        isOpen={isClassBroadsheetOpen}
+        onClose={() => setIsClassBroadsheetOpen(false)}
+        classNameSelected={selectedReportClass}
+        classTeacherName={classList.find(c => c.name === selectedReportClass)?.teacher || 'Mrs. O. Adeleke'}
+        students={students}
+        subjectList={subjectList}
+        schoolHeader={schoolHeader}
+        branding={{
+          logoUrl: logoPreview,
+          stampUrl: stampPreview,
+          signatureUrl: signaturePreview,
+        }}
+      />
 
       {/* Toast Notification */}
       {successToast && (

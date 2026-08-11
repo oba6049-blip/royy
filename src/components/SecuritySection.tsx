@@ -10,9 +10,9 @@ export const SecuritySection: React.FC = () => {
       description: 'Every grade card is assigned a unique cryptographic signature at the moment of publishing.'
     },
     {
-      icon: QrCode,
-      title: 'Verified Anti-Forgery QR',
-      description: 'Scan any printed slip to instantly confirm authenticity directly against Royal Academy servers.'
+      icon: ShieldCheck,
+      title: 'Official Seal & Signatures',
+      description: 'Every printed slip features an official registrar stamp and verified principal signature.'
     },
     {
       icon: Database,

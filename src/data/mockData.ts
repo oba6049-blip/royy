@@ -151,7 +151,7 @@ export const STATS_DATA: StatItem[] = [
     numberValue: 100,
     suffix: '%',
     label: 'Tamper-Proof Security',
-    description: 'Encrypted SHA-256 signatures & QR code verification.'
+    description: 'Verified digital transcripts & official school seals.'
   },
   {
     id: '4',
@@ -182,9 +182,9 @@ export const FEATURES_DATA: Feature[] = [
   {
     id: '3',
     iconName: 'ShieldCheck',
-    title: 'Secure QR Verification',
-    description: 'Every printed report card features a scannable cryptographic QR code to prevent fraud and forgery.',
-    badge: 'Encrypted',
+    title: 'Official Stamp & Verification',
+    description: 'Every printed report card features official school stamp, registrar signatures, and verification seal.',
+    badge: 'Verified',
     highlight: true
   },
   {

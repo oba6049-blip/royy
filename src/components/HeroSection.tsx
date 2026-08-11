@@ -83,7 +83,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#1E3A8A]" />
-                <span>Verified QR Code</span>
+                <span>Official School Seal</span>
               </div>
               <div className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-[#F59E0B]" />
