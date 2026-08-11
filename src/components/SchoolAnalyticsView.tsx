@@ -169,51 +169,88 @@ export const SchoolAnalyticsView: React.FC<SchoolAnalyticsViewProps> = ({
     });
   }, [allClassNames, students, classList]);
 
-  // Subject Analytics derived from student subject records + master subjectList
+  // Subject Analytics derived strictly from master subjectList + student subject records
   const subjectAnalytics = useMemo(() => {
-    // Map of subject name -> array of totals
-    const subjectMap: Record<string, { scores: number[]; teacher?: string; code?: string }> = {};
+    const subjectMap: Record<string, { originalName: string; scores: number[]; teacher?: string; code?: string }> = {};
 
-    // First populate from master subjectList
-    subjectList.forEach((sub) => {
-      subjectMap[sub.name] = { scores: [], teacher: sub.teacher || 'Assigned Instructor', code: sub.code };
-    });
+    if (subjectList && subjectList.length > 0) {
+      // Populate ONLY subjects configured in system subjectList
+      subjectList.forEach((sub) => {
+        const key = sub.name.trim().toLowerCase();
+        subjectMap[key] = {
+          originalName: sub.name,
+          scores: [],
+          teacher: sub.teacher || 'Unassigned Instructor',
+          code: sub.code,
+        };
+      });
 
-    // Populate actual student scores
-    students.forEach((st) => {
-      if (st.subjects && Array.isArray(st.subjects)) {
-        st.subjects.forEach((subObj: any) => {
-          const subName = subObj.subject || subObj.name;
-          if (!subName) return;
+      // Populate actual student scores matching system subjects
+      filteredStudents.forEach((st) => {
+        if (st.subjects && Array.isArray(st.subjects)) {
+          st.subjects.forEach((subObj: any) => {
+            const subName = (subObj.subject || subObj.name || '').trim().toLowerCase();
+            const subCode = (subObj.code || '').trim().toLowerCase();
+            if (!subName) return;
 
-          const total = Number(subObj.total) || (Number(subObj.caScore || 0) + Number(subObj.examScore || subObj.exam || 0));
+            // Find matching key in system subjects
+            const matchingKey = Object.keys(subjectMap).find(
+              (k) => k === subName || (subCode && subjectMap[k].code?.toLowerCase() === subCode)
+            );
 
-          if (!subjectMap[subName]) {
-            subjectMap[subName] = { scores: [total], teacher: 'Faculty Teacher', code: subObj.code || 'SUB' };
-          } else {
-            subjectMap[subName].scores.push(total);
-          }
-        });
-      }
-    });
+            if (matchingKey) {
+              const total = Number(subObj.total) ?? (Number(subObj.caScore || 0) + Number(subObj.examScore || subObj.exam || 0));
+              if (!isNaN(total) && total >= 0) {
+                subjectMap[matchingKey].scores.push(total);
+              }
+            }
+          });
+        }
+      });
+    } else {
+      // Fallback: Gather subjects from active students if no master subjectList is configured yet
+      filteredStudents.forEach((st) => {
+        if (st.subjects && Array.isArray(st.subjects)) {
+          st.subjects.forEach((subObj: any) => {
+            const subName = (subObj.subject || subObj.name || '').trim();
+            if (!subName) return;
+            const key = subName.toLowerCase();
 
-    // Convert map to array and compute averages
-    return Object.entries(subjectMap).map(([name, data]) => {
+            if (!subjectMap[key]) {
+              subjectMap[key] = {
+                originalName: subName,
+                scores: [],
+                teacher: subObj.teacher || 'Faculty Teacher',
+                code: subObj.code || 'SUB',
+              };
+            }
+
+            const total = Number(subObj.total) ?? (Number(subObj.caScore || 0) + Number(subObj.examScore || subObj.exam || 0));
+            if (!isNaN(total) && total >= 0) {
+              subjectMap[key].scores.push(total);
+            }
+          });
+        }
+      });
+    }
+
+    // Convert map to array and compute real statistics (0 if no scores recorded yet)
+    return Object.values(subjectMap).map((data) => {
       const count = data.scores.length;
-      const avg = count > 0 ? data.scores.reduce((a, b) => a + b, 0) / count : 82.5; // realistic fallback if no score rows
+      const avg = count > 0 ? data.scores.reduce((a, b) => a + b, 0) / count : 0;
       const passed = data.scores.filter((s) => s >= 50).length;
-      const passRate = count > 0 ? (passed / count) * 100 : 92.0;
+      const passRate = count > 0 ? (passed / count) * 100 : 0;
 
       return {
-        name,
+        name: data.originalName,
         code: data.code || 'SUB',
         teacher: data.teacher,
         avg: Number(avg.toFixed(1)),
         passRate: Number(passRate.toFixed(1)),
-        count: count > 0 ? count : students.length,
+        count,
       };
     }).sort((a, b) => b.avg - a.avg);
-  }, [students, subjectList]);
+  }, [filteredStudents, subjectList]);
 
   // Ranked Achievers (Top 5)
   const topAchievers = useMemo(() => {
@@ -605,25 +642,35 @@ export const SchoolAnalyticsView: React.FC<SchoolAnalyticsViewProps> = ({
           </div>
 
           <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-            {subjectAnalytics.map((sub, idx) => (
-              <div key={sub.name} className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between text-xs hover:bg-slate-100/80 transition-colors">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] font-extrabold bg-blue-100 text-[#1E3A8A] px-2 py-0.5 rounded-md">
-                      #{idx + 1}
-                    </span>
-                    <span className="font-extrabold text-[#0F172A]">{sub.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">({sub.code})</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">Instructor: <strong className="text-slate-700">{sub.teacher}</strong></p>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-black text-[#1E3A8A]">{sub.avg}% Avg</p>
-                  <p className="text-[10px] font-bold text-emerald-600">{sub.passRate}% Pass Rate</p>
-                </div>
+            {subjectAnalytics.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-400 bg-slate-50 border border-slate-200/60 rounded-2xl">
+                No active subjects found on the system.
               </div>
-            ))}
+            ) : (
+              subjectAnalytics.map((sub, idx) => (
+                <div key={sub.name} className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between text-xs hover:bg-slate-100/80 transition-colors">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-extrabold bg-blue-100 text-[#1E3A8A] px-2 py-0.5 rounded-md">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-extrabold text-[#0F172A]">{sub.name}</span>
+                      <span className="text-[10px] text-slate-400 font-mono">({sub.code})</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">Instructor: <strong className="text-slate-700">{sub.teacher}</strong></p>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-black text-[#1E3A8A]">
+                      {sub.count > 0 ? `${sub.avg}% Avg` : 'No Scores Yet'}
+                    </p>
+                    <p className="text-[10px] font-bold text-emerald-600">
+                      {sub.count > 0 ? `${sub.passRate}% Pass Rate` : '0 Submissions'}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

@@ -1,9 +1,54 @@
 import { StudentResult, FAQItem, Testimonial, Feature, StatItem, AdminStudentSummary } from '../types';
 
 export const MOCK_STUDENTS: Record<string, StudentResult> = {
+  '2025101': {
+    studentId: '2025101',
+    fullName: 'Adeyemi Faridah',
+    passportUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400',
+    gender: 'Female',
+    age: '17 Yrs',
+    house: 'Emerald House',
+    className: 'Senior Secondary School 3 (SSS 3 - Science)',
+    academicSession: '2024/2025 Academic Session',
+    term: '3rd Term (Final Session)',
+    dateOfBirth: '2007-08-19',
+    attendance: {
+      timesOpened: 120,
+      timesPresent: 120,
+      timesAbsent: 0
+    },
+    behavioralTraits: {
+      punctuality: 5,
+      neatness: 5,
+      leadership: 5,
+      honesty: 5
+    },
+    subjects: [
+      { id: 'sub-1', subject: 'Mathematics', caScore: 40, examScore: 58, total: 98, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-2', subject: 'English Language', caScore: 38, examScore: 56, total: 94, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-3', subject: 'Physics', caScore: 39, examScore: 57, total: 96, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-4', subject: 'Chemistry', caScore: 38, examScore: 55, total: 93, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-5', subject: 'Biology', caScore: 37, examScore: 56, total: 93, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-6', subject: 'Further Mathematics', caScore: 38, examScore: 57, total: 95, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-7', subject: 'Agricultural Science', caScore: 37, examScore: 56, total: 93, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-8', subject: 'Civic Education', caScore: 39, examScore: 56, total: 95, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-9', subject: 'Computer Studies', caScore: 40, examScore: 57, total: 97, grade: 'A1', remark: 'EXCELLENT' }
+    ],
+    overallTotal: 854,
+    overallAverage: 94.9,
+    gpa: 4.00,
+    position: 1,
+    totalInClass: 42,
+    status: 'GRADUATED',
+    classTeacherRemark: 'Faridah is an extraordinarily gifted scholar who has earned top valedictorian position with near flawless academic performance.',
+    principalRemark: 'Valedictorian candidate. Highest academic distinction honor achieved.',
+    verificationHash: 'RA-SEC-99F1A280C1E4',
+    issueDate: 'August 05, 2025'
+  },
+
   '2025104': {
     studentId: '2025104',
-    fullName: 'David Alexander Okon',
+    fullName: 'Fariat (David Okon)',
     passportUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400',
     gender: 'Male',
     age: '17 Yrs',
@@ -23,10 +68,20 @@ export const MOCK_STUDENTS: Record<string, StudentResult> = {
       leadership: 5,
       honesty: 5
     },
-    subjects: [],
-    overallTotal: 0,
-    overallAverage: 0,
-    gpa: 0,
+    subjects: [
+      { id: 'sub-1', subject: 'Mathematics', caScore: 40, examScore: 55, total: 95, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-2', subject: 'English Language', caScore: 37, examScore: 53, total: 90, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-3', subject: 'Physics', caScore: 38, examScore: 52, total: 90, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-4', subject: 'Chemistry', caScore: 36, examScore: 50, total: 86, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-5', subject: 'Biology', caScore: 34, examScore: 51, total: 85, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-6', subject: 'Further Mathematics', caScore: 36, examScore: 52, total: 88, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-7', subject: 'Agricultural Science', caScore: 36, examScore: 51, total: 87, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-8', subject: 'Civic Education', caScore: 38, examScore: 53, total: 91, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-9', subject: 'Computer Studies', caScore: 40, examScore: 53, total: 93, grade: 'A1', remark: 'EXCELLENT' }
+    ],
+    overallTotal: 805,
+    overallAverage: 89.4,
+    gpa: 3.92,
     position: 1,
     totalInClass: 42,
     status: 'GRADUATED',
@@ -58,10 +113,20 @@ export const MOCK_STUDENTS: Record<string, StudentResult> = {
       leadership: 5,
       honesty: 5
     },
-    subjects: [],
-    overallTotal: 0,
-    overallAverage: 0,
-    gpa: 0,
+    subjects: [
+      { id: 'sub-1', subject: 'English Language', caScore: 39, examScore: 54, total: 93, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-2', subject: 'Mathematics', caScore: 30, examScore: 45, total: 75, grade: 'B2', remark: 'VERY GOOD' },
+      { id: 'sub-3', subject: 'Literature in English', caScore: 38, examScore: 53, total: 91, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-4', subject: 'Government', caScore: 36, examScore: 51, total: 87, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-5', subject: 'Christian Religious Studies', caScore: 37, examScore: 52, total: 89, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-6', subject: 'Civic Education', caScore: 36, examScore: 50, total: 86, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-7', subject: 'Economics', caScore: 34, examScore: 48, total: 82, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-8', subject: 'French Language', caScore: 37, examScore: 52, total: 89, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-9', subject: 'History', caScore: 35, examScore: 51, total: 86, grade: 'A1', remark: 'EXCELLENT' }
+    ],
+    overallTotal: 785,
+    overallAverage: 87.2,
+    gpa: 3.78,
     position: 2,
     totalInClass: 38,
     status: 'PROMOTED',
@@ -93,10 +158,19 @@ export const MOCK_STUDENTS: Record<string, StudentResult> = {
       leadership: 4,
       honesty: 5
     },
-    subjects: [],
-    overallTotal: 0,
-    overallAverage: 0,
-    gpa: 0,
+    subjects: [
+      { id: 'sub-1', subject: 'Mathematics', caScore: 36, examScore: 50, total: 86, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-2', subject: 'English Studies', caScore: 34, examScore: 51, total: 85, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-3', subject: 'Basic Science', caScore: 36, examScore: 52, total: 88, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-4', subject: 'Basic Technology', caScore: 34, examScore: 49, total: 83, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-5', subject: 'Social Studies', caScore: 35, examScore: 50, total: 85, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-6', subject: 'Civic Education', caScore: 36, examScore: 52, total: 88, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-7', subject: 'Business Studies', caScore: 32, examScore: 48, total: 80, grade: 'A1', remark: 'EXCELLENT' },
+      { id: 'sub-8', subject: 'Cultural & Creative Arts', caScore: 35, examScore: 49, total: 84, grade: 'A1', remark: 'EXCELLENT' }
+    ],
+    overallTotal: 679,
+    overallAverage: 86.2,
+    gpa: 3.71,
     position: 3,
     totalInClass: 45,
     status: 'PROMOTED',
@@ -327,7 +401,8 @@ export const FAQ_DATA: FAQItem[] = [
 ];
 
 export const ADMIN_MOCK_STUDENTS: AdminStudentSummary[] = [
-  { studentId: '2025104', name: 'David Alexander Okon', className: 'SSS 3 Science A', gpa: 3.92, status: 'Published', lastUpdated: 'Today, 08:30 AM', averageScore: 89.4 },
+  { studentId: '2025101', name: 'Adeyemi Faridah', className: 'SSS 3 Science A', gpa: 4.00, status: 'Published', lastUpdated: 'Today, 08:00 AM', averageScore: 94.9 },
+  { studentId: '2025104', name: 'Fariat (David Okon)', className: 'SSS 3 Science A', gpa: 3.92, status: 'Published', lastUpdated: 'Today, 08:30 AM', averageScore: 89.4 },
   { studentId: '2025108', name: 'Sophia Isabella Martinez', className: 'SSS 2 Arts B', gpa: 3.78, status: 'Published', lastUpdated: 'Today, 09:15 AM', averageScore: 87.2 },
   { studentId: '2025110', name: 'Marcus Sterling Vance', className: 'JSS 3 B', gpa: 3.71, status: 'Published', lastUpdated: 'Yesterday', averageScore: 86.2 },
   { studentId: '2025114', name: 'Amara Grace Washington', className: 'SSS 1 Commercial', gpa: 3.65, status: 'Pending Review', lastUpdated: 'Yesterday', averageScore: 84.8 },

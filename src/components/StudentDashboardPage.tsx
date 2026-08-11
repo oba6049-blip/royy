@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StudentResult } from '../types';
 import { ResultSlipModal } from './ResultSlipModal';
-import { QRVerificationModal } from './QRVerificationModal';
 import { SchoolLogo } from './SchoolLogo';
 import { MOCK_STUDENTS } from '../data/mockData';
 import { api } from '../services/api';
+import { filterStudentSubjectsByAdmin } from '../utils/subjectUtils';
+import { calculateDynamicStudentPosition } from '../utils/studentRanking';
 import {
   LayoutDashboard,
   Search,
   BookOpen,
   Printer,
   Download,
-  QrCode,
   GraduationCap,
   LogOut,
   ArrowLeft,
@@ -39,7 +39,6 @@ type StudentTabType =
   | 'check-result'
   | 'subjects'
   | 'print-slip'
-  | 'verify-qr'
   | 'help';
 
 export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
@@ -52,6 +51,38 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
 
   // Active Student Result State
   const [activeStudent, setActiveStudent] = useState<StudentResult>(initialStudent);
+  const [allStudentsList, setAllStudentsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getStudents().then(res => {
+      if (isMounted && res && Array.isArray(res) && res.length > 0) {
+        setAllStudentsList(res);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  // Helper for grade badge colors (F9 is prominently colored red)
+  const getGradeColorClass = (grade: string) => {
+    if (!grade) return 'bg-slate-100 text-slate-700 border-slate-200';
+    if (grade === 'F9' || grade.startsWith('F')) {
+      return 'bg-red-100 text-red-700 border-red-300 font-extrabold';
+    }
+    if (grade.startsWith('A')) {
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    }
+    if (grade.startsWith('B')) {
+      return 'bg-blue-50 text-blue-700 border-blue-200';
+    }
+    if (grade.startsWith('C')) {
+      return 'bg-amber-50 text-amber-700 border-amber-200';
+    }
+    if (grade.startsWith('D') || grade.startsWith('E')) {
+      return 'bg-orange-50 text-orange-700 border-orange-200';
+    }
+    return 'bg-slate-100 text-slate-700 border-slate-200';
+  };
 
   // Search & Filter state
   const [searchStudentId, setSearchStudentId] = useState(initialStudent.studentId);
@@ -63,20 +94,23 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
 
   // Modal Control States
   const [isResultSlipModalOpen, setIsResultSlipModalOpen] = useState(false);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [adminSubjects, setAdminSubjects] = useState<any[]>([]);
 
-  // Perform search handler
+  useEffect(() => {
+    api.getSubjects().then((subs) => {
+      if (Array.isArray(subs)) {
+        setAdminSubjects(subs);
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Perform search / term-filter handler (locked strictly to logged-in student)
   const handlePerformSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setSearchError(null);
     setSearchSuccess(null);
 
-    const cleanId = searchStudentId.trim();
-    if (!cleanId) {
-      setSearchError('Please enter a valid Student Registration ID.');
-      return;
-    }
-
+    const cleanId = initialStudent.studentId;
     setIsSearching(true);
 
     try {
@@ -90,31 +124,25 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
           term: selectedTerm,
         };
         setActiveStudent(updatedResult);
-        setSearchSuccess(`Loaded result for Reg ID ${cleanId} (${selectedSession} - ${selectedTerm}).`);
-      } else if (MOCK_STUDENTS[cleanId]) {
+        setSearchSuccess(`Updated view for ${selectedSession} - ${selectedTerm}.`);
+      } else {
         const mockMatch: StudentResult = {
-          ...MOCK_STUDENTS[cleanId],
+          ...initialStudent,
           academicSession: selectedSession,
           term: selectedTerm,
         };
         setActiveStudent(mockMatch);
-        setSearchSuccess(`Loaded result for Reg ID ${cleanId} (${selectedSession} - ${selectedTerm}).`);
-      } else {
-        setSearchError(`No student record found for Registration ID "${cleanId}". Try ID 2025104, 2025108, 2025110, or 2025114.`);
+        setSearchSuccess(`Updated view for ${selectedSession} - ${selectedTerm}.`);
       }
     } catch {
       setIsSearching(false);
-      if (MOCK_STUDENTS[cleanId]) {
-        const mockMatch: StudentResult = {
-          ...MOCK_STUDENTS[cleanId],
-          academicSession: selectedSession,
-          term: selectedTerm,
-        };
-        setActiveStudent(mockMatch);
-        setSearchSuccess(`Loaded result for Registration ID ${cleanId}.`);
-      } else {
-        setSearchError(`Network error looking up Student ID "${cleanId}".`);
-      }
+      const mockMatch: StudentResult = {
+        ...initialStudent,
+        academicSession: selectedSession,
+        term: selectedTerm,
+      };
+      setActiveStudent(mockMatch);
+      setSearchSuccess(`Updated view for ${selectedSession} - ${selectedTerm}.`);
     }
   };
 
@@ -125,12 +153,23 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
     }, 250);
   };
 
-  const studentSubjects = activeStudent?.subjects || [];
-  const subjectsPassed = studentSubjects.filter(s => (s.total || 0) >= 50).length;
-  const subjectsFailed = studentSubjects.filter(s => (s.total || 0) < 50).length;
+  const studentSubjects = filterStudentSubjectsByAdmin(activeStudent?.subjects, adminSubjects);
+
+  const subjectsPassed = studentSubjects.filter(s => (s.total || 0) >= 40 && s.grade !== 'F9').length;
+  const subjectsFailed = studentSubjects.filter(s => (s.total || 0) < 40 || s.grade === 'F9').length;
   const totalScoreCalculated = studentSubjects.reduce((acc, s) => acc + (s.total || 0), 0);
-  const averageScoreCalculated = studentSubjects.length > 0 ? (totalScoreCalculated / studentSubjects.length) : (activeStudent?.overallAverage || 0);
-  const gpaCalculated = Number((averageScoreCalculated / 25).toFixed(2));
+  
+  const averageScoreCalculated = studentSubjects.length > 0 
+    ? Number((totalScoreCalculated / studentSubjects.length).toFixed(1)) 
+    : (studentSubjects.length === 0 ? 0 : (activeStudent?.overallAverage || (activeStudent as any)?.averageScore || 0));
+
+  const gpaCalculated = (studentSubjects.length > 0 && activeStudent?.gpa && activeStudent.gpa > 0) 
+    ? activeStudent.gpa 
+    : (averageScoreCalculated > 0 ? Number((averageScoreCalculated / 25).toFixed(2)) : 0);
+
+  const dynamicRank = calculateDynamicStudentPosition(activeStudent, allStudentsList);
+  const positionVal = dynamicRank.ordinalPosition;
+  const totalInClassVal = dynamicRank.totalInClass;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-['Inter',sans-serif] flex flex-col md:flex-row selection:bg-[#1E3A8A]/10 selection:text-[#1E3A8A]">
@@ -229,7 +268,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
               </div>
             </button>
 
-            {/* 2. Check Result */}
+            {/* 2. Filter Session & Term */}
             <button
               onClick={() => {
                 setActiveTab('check-result');
@@ -243,7 +282,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <Search className={`w-4 h-4 ${activeTab === 'check-result' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
-                <span>Check Result</span>
+                <span>Filter Session & Term</span>
               </div>
             </button>
 
@@ -266,7 +305,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
               <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
                 activeTab === 'subjects' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
               }`}>
-                {activeStudent.subjects.length}
+                {studentSubjects.length}
               </span>
             </button>
 
@@ -288,25 +327,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
               </div>
             </button>
 
-            {/* 5. QR Code Verification */}
-            <button
-              onClick={() => {
-                setActiveTab('verify-qr');
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'verify-qr'
-                  ? 'bg-[#1E3A8A] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <QrCode className={`w-4 h-4 ${activeTab === 'verify-qr' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
-                <span>Verify QR Code</span>
-              </div>
-            </button>
-
-            {/* 6. Help & Support */}
+            {/* 5. Help & Support */}
             <button
               onClick={() => {
                 setActiveTab('help');
@@ -358,18 +379,16 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
             <div className="p-2 rounded-xl bg-blue-50 border border-blue-100 text-[#1E3A8A]">
               {activeTab === 'overview' && <LayoutDashboard className="w-5 h-5 text-[#1E3A8A]" />}
               {activeTab === 'check-result' && <Search className="w-5 h-5 text-[#1E3A8A]" />}
-              {activeTab === 'subjects' && <BookOpen className="w-5 h-5 text-[#1E3A8A]" />}
+              {activeTab === 'subjects' && <BookOpen className="w-[#1E3A8A] w-5 h-5 text-[#1E3A8A]" />}
               {activeTab === 'print-slip' && <Printer className="w-5 h-5 text-[#1E3A8A]" />}
-              {activeTab === 'verify-qr' && <QrCode className="w-5 h-5 text-[#1E3A8A]" />}
               {activeTab === 'help' && <HelpCircle className="w-5 h-5 text-[#1E3A8A]" />}
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 capitalize font-['Plus_Jakarta_Sans']">
                 {activeTab === 'overview' && 'Student Dashboard'}
-                {activeTab === 'check-result' && 'Check & Load Result'}
+                {activeTab === 'check-result' && 'Session & Term Filter'}
                 {activeTab === 'subjects' && 'Subject Performance Analysis'}
                 {activeTab === 'print-slip' && 'Official Print Result Slip'}
-                {activeTab === 'verify-qr' && 'QR Security Verification'}
                 {activeTab === 'help' && 'Portal Help & Support'}
               </h2>
               <p className="text-xs text-slate-500">
@@ -394,14 +413,6 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
             >
               <Printer className="w-3.5 h-3.5 text-[#1E3A8A]" />
               <span>Print A4</span>
-            </button>
-
-            <button
-              onClick={() => setIsQrModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#1E3A8A] bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-all cursor-pointer"
-            >
-              <QrCode className="w-3.5 h-3.5 text-[#F59E0B]" />
-              <span>Verify QR</span>
             </button>
           </div>
         </header>
@@ -458,7 +469,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
               </div>
 
               {/* Simple Stats Cards - White Card Styling matching Admin Dashboard */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Overall Average</span>
                   <div className="text-2xl font-black text-slate-900 font-mono">
@@ -470,7 +481,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Class Position</span>
                   <div className="text-2xl font-black text-amber-600 font-mono">
-                    #{activeStudent.position} <span className="text-xs font-normal text-slate-400">/ {activeStudent.totalInClass}</span>
+                    {positionVal} <span className="text-xs font-normal text-slate-400">/ {totalInClassVal}</span>
                   </div>
                   <p className="text-[10px] text-blue-700 font-semibold">Class Rank</p>
                 </div>
@@ -478,17 +489,9 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Passed Subjects</span>
                   <div className="text-2xl font-black text-emerald-600 font-mono">
-                    {subjectsPassed} <span className="text-xs text-slate-400 font-normal">/ {activeStudent.subjects.length}</span>
+                    {subjectsPassed} <span className="text-xs text-slate-400 font-normal">/ {studentSubjects.length}</span>
                   </div>
                   <p className="text-[10px] text-slate-500 font-medium">Failed: {subjectsFailed}</p>
-                </div>
-
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Attendance</span>
-                  <div className="text-2xl font-black text-slate-900 font-mono">
-                    {activeStudent.attendance.timesPresent} <span className="text-xs text-slate-400 font-normal">/ {activeStudent.attendance.timesOpened} Days</span>
-                  </div>
-                  <p className="text-[10px] text-emerald-600 font-bold">Regular Attendance</p>
                 </div>
               </div>
 
@@ -528,7 +531,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                             <td className="py-3 px-3 text-center font-mono text-slate-600">{sub.examScore}</td>
                             <td className="py-3 px-3 text-center font-mono font-black text-slate-900 text-sm">{sub.total}</td>
                             <td className="py-3 px-3 text-center">
-                              <span className="px-2 py-0.5 rounded font-black font-mono text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className={`px-2 py-0.5 rounded font-black font-mono text-xs ${getGradeColorClass(sub.grade)}`}>
                                 {sub.grade}
                               </span>
                             </td>
@@ -585,8 +588,8 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                     <Search className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 font-['Plus_Jakarta_Sans']">Search Result Sheet</h3>
-                    <p className="text-xs text-slate-500">Lookup student record by Registration ID and Term</p>
+                    <h3 className="text-base font-bold text-slate-900 font-['Plus_Jakarta_Sans']">Academic Term & Session Selector</h3>
+                    <p className="text-xs text-slate-500">Filter your personal report card records by session and term</p>
                   </div>
                 </div>
 
@@ -608,16 +611,12 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                        Student Reg ID *
+                        Student Reg ID (Locked)
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={searchStudentId}
-                        onChange={(e) => setSearchStudentId(e.target.value)}
-                        placeholder="e.g. 2025104"
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-[#1E3A8A]"
-                      />
+                      <div className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700 flex items-center justify-between">
+                        <span>{initialStudent.studentId}</span>
+                        <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md font-sans font-semibold">🔒 Locked</span>
+                      </div>
                     </div>
 
                     <div>
@@ -658,26 +657,10 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                       className="px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all"
                     >
                       {isSearching ? <RefreshCw className="w-4 h-4 animate-spin text-[#F59E0B]" /> : <Search className="w-4 h-4 text-[#F59E0B]" />}
-                      <span>Fetch Result Record</span>
+                      <span>Apply Term Filter</span>
                     </button>
                   </div>
                 </form>
-
-                <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase text-slate-400">Quick Test IDs:</span>
-                  {['2025104', '2025108', '2025110', '2025114'].map((id) => (
-                    <button
-                      key={id}
-                      onClick={() => {
-                        setSearchStudentId(id);
-                        handlePerformSearch();
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[11px] font-mono font-bold text-[#1E3A8A] cursor-pointer"
-                    >
-                      {id}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Display Result Panel */}
@@ -708,12 +691,6 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                     >
                       Print A4
                     </button>
-                    <button
-                      onClick={() => setIsQrModalOpen(true)}
-                      className="px-3.5 py-2 text-xs font-semibold text-[#1E3A8A] bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 cursor-pointer"
-                    >
-                      Verify QR
-                    </button>
                   </div>
                 </div>
 
@@ -738,7 +715,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                             <td className="py-2.5 px-3 text-center font-mono text-slate-600">{sub.examScore}</td>
                             <td className="py-2.5 px-3 text-center font-mono font-black text-slate-900">{sub.total}</td>
                             <td className="py-2.5 px-3 text-center">
-                              <span className="px-2 py-0.5 rounded font-black font-mono text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className={`px-2 py-0.5 rounded font-black font-mono text-xs ${getGradeColorClass(sub.grade)}`}>
                                 {sub.grade}
                               </span>
                             </td>
@@ -772,7 +749,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                     <p className="text-xs text-slate-500">Enrolled subjects and score details</p>
                   </div>
                   <span className="px-3 py-1 bg-blue-50 text-[#1E3A8A] rounded-xl text-xs font-bold border border-blue-200">
-                    {activeStudent.subjects.length} Subjects Total
+                    {studentSubjects.length} Subjects Total
                   </span>
                 </div>
 
@@ -797,7 +774,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                             <td className="py-3 px-3 text-center font-mono text-slate-600">{sub.examScore}</td>
                             <td className="py-3 px-3 text-center font-mono font-black text-slate-900 text-sm">{sub.total}</td>
                             <td className="py-3 px-3 text-center">
-                              <span className="px-2.5 py-1 rounded font-black font-mono text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className={`px-2.5 py-1 rounded font-black font-mono text-xs ${getGradeColorClass(sub.grade)}`}>
                                 {sub.grade}
                               </span>
                             </td>
@@ -823,158 +800,64 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
           {/* ---------------------------------------------------------------- */}
           {activeTab === 'print-slip' && (
             <div className="space-y-6">
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-xs">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 font-['Plus_Jakarta_Sans']">
-                    <Printer className="w-4 h-4 text-[#F59E0B]" />
-                    Printable A4 Result Slip
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 font-['Plus_Jakarta_Sans']">
+                    <Printer className="w-5 h-5 text-[#F59E0B]" />
+                    Official A4 Student Result Slip
                   </h3>
-                  <p className="text-xs text-slate-500">Official document preview for download or printing</p>
+                  <p className="text-xs text-slate-600">
+                    Official terminal academic report for <strong className="text-slate-900">{activeStudent.fullName}</strong> ({activeStudent.studentId}).
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handlePrintResult}
-                    className="px-4 py-2 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs cursor-pointer"
-                  >
-                    Print Result
-                  </button>
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setIsResultSlipModalOpen(true)}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl border border-emerald-500 cursor-pointer shadow-xs"
+                    className="px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-2"
                   >
-                    Download HD PDF
+                    <Eye className="w-4 h-4 text-[#F59E0B]" />
+                    <span>View Official Result Slip</span>
+                  </button>
+                  <button
+                    onClick={handlePrintResult}
+                    className="px-4 py-2.5 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Print Slip</span>
                   </button>
                 </div>
               </div>
 
-              {/* Printable Document Paper */}
-              <div className="bg-white text-black p-8 rounded-2xl shadow-xl border border-slate-300 space-y-4 max-w-4xl mx-auto font-sans">
-                <div className="border-b-2 border-black pb-3 flex items-center justify-between gap-4">
-                  <div className="w-14 h-14 rounded-xl border-2 border-black bg-slate-50 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="w-8 h-8 text-slate-900" />
-                  </div>
-
-                  <div className="text-center flex-1">
-                    <h1 className="text-xl font-black text-black tracking-tight uppercase font-serif">
-                      ROYAL ACADEMY
-                    </h1>
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-800">
-                      Official Terminal Result Slip
-                    </p>
-                  </div>
-
-                  <div className="text-right text-xs font-bold border border-black p-2 bg-slate-50 rounded-sm shrink-0">
-                    <div>{activeStudent.academicSession || '2025/2026 Session'}</div>
-                    <div className="text-[10px] text-slate-600 font-normal">{activeStudent.term || 'First Term'}</div>
-                  </div>
-                </div>
-
-                <div className="border border-black p-3 bg-white text-xs">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    <div><span className="font-bold text-slate-600">Student Name:</span> <strong className="text-black uppercase">{activeStudent.fullName}</strong></div>
-                    <div><span className="font-bold text-slate-600">Reg ID:</span> <strong className="font-mono">{activeStudent.studentId}</strong></div>
-                    <div><span className="font-bold text-slate-600">Class:</span> <strong>{activeStudent.className}</strong></div>
-                  </div>
-                </div>
-
-                <table className="w-full text-xs text-black border-collapse border border-black">
-                  <thead>
-                    <tr className="bg-gray-200 text-black font-bold text-[11px] uppercase border-b border-black">
-                      <th className="p-1.5 border border-black text-center">S/N</th>
-                      <th className="p-1.5 border border-black text-left">SUBJECT</th>
-                      <th className="p-1.5 border border-black text-center">CA (40)</th>
-                      <th className="p-1.5 border border-black text-center">EXAM (60)</th>
-                      <th className="p-1.5 border border-black text-center">TOTAL</th>
-                      <th className="p-1.5 border border-black text-center">GRADE</th>
-                      <th className="p-1.5 border border-black text-center">REMARK</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {studentSubjects.length > 0 ? (
-                      studentSubjects.map((sub, idx) => (
-                        <tr key={sub.id || idx}>
-                          <td className="p-1.5 border border-black text-center font-mono">{idx + 1}</td>
-                          <td className="p-1.5 border border-black font-bold">{sub.subject}</td>
-                          <td className="p-1.5 border border-black text-center font-mono">{sub.caScore}</td>
-                          <td className="p-1.5 border border-black text-center font-mono">{sub.examScore}</td>
-                          <td className="p-1.5 border border-black text-center font-bold font-mono">{sub.total}</td>
-                          <td className="p-1.5 border border-black text-center font-black">{sub.grade}</td>
-                          <td className="p-1.5 border border-black text-center text-[10px] uppercase">{sub.remark}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="p-4 border border-black text-center font-medium italic text-slate-500">
-                          No subjects created or recorded yet.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ---------------------------------------------------------------- */}
-          {/* TAB 5: VERIFY QR CODE */}
-          {/* ---------------------------------------------------------------- */}
-          {activeTab === 'verify-qr' && (
-            <div className="space-y-6">
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-xs">
-                <div className="border-b border-slate-200 pb-3 flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <ShieldCheck className="w-5 h-5" />
+              {/* Action Banner Card */}
+              <div className="bg-linear-to-r from-[#1E3A8A] to-blue-900 text-white rounded-2xl p-6 shadow-md border border-blue-800 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-white/10 rounded-xl border border-white/20">
+                    <ShieldCheck className="w-6 h-6 text-[#F59E0B]" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 font-['Plus_Jakarta_Sans']">Cryptographic QR Verification</h3>
-                    <p className="text-xs text-slate-500">Verify transcript authenticity</p>
+                    <h4 className="text-base font-bold">Official Document Generation Ready</h4>
+                    <p className="text-xs text-blue-200">
+                      Generate and print your official computer-generated result slip with verified digital authentication, grading scale breakdown, and principal stamp.
+                    </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col items-center text-center space-y-3">
-                    <div className="p-3 bg-white rounded-xl border-2 border-[#1E3A8A] shadow-xs">
-                      <svg viewBox="0 0 29 29" className="w-36 h-36 text-black fill-current">
-                        <path d="M0 0h7v7H0zM2 2v3h3V2zM9 0h2v1H9zM12 0h1v2h-1zM15 0h1v1h-1zM18 0h2v2h-2zM22 0h7v7h-7zM24 2v3h3V2zM0 9h1v2H0zM3 9h2v1H3zM6 9h3v1H6zM11 9h1v3h-1zM14 9h3v1h-3zM18 9h1v1h-1zM20 9h2v2h-2zM24 9h2v1h-2zM28 9h1v2h-1zM0 12h2v1H0zM3 12h1v1H3zM5 12h2v1H5zM8 12h2v2H8zM13 12h3v1h-3zM18 12h1v2h-1zM21 12h3v1h-3zM26 12h2v1h-2zM0 15h1v1H0zM2 15h3v1H2zM6 15h1v3H6zM9 15h3v1H9zM14 15h1v1h-1zM17 15h2v1h-2zM21 15h1v1h-1zM24 15h1v3h-1zM27 15h2v1h-2zM0 18h2v2H0zM3 18h2v1H8zM11 18h2v3h-2zM15 18h2v1h-2zM19 18h3v1h-3zM26 18h3v1h-3zM0 22h7v7H0zM2 24v3h3v-3zM9 22h1v2H9zM12 22h2v1h-2zM16 22h1v1h-1zM19 22h1v2h-1zM21 22h2v1h-2zM25 22h3v1h-3zM9 25h2v2H9zM13 25h2v1h-2zM17 25h1v3h-1zM20 25h2v1h-2zM24 25h1v1h-1zM27 25h2v2h-2z" />
-                      </svg>
-                    </div>
-
-                    <button
-                      onClick={() => setIsQrModalOpen(true)}
-                      className="px-4 py-2 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-2"
-                    >
-                      <QrCode className="w-4 h-4 text-[#F59E0B]" />
-                      <span>Open Scanner Modal</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200 font-mono">
-                    <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-sans font-bold flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>VERIFIED & CERTIFIED RECORD</span>
-                    </div>
-
-                    <div className="flex justify-between border-b border-slate-200 pb-2">
-                      <span className="text-slate-500">Student ID:</span>
-                      <strong className="text-slate-900">{activeStudent.studentId}</strong>
-                    </div>
-                    <div className="flex justify-between border-b border-slate-200 pb-2">
-                      <span className="text-slate-500">Security Hash:</span>
-                      <strong className="text-amber-700">{activeStudent.verificationHash || `RA-${activeStudent.studentId}-SEC`}</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Verification Link:</span>
-                      <strong className="text-[#1E3A8A]">royalacademy.edu.ng/verify</strong>
-                    </div>
-                  </div>
+                <div className="pt-2 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => setIsResultSlipModalOpen(true)}
+                    className="px-5 py-2.5 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2 transition-all"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Open Official Printable Result Slip</span>
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
           {/* ---------------------------------------------------------------- */}
-          {/* TAB 6: HELP & SUPPORT */}
+          {/* TAB 5: HELP & SUPPORT */}
           {/* ---------------------------------------------------------------- */}
           {activeTab === 'help' && (
             <div className="space-y-6">
@@ -1016,16 +899,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
         result={activeStudent}
         isOpen={isResultSlipModalOpen}
         onClose={() => setIsResultSlipModalOpen(false)}
-        onVerifyQR={() => {
-          setIsResultSlipModalOpen(false);
-          setIsQrModalOpen(true);
-        }}
-      />
-
-      <QRVerificationModal
-        studentId={activeStudent.studentId}
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
+        onVerifyQR={() => {}}
       />
 
     </div>

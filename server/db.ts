@@ -20,7 +20,17 @@ let memoryStore = {
     { id: '5', name: 'SSS 2 Arts', arm: 'Arts', teacher: 'Mrs. A. Ibrahim', capacity: 30, enrolled: 25 },
     { id: '6', name: 'SSS 3 Commercial', arm: 'Commercial', teacher: 'Mr. B. Danjuma', capacity: 30, enrolled: 29 },
   ],
-  subjects: [] as any[],
+  subjects: [
+    { id: '1', code: 'MTH', name: 'Mathematics', category: 'General Core', teacher: 'Dr. A. Ojo' },
+    { id: '2', code: 'ENG', name: 'English Language', category: 'General Core', teacher: 'Mrs. B. Adeleke' },
+    { id: '3', code: 'PHY', name: 'Physics', category: 'Sciences', teacher: 'Engr. C. Nwosu' },
+    { id: '4', code: 'CHM', name: 'Chemistry', category: 'Sciences', teacher: 'Dr. D. Okon' },
+    { id: '5', code: 'BIO', name: 'Biology', category: 'Sciences', teacher: 'Mrs. E. Ibrahim' },
+    { id: '6', code: 'FMTH', name: 'Further Mathematics', category: 'Sciences', teacher: 'Mr. G. Alabi' },
+    { id: '7', code: 'AGRIC', name: 'Agricultural Science', category: 'Vocational', teacher: 'Mr. K. Okafor' },
+    { id: '8', code: 'CIVIC', name: 'Civic Education', category: 'General Core', teacher: 'Mrs. A. Ibrahim' },
+    { id: '9', code: 'COMP', name: 'Computer Studies', category: 'Vocational', teacher: 'Mr. F. Danjuma' },
+  ],
   sessions: [
     { id: '1', year: '2023/2024', status: 'Completed', startDate: 'Sept 2023', endDate: 'July 2024' },
     { id: '2', year: '2024/2025', status: 'Active Current Session', startDate: 'Sept 2024', endDate: 'July 2025' },

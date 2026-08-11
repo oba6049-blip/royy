@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
+import { MOCK_STUDENTS } from '../data/mockData';
 import { api } from '../services/api';
+import { filterStudentSubjectsByAdmin } from '../utils/subjectUtils';
 import { 
   ShieldCheck as ShieldIcon, 
   Printer as PrintIcon, 
@@ -46,9 +48,10 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [passportBase64, setPassportBase64] = useState<string>('');
   const [brandingState, setBrandingState] = useState<{ logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null } | null>(initialBranding || null);
+  const [adminSubjects, setAdminSubjects] = useState<any[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Load branding if not provided in props
+  // Load branding & admin subjects if not provided in props
   React.useEffect(() => {
     if (isOpen) {
       if (initialBranding) {
@@ -58,6 +61,11 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
           if (b) setBrandingState(b);
         });
       }
+      api.getSubjects().then((subs) => {
+        if (Array.isArray(subs)) {
+          setAdminSubjects(subs);
+        }
+      }).catch(() => {});
     }
   }, [isOpen, initialBranding]);
 
@@ -154,11 +162,14 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
   };
 
   // Calculate subjects passed / failed & totals dynamically
-  const studentSubjects = result?.subjects || [];
-  const subjectsPassed = studentSubjects.filter(s => (s.total || 0) >= 50).length;
-  const subjectsFailed = studentSubjects.filter(s => (s.total || 0) < 50).length;
+  const studentSubjects = filterStudentSubjectsByAdmin(result?.subjects, adminSubjects);
+
+  const subjectsPassed = studentSubjects.filter(s => (s.total || 0) >= 40 && s.grade !== 'F9').length;
+  const subjectsFailed = studentSubjects.filter(s => (s.total || 0) < 40 || s.grade === 'F9').length;
   const totalScoreCalculated = studentSubjects.reduce((acc, s) => acc + (s.total || 0), 0);
-  const averageScoreCalculated = studentSubjects.length > 0 ? (totalScoreCalculated / studentSubjects.length) : 0;
+  const averageScoreCalculated = studentSubjects.length > 0 
+    ? (totalScoreCalculated / studentSubjects.length) 
+    : (studentSubjects.length === 0 ? 0 : (result?.overallAverage || 0));
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 result-slip-modal-wrapper">
@@ -240,7 +251,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                 {headerInfo.schoolName || 'FAITH ACADEMY'}
               </h1>
               <h2 className="text-[12px] font-bold text-black uppercase tracking-normal mt-1">
-                MIDTERM REPORT — {result.term?.toUpperCase() || 'TERM 1'} OF {result.academicSession || '2018/2019'} SESSION
+                MIDTERM REPORT — {result.term?.toUpperCase() || '3RD TERM'} OF {result.academicSession || '2024/2025 Academic Session'}
               </h2>
             </div>
 
@@ -296,7 +307,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                         <td className="border border-black text-left uppercase align-middle" style={{ padding: '6px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>{sub.subject}</td>
                         <td className="border border-black text-center font-mono font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{summary20}</td>
                         <td className="border border-black text-center font-mono font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{summary100}%</td>
-                        <td className="border border-black text-center font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
+                        <td className={`border border-black text-center font-bold align-middle ${!isGS ? 'text-red-600 font-extrabold' : ''}`} style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
                           {isGS ? 'GS' : 'NGS'}
                         </td>
                       </tr>
@@ -382,7 +393,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                   </tr>
                   <tr>
                     <td className="border border-black" style={{ padding: '2px 4px' }}>49.99 – 0</td>
-                    <td className="border border-black font-bold" style={{ padding: '2px 4px' }}>F9</td>
+                    <td className="border border-black font-bold text-red-600" style={{ padding: '2px 4px' }}>F9</td>
                   </tr>
                 </tbody>
               </table>
@@ -434,7 +445,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
 
               {/* Bottom bar */}
               <div className="border-t border-black pt-1 flex justify-between items-center text-[10px] font-bold text-black">
-                <span>DATE: {result.issueDate || '17th Oct 2018'}</span>
+                <span>DATE: {result.issueDate || 'August 05, 2025'}</span>
                 <span>PRINCIPAL</span>
               </div>
             </div>

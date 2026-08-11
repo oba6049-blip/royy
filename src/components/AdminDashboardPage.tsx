@@ -6,6 +6,7 @@ import { ClassBroadsheetModal } from './ClassBroadsheetModal';
 import { SchoolAnalyticsView } from './SchoolAnalyticsView';
 import { ADMIN_MOCK_STUDENTS } from '../data/mockData';
 import { api, DbStatus } from '../services/api';
+import { calculateDynamicStudentPosition } from '../utils/studentRanking';
 import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
 import {
   LayoutDashboard,
@@ -864,6 +865,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       const calculatedAvg = subjectsToUse.length > 0 ? Number((calculatedTotal / subjectsToUse.length).toFixed(1)) : (studentData.overallAverage || studentData.averageScore || 0);
       const calculatedGpa = subjectsToUse.length > 0 ? Number((calculatedAvg / 25).toFixed(2)) : (studentData.gpa || 0);
 
+      const dynamicRank = calculateDynamicStudentPosition(studentData, students);
+
       const fullResult: StudentResult = {
         studentId: studentData.studentId,
         fullName: studentData.fullName || studentData.name || 'Student Name',
@@ -879,8 +882,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         overallTotal: calculatedTotal,
         overallAverage: calculatedAvg,
         gpa: calculatedGpa,
-        position: studentData.position || 1,
-        totalInClass: studentData.totalInClass || 35,
+        position: dynamicRank.position,
+        totalInClass: dynamicRank.totalInClass,
         status: studentData.status || 'PROMOTED',
         classTeacherRemark: studentData.classTeacherRemark || studentData.teacherRemark || 'Outstanding academic performance and conduct.',
         principalRemark: studentData.principalRemark || 'Exemplary character and intelligence.',
@@ -1996,6 +1999,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                 <td className="p-3 font-bold font-mono text-[#1E3A8A] text-sm">{total}%</td>
                                 <td className="p-3">
                                   <span className={`px-2 py-0.5 rounded font-extrabold text-xs ${
+                                    grade === 'F9' || grade.startsWith('F') ? 'bg-red-100 text-red-700 border border-red-300 font-black' :
                                     grade.startsWith('A') ? 'bg-emerald-100 text-emerald-800' :
                                     grade.startsWith('B') ? 'bg-blue-100 text-blue-800' :
                                     grade.startsWith('C') ? 'bg-amber-100 text-amber-800' :
@@ -2275,6 +2279,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                   <td className="p-3 font-bold font-mono text-[#1E3A8A] text-sm">{total}%</td>
                                   <td className="p-3">
                                     <span className={`px-2 py-0.5 rounded font-extrabold text-xs ${
+                                      grade === 'F9' || grade.startsWith('F') ? 'bg-red-100 text-red-700 border border-red-300 font-black' :
                                       grade.startsWith('A') ? 'bg-emerald-100 text-emerald-800' :
                                       grade.startsWith('B') ? 'bg-blue-100 text-blue-800' :
                                       grade.startsWith('C') ? 'bg-amber-100 text-amber-800' :
@@ -2472,7 +2477,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   </div>
 
                   {/* Upload Drop Zone */}
-                  <div className="md:col-span-8 border-2 border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/30 rounded-3xl p-6 sm:p-8 text-center space-y-4 transition-all">
+                  <div className="md:col-span-8 border-2 border-dashed border-slate-300 hover:border-[#1E3A8A] bg-white rounded-3xl p-6 sm:p-8 text-center space-y-4 transition-all shadow-xs">
                     <div className="w-12 h-12 rounded-2xl bg-white border border-blue-100 text-[#1E3A8A] flex items-center justify-center mx-auto shadow-xs">
                       {isUploadingBranding === 'logoUrl' ? (
                         <RefreshCw className="w-6 h-6 animate-spin text-[#1E3A8A]" />
@@ -2654,7 +2659,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   </div>
 
                   {/* Stamp Upload Drop Zone */}
-                  <div className="md:col-span-8 border-2 border-dashed border-amber-200 hover:border-amber-400 bg-amber-50/20 rounded-3xl p-6 sm:p-8 text-center space-y-4 transition-all">
+                  <div className="md:col-span-8 border-2 border-dashed border-slate-300 hover:border-[#F59E0B] bg-white rounded-3xl p-6 sm:p-8 text-center space-y-4 transition-all shadow-xs">
                     <div className="w-12 h-12 rounded-2xl bg-white border border-amber-100 text-[#F59E0B] flex items-center justify-center mx-auto shadow-xs">
                       {isUploadingBranding === 'stampUrl' ? (
                         <RefreshCw className="w-6 h-6 animate-spin text-[#F59E0B]" />
@@ -2834,7 +2839,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   </div>
 
                   {/* Signature Upload Drop Zone */}
-                  <div className="md:col-span-8 border-2 border-dashed border-purple-200 hover:border-purple-400 bg-purple-50/20 rounded-3xl p-6 sm:p-8 text-center space-y-4 transition-all">
+                  <div className="md:col-span-8 border-2 border-dashed border-slate-300 hover:border-purple-600 bg-white rounded-3xl p-6 sm:p-8 text-center space-y-4 transition-all shadow-xs">
                     <div className="w-12 h-12 rounded-2xl bg-white border border-purple-100 text-purple-600 flex items-center justify-center mx-auto shadow-xs">
                       {isUploadingBranding === 'signatureUrl' ? (
                         <RefreshCw className="w-6 h-6 animate-spin text-purple-600" />

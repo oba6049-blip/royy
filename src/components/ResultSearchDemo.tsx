@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MOCK_STUDENTS, SESSIONS_LIST, TERMS_LIST, CLASSES_LIST } from '../data/mockData';
 import { StudentResult } from '../types';
 import { api } from '../services/api';
+import { calculateDynamicStudentPosition } from '../utils/studentRanking';
+import { filterStudentSubjectsByAdmin } from '../utils/subjectUtils';
 import {
   Search,
   CheckCircle2,
@@ -38,6 +40,25 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
     MOCK_STUDENTS['2025104']
   );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [allStudentsList, setAllStudentsList] = useState<any[]>([]);
+  const [adminSubjects, setAdminSubjects] = useState<any[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getStudents().then((res) => {
+      if (isMounted && res && Array.isArray(res) && res.length > 0) {
+        setAllStudentsList(res);
+      }
+    }).catch(() => {});
+    api.getSubjects().then((subs) => {
+      if (isMounted && Array.isArray(subs)) {
+        setAdminSubjects(subs);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  const activeResultRank = calculateDynamicStudentPosition(activeResult, allStudentsList);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -323,13 +344,13 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
 
                       <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-medium">
                         <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px]">
-                          Position: {activeResult.position} / {activeResult.totalInClass}
+                          Position: {activeResultRank.ordinalPosition} / {activeResultRank.totalInClass}
                         </span>
                         <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px]">
-                          Average: {activeResult.overallAverage.toFixed(1)}%
+                          Average: {(activeResult.overallAverage || MOCK_STUDENTS[activeResult.studentId]?.overallAverage || 0).toFixed(1)}%
                         </span>
                         <span className="px-2 py-0.5 rounded-md bg-blue-50 text-[#1E3A8A] font-bold text-[10px]">
-                          GPA: {activeResult.gpa.toFixed(2)}
+                          GPA: {(activeResult.gpa || MOCK_STUDENTS[activeResult.studentId]?.gpa || 0).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -342,28 +363,49 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                     </h5>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {(activeResult.subjects || []).length > 0 ? (
-                        activeResult.subjects.slice(0, 6).map((sub) => (
-                          <div key={sub.id} className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                      {(() => {
+                        const rawSubs = Array.isArray(activeResult.subjects) ? activeResult.subjects : [];
+                        const validSubs = rawSubs.filter((sub: any) => {
+                          if (!sub || typeof sub !== 'object') return false;
+                          const name = (sub.subject || sub.name || '').trim();
+                          if (!name) return false;
+                          const ca = Number(sub.caScore ?? sub.ca ?? 0);
+                          const exam = Number(sub.examScore ?? sub.exam ?? 0);
+                          const total = Number(sub.total ?? 0);
+                          const grade = (sub.grade || '').trim().toUpperCase();
+                          const remark = (sub.remark || '').trim().toUpperCase();
+                          return ca > 0 || exam > 0 || total > 0 || (grade !== '' && grade !== 'PENDING') || (remark !== '' && remark !== 'PENDING');
+                        });
+                        if (validSubs.length === 0) {
+                          return (
+                            <div className="col-span-2 bg-white p-3 rounded-xl border border-slate-200/80 text-center text-xs text-slate-400 italic">
+                              No subject scores entered for this student yet.
+                            </div>
+                          );
+                        }
+                        return validSubs.slice(0, 6).map((sub: any, idx: number) => (
+                          <div key={sub.id || idx} className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
                             <div>
                               <span className="text-xs font-bold text-slate-900 block">{sub.subject}</span>
                               <span className="text-[10px] text-slate-500 font-mono">
-                                CA: {sub.caScore} | Exam: {sub.examScore}
+                                CA: {sub.caScore ?? 0} | Exam: {sub.examScore ?? 0}
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className="text-xs font-mono font-bold text-[#1E3A8A] block">{sub.total}/100</span>
-                              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
-                                {sub.grade}
+                              <span className="text-xs font-mono font-bold text-[#1E3A8A] block">{sub.total ?? 0}/100</span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${
+                                sub.grade === 'F9' || sub.grade?.startsWith('F')
+                                  ? 'text-red-700 bg-red-100 border-red-300 font-extrabold'
+                                  : sub.grade?.startsWith('A')
+                                  ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                                  : 'text-blue-700 bg-blue-50 border-blue-100'
+                              }`}>
+                                {sub.grade || '—'}
                               </span>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <div className="col-span-2 bg-white p-3 rounded-xl border border-slate-200/80 text-center text-xs text-slate-400 italic">
-                          No subjects recorded for this result yet.
-                        </div>
-                      )}
+                        ));
+                      })()}
                     </div>
                   </div>
 
