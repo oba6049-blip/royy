@@ -3702,6 +3702,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         onClose={() => setIsViewResultOpen(false)}
         onVerifyQR={() => setIsQRModalOpen(true)}
         schoolHeader={schoolHeader}
+        branding={{
+          logoUrl: logoPreview,
+          stampUrl: stampPreview,
+          signatureUrl: signaturePreview,
+          positions: brandingPositions,
+        }}
       />
 
       {/* Edit School & Report Card Header Modal */}
@@ -4493,6 +4499,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           logoUrl: logoPreview,
           stampUrl: stampPreview,
           signatureUrl: signaturePreview,
+          positions: brandingPositions,
         }}
       />
 

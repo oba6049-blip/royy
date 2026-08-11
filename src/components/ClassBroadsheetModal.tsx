@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StudentResult, SchoolHeaderInfo } from '../types';
 import { Printer, Download, X, Award, Users, BookOpen, GraduationCap, CheckCircle } from 'lucide-react';
+import { api } from '../services/api';
 
 interface ClassBroadsheetModalProps {
   isOpen: boolean;
@@ -10,7 +11,16 @@ interface ClassBroadsheetModalProps {
   students: any[];
   subjectList: Array<{ code: string; name: string; category?: string; teacher?: string }>;
   schoolHeader: SchoolHeaderInfo;
-  branding?: { logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null };
+  branding?: {
+    logoUrl?: string | null;
+    stampUrl?: string | null;
+    signatureUrl?: string | null;
+    positions?: {
+      logo?: { x: number; y: number; scale: number; rotate: number };
+      stamp?: { x: number; y: number; scale: number; rotate: number };
+      signature?: { x: number; y: number; scale: number; rotate: number };
+    };
+  };
 }
 
 export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
@@ -23,6 +33,29 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
   schoolHeader,
   branding,
 }) => {
+  const [brandingState, setBrandingState] = useState<{
+    logoUrl?: string | null;
+    stampUrl?: string | null;
+    signatureUrl?: string | null;
+    positions?: {
+      logo?: { x: number; y: number; scale: number; rotate: number };
+      stamp?: { x: number; y: number; scale: number; rotate: number };
+      signature?: { x: number; y: number; scale: number; rotate: number };
+    };
+  } | null>(branding || null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (branding) {
+        setBrandingState(branding);
+      } else {
+        api.getBranding().then((b) => {
+          if (b) setBrandingState(b);
+        });
+      }
+    }
+  }, [isOpen, branding]);
+
   if (!isOpen) return null;
 
   // Filter students by class if specified
@@ -122,8 +155,8 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
           <div className="border-b-2 border-black pb-4 mb-4">
             <div className="flex items-center justify-between gap-4">
               <div className="w-20 h-20 flex-shrink-0 flex items-center justify-center">
-                {branding?.logoUrl ? (
-                  <img src={branding.logoUrl} alt="School Logo" className="max-w-full max-h-full object-contain" />
+                {brandingState?.logoUrl ? (
+                  <img src={brandingState.logoUrl} alt="School Logo" className="max-w-full max-h-full object-contain" />
                 ) : (
                   <div className="w-16 h-16 bg-[#1E3A8A] text-white rounded-xl flex items-center justify-center font-black text-2xl">
                     FA
@@ -297,11 +330,13 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
                 <div
                   className="absolute z-10 pointer-events-none"
                   style={{
-                    transform: 'translate(-10px, 0px) scale(1) rotate(-8deg)',
+                    transform: brandingState?.positions?.stamp
+                      ? `translate(${brandingState.positions.stamp.x}px, ${brandingState.positions.stamp.y}px) scale(${brandingState.positions.stamp.scale || 1}) rotate(${brandingState.positions.stamp.rotate || -8}deg)`
+                      : 'translate(-10px, 0px) scale(1) rotate(-8deg)',
                   }}
                 >
-                  {branding?.stampUrl ? (
-                    <img src={branding.stampUrl} alt="Official Stamp" className="w-28 h-28 object-contain" />
+                  {brandingState?.stampUrl ? (
+                    <img src={brandingState.stampUrl} alt="Official Stamp" className="w-28 h-28 object-contain" />
                   ) : (
                     <div className="w-28 h-28 border-2 border-dashed border-black rounded-full flex flex-col items-center justify-center p-2 text-center bg-transparent">
                       <span className="text-[9px] font-extrabold uppercase leading-none text-black">FAITH ACADEMY</span>
@@ -312,13 +347,15 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
 
                 {/* Principal Signature */}
                 <div
-                  className="relative z-20 flex flex-col items-center justify-center"
+                  className="relative z-20 flex flex-col items-center justify-center pointer-events-none"
                   style={{
-                    transform: 'translate(0px, 0px) scale(1) rotate(0deg)',
+                    transform: brandingState?.positions?.signature
+                      ? `translate(${brandingState.positions.signature.x}px, ${brandingState.positions.signature.y}px) scale(${brandingState.positions.signature.scale || 1}) rotate(${brandingState.positions.signature.rotate || 0}deg)`
+                      : 'translate(0px, 0px) scale(1) rotate(0deg)',
                   }}
                 >
-                  {branding?.signatureUrl ? (
-                    <img src={branding.signatureUrl} alt="Principal Signature" className="h-16 max-w-[200px] object-contain" />
+                  {brandingState?.signatureUrl ? (
+                    <img src={brandingState.signatureUrl} alt="Principal Signature" className="h-16 max-w-[200px] object-contain" />
                   ) : (
                     <span className="font-bold text-base font-serif italic tracking-wider text-black">Principal Signature</span>
                   )}
