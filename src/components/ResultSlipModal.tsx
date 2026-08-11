@@ -422,146 +422,98 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
           </div>
         </div>
 
-        {/* Printable Result Sheet Body (A4 Portrait Template Specification) */}
-        <div ref={printRef} className="p-6 sm:p-8 overflow-y-auto space-y-4 print-area bg-white text-black font-sans">
+        {/* Printable Result Sheet Body (Faith Academy Exact Specification) */}
+        <div ref={printRef} className="p-6 sm:p-8 overflow-y-auto print-area bg-white text-black font-sans box-border" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
           
           {/* 1. HEADER SECTION */}
-          <div className="border-b-2 border-black pb-3 flex items-center justify-between gap-4">
-            {/* Top Left: School Crest Logo */}
-            <div className="w-16 h-16 rounded-xl border-2 border-black bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
+          <div className="flex items-center justify-between gap-2 pb-2 mb-3 border-b-2 border-black">
+            {/* Top Left: School Logo (65px x 70px) */}
+            <div 
+              className="w-[65px] h-[70px] border border-black bg-white flex items-center justify-center shrink-0 overflow-hidden relative"
+              style={{
+                transform: brandingState?.positions?.logo 
+                  ? `translate(${brandingState.positions.logo.x}px, ${brandingState.positions.logo.y}px) scale(${brandingState.positions.logo.scale || 1}) rotate(${brandingState.positions.logo.rotate || 0}deg)`
+                  : 'none'
+              }}
+            >
               {brandingState?.logoUrl ? (
-                <img src={brandingState.logoUrl} alt="School Logo" className="w-full h-full object-contain p-1" />
+                <img src={brandingState.logoUrl} alt="School Logo" className="w-full h-full object-contain p-0.5" />
               ) : (
                 <ShieldIcon className="w-10 h-10 text-slate-900" />
               )}
             </div>
 
-            {/* Top Center: School Name and Document Title */}
+            {/* Top Center: School Name and Subheader Title */}
             <div className="text-center flex-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-black tracking-tight uppercase font-serif">
-                {headerInfo.schoolName || 'ROYAL ACADEMY'}
+              <h1 className="text-[18px] font-bold text-black uppercase tracking-wider font-sans leading-tight">
+                {headerInfo.schoolName || 'FAITH ACADEMY IKORODU'}
               </h1>
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-800">
-                {headerInfo.reportTitle || 'Student Mid-Term Report'}
-              </p>
-              <p className="text-[10px] text-slate-700 font-mono">
-                {headerInfo.addressSubtitle || 'Victoria Island, Lagos, Nigeria • Official Academic Record'}
-              </p>
+              <h2 className="text-[12px] font-bold text-black uppercase tracking-normal mt-1">
+                MIDTERM REPORT — {result.term?.toUpperCase() || 'TERM 1'} OF {result.academicSession || '2018/2019'} SESSION
+              </h2>
             </div>
 
-            {/* Top Right: Session & Term Info */}
-            <div className="text-right text-xs font-bold border border-black p-2 bg-slate-50 rounded-sm shrink-0 min-w-[140px]">
-              <div className="text-[10px] uppercase text-slate-600 font-normal">Academic Session:</div>
-              <div className="text-black font-extrabold">{result.academicSession || '2025/2026 Session'}</div>
-              <div className="text-[10px] uppercase text-slate-600 font-normal mt-1">Term:</div>
-              <div className="text-black font-extrabold">{result.term || 'First Term'}</div>
-            </div>
+            {/* Top Right: Symmetrical empty spacer matching logo width */}
+            <div className="w-[65px] h-[70px] shrink-0" />
           </div>
 
-          {/* 2. STUDENT INFORMATION HORIZONTAL GRID */}
-          <div className="border border-black p-3 bg-white space-y-2">
-            <div className="grid grid-cols-12 gap-3 items-center">
-              
-              {/* Student Details */}
-              <div className="col-span-9 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-xs">
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase">Student Name:</span>
-                  <span className="font-extrabold text-black text-sm uppercase block">{result.fullName}</span>
-                </div>
-
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase">Admission No:</span>
-                  <span className="font-mono font-bold text-black text-sm block">{result.studentId}</span>
-                </div>
-
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase">Class:</span>
-                  <span className="font-bold text-black block">{result.className}</span>
-                </div>
-
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase">Gender:</span>
-                  <span className="font-bold text-black block">{result.gender || 'Male'}</span>
-                </div>
-
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase">Age:</span>
-                  <span className="font-bold text-black block">{result.age || '16 Yrs'}</span>
-                </div>
-
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-600 uppercase">House:</span>
-                  <span className="font-bold text-black block">{result.house || 'Sapphire House'}</span>
-                </div>
+          {/* 2. STUDENT INFORMATION BOX (2-column clean grid) */}
+          <div className="border border-black p-2.5 bg-white font-sans mb-3">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[11px]">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-black">NAME:</span>
+                <span className="font-bold text-black uppercase">{result.fullName}</span>
               </div>
-
-              {/* Passport Photo */}
-              <div className="col-span-3 flex justify-end">
-                <div className="w-20 h-24 border-2 border-black bg-slate-100 overflow-hidden shrink-0">
-                  <img
-                    src={passportBase64 || result.passportUrl || createDefaultAvatarDataUrl(result.fullName)}
-                    alt={result.fullName}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      target.onerror = null;
-                      target.src = createDefaultAvatarDataUrl(result.fullName);
-                    }}
-                  />
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-black">CLASS:</span>
+                <span className="font-bold text-black uppercase">{result.className}</span>
               </div>
-
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-black">ADM NO:</span>
+                <span className="font-bold text-black uppercase font-mono">{result.studentId}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-black">GENDER:</span>
+                <span className="font-bold text-black uppercase">{result.gender || 'MALE'}</span>
+              </div>
             </div>
           </div>
 
-          <div className="border-b border-black"></div>
-
-          {/* 3. RESULT TITLE */}
-          <div className="text-center space-y-0.5">
-            <h2 className="text-base font-black text-black uppercase tracking-wider">
-              MIDTERM REPORT
-            </h2>
-            <p className="text-xs font-bold uppercase text-slate-800">
-              {result.term || 'FIRST TERM'} — {result.academicSession || '2025/2026 SESSION'}
-            </p>
-          </div>
-
-          {/* 4. RESULT TABLE */}
-          <div className="overflow-x-auto">
-            <table className="result-table w-full text-xs text-black border-collapse border border-black" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          {/* 3. MAIN RESULT TABLE */}
+          <div className="mb-3">
+            <table className="w-full text-[11px] text-black border-collapse border border-black font-sans" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead>
-                <tr className="bg-gray-200 text-black font-bold text-[11px] uppercase border-b border-black">
-                  <th className="border border-black text-center" style={{ width: '6%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>S/N</th>
-                  <th className="border border-black text-left" style={{ width: '40%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>SUBJECT</th>
-                  <th className="border border-black text-center" style={{ width: '10%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>CA (40)</th>
-                  <th className="border border-black text-center" style={{ width: '10%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>EXAM (60)</th>
-                  <th className="border border-black text-center" style={{ width: '10%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>TOTAL (100)</th>
-                  <th className="border border-black text-center" style={{ width: '10%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>GRADE</th>
-                  <th className="border border-black text-center" style={{ width: '14%', padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>REMARK</th>
+                <tr className="bg-[#e5e5e5] text-black font-bold border-b border-black text-center" style={{ height: '26px' }}>
+                  <th className="border border-black text-center" style={{ width: '35px', padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>S/N</th>
+                  <th className="border border-black text-left" style={{ padding: '0 8px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>SUBJECT</th>
+                  <th className="border border-black text-center" style={{ width: '130px', padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>1ST SUMMARY (20)</th>
+                  <th className="border border-black text-center" style={{ width: '140px', padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>1ST SUMMARY (100%)</th>
+                  <th className="border border-black text-center" style={{ width: '90px', padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>GS / NGS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black font-medium">
+              <tbody className="divide-y divide-black font-normal">
                 {studentSubjects.length > 0 ? (
                   studentSubjects.map((sub, idx) => {
-                    const caDisplay = sub.caScore !== undefined ? sub.caScore : ((sub.ca1 || 0) + (sub.ca2 || 0) + (sub.midterm || 0));
-                    const examDisplay = sub.examScore !== undefined ? sub.examScore : (sub.exam || 0);
-                    const totalVal = sub.total !== undefined ? sub.total : (caDisplay + examDisplay);
+                    const rawCa = sub.caScore !== undefined ? sub.caScore : ((sub.ca1 || 0) + (sub.ca2 || 0) + (sub.midterm || 0));
+                    const summary20 = Math.min(20, Math.round((rawCa / 40) * 20 || rawCa));
+                    const summary100 = sub.total !== undefined ? sub.total : (rawCa + (sub.examScore || 0));
+                    const isGS = summary20 >= 10;
 
                     return (
-                      <tr key={sub.id || idx} className="hover:bg-slate-50">
-                        <td className="border border-black text-center font-mono" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{idx + 1}</td>
-                        <td className="border border-black font-bold text-left" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{sub.subject}</td>
-                        <td className="border border-black text-center font-mono" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{caDisplay}</td>
-                        <td className="border border-black text-center font-mono" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{examDisplay}</td>
-                        <td className="border border-black text-center font-bold font-mono text-sm" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{totalVal}</td>
-                        <td className="border border-black text-center font-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{sub.grade}</td>
-                        <td className="border border-black text-center uppercase text-[10px] font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>{sub.remark}</td>
+                      <tr key={sub.id || idx} style={{ height: '26px' }}>
+                        <td className="border border-black text-center font-mono" style={{ padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>{idx + 1}</td>
+                        <td className="border border-black text-left uppercase" style={{ padding: '0 8px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>{sub.subject}</td>
+                        <td className="border border-black text-center font-mono font-bold" style={{ padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>{summary20}</td>
+                        <td className="border border-black text-center font-mono font-bold" style={{ padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>{summary100}%</td>
+                        <td className="border border-black text-center font-bold" style={{ padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>
+                          {isGS ? 'GS' : 'NGS'}
+                        </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="p-6 text-center font-bold text-slate-500 italic uppercase tracking-wider border border-black">
+                    <td colSpan={5} className="p-4 text-center font-bold text-slate-500 uppercase tracking-wider border border-black">
                       No subjects entered for this student yet.
                     </td>
                   </tr>
@@ -570,191 +522,145 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             </table>
           </div>
 
-          {/* 5. BOTTOM SUMMARY (3 EQUAL SECTIONS) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+          {/* 4. BOTTOM GRID LAYOUT (3 COLUMNS) */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
             
-            {/* LEFT SECTION: Key & Analysis */}
-            <div className="border border-black p-2.5 text-xs space-y-2 bg-white">
-              <div>
-                <h4 className="font-black text-[11px] uppercase border-b border-black pb-1 mb-1 text-black">
+            {/* LEFT BOX: KEY & ANALYSIS */}
+            <div className="space-y-2">
+              {/* KEY BOX */}
+              <div className="border border-black p-2 bg-white text-[10px]">
+                <h4 className="font-bold text-[11px] uppercase border-b border-black pb-0.5 mb-1 text-black">
                   KEY
                 </h4>
-                <div className="space-y-0.5 text-[11px] font-semibold">
-                  <p><strong className="font-bold">GS</strong> = Good Standing</p>
-                  <p><strong className="font-bold">NGS</strong> = Not in Good Standing</p>
+                <div className="space-y-0.5 font-bold text-black">
+                  <p>GS = IN GOOD STANDING</p>
+                  <p>NGS = NOT IN GOOD STANDING</p>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-black">
-                <h4 className="font-black text-[11px] uppercase border-b border-black pb-1 mb-1 text-black">
+              {/* ANALYSIS BOX */}
+              <div className="border border-black p-2 bg-white text-[10px]">
+                <h4 className="font-bold text-[11px] uppercase border-b border-black pb-0.5 mb-1 text-black">
                   ANALYSIS
                 </h4>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span>Subjects Passed:</span>
-                    <strong className="font-mono text-black">{subjectsPassed}</strong>
+                <div className="space-y-1 font-semibold text-black">
+                  <div className="flex justify-between items-center">
+                    <span>Subjects in Good Standing:</span>
+                    <span className="font-mono font-bold">{subjectsPassed}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Subjects Failed:</span>
-                    <strong className="font-mono text-black">{subjectsFailed}</strong>
+                  <div className="flex justify-between items-center">
+                    <span>Subjects Not in Good Standing:</span>
+                    <span className="font-mono font-bold">{subjectsFailed}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* MIDDLE SECTION: Grading Table */}
-            <div className="border border-black p-2.5 text-xs bg-white">
-              <h4 className="font-black text-[11px] uppercase border-b border-black pb-1 mb-1 text-black text-center">
+            {/* CENTER BOX: GRADING SCALE TABLE */}
+            <div className="border border-black p-2 text-[10px] bg-white">
+              <h4 className="font-bold text-[11px] uppercase border-b border-black pb-0.5 mb-1 text-black text-center">
                 GRADING SCALE
               </h4>
-              <table className="grading-scale w-full text-[10px] text-center border-collapse border border-black" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <table className="w-full text-[10px] text-center border-collapse border border-black" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <thead>
-                  <tr className="bg-gray-100 font-bold border-b border-black">
-                    <th className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>SCORE</th>
-                    <th className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>GRADE</th>
+                  <tr className="bg-[#e5e5e5] font-bold border-b border-black">
+                    <th className="border border-black" style={{ padding: '2px 4px' }}>Percentage</th>
+                    <th className="border border-black" style={{ padding: '2px 4px' }}>Grade</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black font-semibold">
+                <tbody className="divide-y divide-black font-semibold text-black">
                   <tr>
-                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>100 - 80</td>
-                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>A1 (Excellent)</td>
+                    <td className="border border-black" style={{ padding: '2px 4px' }}>100 – 80</td>
+                    <td className="border border-black font-bold" style={{ padding: '2px 4px' }}>A</td>
                   </tr>
                   <tr>
-                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>79 - 70</td>
-                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>B2 (Very Good)</td>
+                    <td className="border border-black" style={{ padding: '2px 4px' }}>79.99 – 70</td>
+                    <td className="border border-black font-bold" style={{ padding: '2px 4px' }}>B1</td>
                   </tr>
                   <tr>
-                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>69 - 60</td>
-                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>B3 (Good)</td>
+                    <td className="border border-black" style={{ padding: '2px 4px' }}>69.99 – 60</td>
+                    <td className="border border-black font-bold" style={{ padding: '2px 4px' }}>B2</td>
                   </tr>
                   <tr>
-                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>59 - 55</td>
-                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>C4 (Credit)</td>
+                    <td className="border border-black" style={{ padding: '2px 4px' }}>59.99 – 55</td>
+                    <td className="border border-black font-bold" style={{ padding: '2px 4px' }}>P1</td>
                   </tr>
                   <tr>
-                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>54 - 50</td>
-                    <td className="border border-black font-bold" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>C6 (Credit)</td>
+                    <td className="border border-black" style={{ padding: '2px 4px' }}>54.99 – 50</td>
+                    <td className="border border-black font-bold" style={{ padding: '2px 4px' }}>P2</td>
                   </tr>
                   <tr>
-                    <td className="border border-black" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>Below 50</td>
-                    <td className="border border-black font-bold text-red-700" style={{ padding: '5px 8px', height: '28px', lineHeight: '1.35', verticalAlign: 'middle', boxSizing: 'border-box' }}>F9 (Fail)</td>
+                    <td className="border border-black" style={{ padding: '2px 4px' }}>49.99 – 0</td>
+                    <td className="border border-black font-bold" style={{ padding: '2px 4px' }}>F9</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            {/* RIGHT SECTION: Academic Summary */}
-            <div className="border border-black p-2.5 text-xs space-y-1.5 bg-white">
-              <h4 className="font-black text-[11px] uppercase border-b border-black pb-1 text-black">
-                ACADEMIC SUMMARY
+            {/* RIGHT BOX: AUTHENTICATION, STAMP & SIGNATURE */}
+            <div className="border border-black p-2 bg-white text-[10px] flex flex-col justify-between relative min-h-[140px]">
+              <h4 className="font-bold text-[11px] uppercase border-b border-black pb-0.5 text-black text-center">
+                AUTHENTICATION
               </h4>
-              <div className="space-y-1 text-[11px]">
-                <div className="flex justify-between">
-                  <span>Total Subjects:</span>
-                  <strong className="font-mono">{studentSubjects.length}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Score:</span>
-                  <strong className="font-mono">{totalScoreCalculated}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Average:</span>
-                  <strong className="font-mono">{averageScoreCalculated.toFixed(1)}%</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Position:</span>
-                  <strong className="font-mono">{result.position} out of {result.totalInClass}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Attendance:</span>
-                  <strong className="font-mono">{result.attendance.timesPresent} / {result.attendance.timesOpened} Days</strong>
-                </div>
-                <div className="border-t border-black pt-1">
-                  <span className="block text-[10px] font-bold uppercase text-slate-600">Principal Remark:</span>
-                  <p className="italic text-[11px] font-serif leading-tight">"{result.principalRemark}"</p>
-                </div>
-                <div className="flex justify-between pt-1 border-t border-black">
-                  <span>Status:</span>
-                  <strong className="uppercase font-bold text-black">
-                    {result.status === 'GRADUATED' ? 'Excellent Performance (GS)' : 'Good Standing (GS)'}
-                  </strong>
-                </div>
-              </div>
-            </div>
 
-          </div>
-
-          {/* 6. SIGNATURE SECTION */}
-          <div className="pt-4 pb-2 border-t border-black">
-            <div className="grid grid-cols-3 gap-4 items-end text-center">
-              
-              {/* Left: Class Teacher Signature */}
-              <div className="space-y-1 text-center">
-                <div className="h-10 border-b border-black flex items-end justify-center font-serif italic text-sm text-slate-800 pb-0.5">
-                  Mr. Arthur Vance, M.Ed
-                </div>
-                <span className="text-[10px] font-bold uppercase text-black block">Class Teacher</span>
-              </div>
-
-              {/* Middle: School Stamp Space */}
-              <div className="flex flex-col items-center justify-center space-y-1">
-                {brandingState?.stampUrl ? (
-                  <div className="w-16 h-16 flex items-center justify-center shrink-0">
-                    <img src={brandingState.stampUrl} alt="Official Stamp" className="max-w-full max-h-full object-contain" />
-                  </div>
-                ) : (
-                  <div className="w-16 h-16 rounded-full border-2 border-black border-dashed flex flex-col items-center justify-center p-1 text-center bg-slate-50 shrink-0">
-                    <span className="text-[7px] font-black uppercase text-black leading-none">ROYAL ACADEMY</span>
-                    <ShieldIcon className="w-4 h-4 text-slate-900 my-0.5" />
-                    <span className="text-[6px] font-bold text-black uppercase leading-none">OFFICIAL STAMP</span>
-                  </div>
-                )}
-                <span className="text-[9px] font-bold uppercase text-slate-700">School Stamp</span>
-              </div>
-
-              {/* Right: Principal Signature */}
-              <div className="space-y-1 text-center">
-                <div className="h-10 border-b border-black flex items-end justify-center font-serif italic font-bold text-sm text-[#1E3A8A] pb-0.5 overflow-hidden">
-                  {brandingState?.signatureUrl ? (
-                    <img src={brandingState.signatureUrl} alt="Principal Signature" className="h-8 max-w-[140px] object-contain mb-0.5" />
+              {/* Stamp & Signature Canvas Overlay Area */}
+              <div className="relative flex-1 my-1 flex items-center justify-center overflow-hidden min-h-[70px]">
+                {/* Official Rubber Stamp */}
+                <div
+                  className="absolute z-10 pointer-events-none"
+                  style={{
+                    transform: brandingState?.positions?.stamp
+                      ? `translate(${brandingState.positions.stamp.x}px, ${brandingState.positions.stamp.y}px) scale(${brandingState.positions.stamp.scale || 1}) rotate(${brandingState.positions.stamp.rotate || -12}deg)`
+                      : 'rotate(-12deg)',
+                  }}
+                >
+                  {brandingState?.stampUrl ? (
+                    <img src={brandingState.stampUrl} alt="Official Stamp" className="w-16 h-16 object-contain" />
                   ) : (
-                    'Dr. H. E. Montgomery'
+                    <div className="w-16 h-16 border border-dashed border-black rounded-full flex flex-col items-center justify-center p-1 text-center bg-transparent">
+                      <span className="text-[6px] font-bold uppercase leading-none text-black">FAITH ACADEMY</span>
+                      <span className="text-[5px] uppercase leading-none mt-0.5 text-black">OFFICIAL STAMP</span>
+                    </div>
                   )}
                 </div>
-                <span className="text-[10px] font-bold uppercase text-black block">Principal Signature</span>
+
+                {/* Principal Signature */}
+                <div
+                  className="absolute z-20 pointer-events-none"
+                  style={{
+                    transform: brandingState?.positions?.signature
+                      ? `translate(${brandingState.positions.signature.x}px, ${brandingState.positions.signature.y}px) scale(${brandingState.positions.signature.scale || 1}) rotate(${brandingState.positions.signature.rotate || 0}deg)`
+                      : 'none',
+                  }}
+                >
+                  {brandingState?.signatureUrl ? (
+                    <img src={brandingState.signatureUrl} alt="Principal Signature" className="h-10 max-w-[130px] object-contain" />
+                  ) : (
+                    <span className="font-bold text-xs italic tracking-wider text-black">Principal Signature</span>
+                  )}
+                </div>
               </div>
 
+              {/* Bottom bar */}
+              <div className="border-t border-black pt-1 flex justify-between items-center text-[10px] font-bold text-black">
+                <span>DATE: {result.issueDate || '17th Oct 2018'}</span>
+                <span>PRINCIPAL</span>
+              </div>
             </div>
+
           </div>
 
-          {/* 7. FOOTER WITH QR CODE */}
-          <div className="border-t-2 border-black pt-3 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-            <div className="space-y-1">
-              <p className="text-xs font-bold text-black">
-                This result was generated electronically.
-              </p>
-              <p className="text-[10px] text-slate-700">
-                Verify using the QR Code or search Admission No on <strong className="text-black font-mono">royalacademy.edu.ng/verify</strong>
-              </p>
-              <p className="text-[9px] font-mono text-slate-500">
-                Verification Hash: {result.verificationHash || `RA-${result.studentId}-SEC`}
-              </p>
-            </div>
+          {/* 5. REMARKS SECTION */}
+          <div className="border border-black p-2 bg-white text-[11px] mb-3">
+            <span className="font-bold text-black uppercase">PRINCIPAL'S REMARK: </span>
+            <span className="italic text-black">{result.principalRemark || 'A commendable performance. Keep up the good work.'}</span>
+          </div>
 
-            {/* QR Code Container */}
-            <div className="flex items-center gap-2 border border-black p-2 bg-slate-50 rounded-sm shrink-0">
-              {/* High precision SVG QR Code representation */}
-              <div className="w-14 h-14 bg-white p-1 border border-black flex items-center justify-center shrink-0">
-                <svg viewBox="0 0 29 29" className="w-full h-full text-black fill-current">
-                  <path d="M0 0h7v7H0zM2 2v3h3V2zM9 0h2v1H9zM12 0h1v2h-1zM15 0h1v1h-1zM18 0h2v2h-2zM22 0h7v7h-7zM24 2v3h3V2zM0 9h1v2H0zM3 9h2v1H3zM6 9h3v1H6zM11 9h1v3h-1zM14 9h3v1h-3zM18 9h1v1h-1zM20 9h2v2h-2zM24 9h2v1h-2zM28 9h1v2h-1zM0 12h2v1H0zM3 12h1v1H3zM5 12h2v1H5zM8 12h2v2H8zM13 12h3v1h-3zM18 12h1v2h-1zM21 12h3v1h-3zM26 12h2v1h-2zM0 15h1v1H0zM2 15h3v1H2zM6 15h1v3H6zM9 15h3v1H9zM14 15h1v1h-1zM17 15h2v1h-2zM21 15h1v1h-1zM24 15h1v3h-1zM27 15h2v1h-2zM0 18h2v2H0zM3 18h2v1H3zM8 18h2v1H8zM11 18h2v3h-2zM15 18h2v1h-2zM19 18h3v1h-3zM26 18h3v1h-3zM0 22h7v7H0zM2 24v3h3v-3zM9 22h1v2H9zM12 22h2v1h-2zM16 22h1v1h-1zM19 22h1v2h-1zM21 22h2v1h-2zM25 22h3v1h-3zM9 25h2v2H9zM13 25h2v1h-2zM17 25h1v3h-1zM20 25h2v1h-2zM24 25h1v1h-1zM27 25h2v2h-2z" />
-                </svg>
-              </div>
-              <div className="text-[9px] font-mono leading-tight text-left">
-                <div className="font-bold text-black">ID: {result.studentId}</div>
-                <div className="text-slate-600">{result.academicSession}</div>
-                <div className="text-blue-900 font-bold">VERIFIED</div>
-              </div>
-            </div>
+          {/* 6. WATERMARK / FOOTER NOTICE */}
+          <div className="text-center pt-2">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-black">
+              *** FAITH ACADEMY IKORODU OFFICIAL COMPUTER GENERATED MIDTERM RESULT SLIP ***
+            </p>
           </div>
 
         </div>

@@ -89,6 +89,24 @@ export interface AdminStudentSummary {
   averageScore: number;
 }
 
+export interface BrandingTransform {
+  x: number;
+  y: number;
+  scale: number;
+  rotate: number;
+}
+
+export interface BrandingInfo {
+  logoUrl?: string | null;
+  stampUrl?: string | null;
+  signatureUrl?: string | null;
+  positions?: {
+    logo?: BrandingTransform;
+    stamp?: BrandingTransform;
+    signature?: BrandingTransform;
+  };
+}
+
 export interface SchoolHeaderInfo {
   schoolName: string;
   reportTitle: string;

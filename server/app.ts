@@ -290,12 +290,16 @@ app.get('/api/branding', async (req, res) => {
 
 app.post('/api/branding', async (req, res) => {
   try {
-    const { type, url } = req.body;
-    if (!type || !url) {
-      return res.status(400).json({ error: 'Type and URL required.' });
+    const { type, url, positions } = req.body;
+    if (positions) {
+      const updated = await updateBranding({ positions });
+      return res.json({ success: true, branding: updated });
     }
-    let finalUrl = url;
-    if (url.startsWith('data:') || url.length > 500) {
+    if (!type) {
+      return res.status(400).json({ error: 'Type or positions required.' });
+    }
+    let finalUrl = url || '';
+    if (url && (url.startsWith('data:') || url.length > 500)) {
       finalUrl = await uploadToCloudinary(url, 'royal_academy/branding');
     }
     const updated = await updateBranding(type, finalUrl);

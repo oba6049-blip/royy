@@ -44,7 +44,8 @@ import {
   Database,
   Server,
   RefreshCw,
-  Cloud
+  Cloud,
+  Sliders
 } from 'lucide-react';
 
 interface AdminUser {
@@ -524,11 +525,30 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     triggerToast('Subject removed from result sheet.');
   };
 
-  // Branding Uploads Preview States
+  // Branding Uploads & Position States
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [stampPreview, setStampPreview] = useState<string | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [isUploadingBranding, setIsUploadingBranding] = useState<string | null>(null);
+
+  const [brandingPositions, setBrandingPositions] = useState<{
+    logo: { x: number; y: number; scale: number; rotate: number };
+    stamp: { x: number; y: number; scale: number; rotate: number };
+    signature: { x: number; y: number; scale: number; rotate: number };
+  }>({
+    logo: { x: 0, y: 0, scale: 1, rotate: 0 },
+    stamp: { x: 0, y: 0, scale: 1, rotate: 0 },
+    signature: { x: 0, y: 0, scale: 1, rotate: 0 },
+  });
+
+  const handleSavePositions = async () => {
+    const res = await api.saveBrandingPositions(brandingPositions);
+    if (res.success) {
+      triggerToast('Branding layout positions saved permanently!');
+    } else {
+      triggerToast('Failed to save branding positions.');
+    }
+  };
 
   const handleBrandingFileUpload = async (type: 'logoUrl' | 'stampUrl' | 'signatureUrl', file: File) => {
     if (!file) return;
@@ -560,6 +580,41 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       console.error(err);
       setIsUploadingBranding(null);
       triggerToast('Error processing image file.');
+    }
+  };
+
+  const [isUploadingStudentPhoto, setIsUploadingStudentPhoto] = useState<'new' | 'edit' | null>(null);
+
+  const handleStudentPhotoUpload = async (file: File, target: 'new' | 'edit') => {
+    if (!file) return;
+    setIsUploadingStudentPhoto(target);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        if (target === 'new') {
+          setNewStudent((prev) => ({ ...prev, passportUrl: base64 }));
+        } else {
+          setEditingStudent((prev) => prev ? { ...prev, passportUrl: base64 } : null);
+        }
+
+        const uploadedUrl = await api.uploadImage(base64, 'royal_academy/passports');
+        if (uploadedUrl) {
+          if (target === 'new') {
+            setNewStudent((prev) => ({ ...prev, passportUrl: uploadedUrl }));
+          } else {
+            setEditingStudent((prev) => prev ? { ...prev, passportUrl: uploadedUrl } : null);
+          }
+          const isCdn = uploadedUrl.includes('res.cloudinary.com');
+          triggerToast(`Student passport uploaded successfully${isCdn ? ' to Cloudinary CDN & MongoDB' : ''}!`);
+        }
+        setIsUploadingStudentPhoto(null);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      setIsUploadingStudentPhoto(null);
+      triggerToast('Failed to upload student photo.');
     }
   };
 
@@ -860,6 +915,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         if (branding.logoUrl) setLogoPreview(branding.logoUrl);
         if (branding.stampUrl) setStampPreview(branding.stampUrl);
         if (branding.signatureUrl) setSignaturePreview(branding.signatureUrl);
+        if (branding.positions) {
+          setBrandingPositions((prev) => ({
+            ...prev,
+            ...branding.positions,
+          }));
+        }
       }
     };
 
@@ -2438,6 +2499,92 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     </label>
                   </div>
                 </div>
+
+                {/* Position & Scale Adjustments */}
+                <div className="border-t border-slate-100 pt-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-[#1E3A8A]" />
+                      <span>Logo Layout Position & Scale Adjustments</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={handleSavePositions}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Coordinates</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">X Offset: {brandingPositions.logo.x}px</label>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={brandingPositions.logo.x}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            logo: { ...prev.logo, x: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Y Offset: {brandingPositions.logo.y}px</label>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={brandingPositions.logo.y}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            logo: { ...prev.logo, y: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Scale: {brandingPositions.logo.scale}x</label>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.5"
+                        step="0.05"
+                        value={brandingPositions.logo.scale}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            logo: { ...prev.logo, scale: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Rotate: {brandingPositions.logo.rotate}°</label>
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        value={brandingPositions.logo.rotate}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            logo: { ...prev.logo, rotate: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2534,6 +2681,92 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     </label>
                   </div>
                 </div>
+
+                {/* Position & Scale Adjustments for Stamp */}
+                <div className="border-t border-slate-100 pt-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-[#1E3A8A]" />
+                      <span>Official Stamp Position & Scale Adjustments</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={handleSavePositions}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Coordinates</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">X Offset: {brandingPositions.stamp.x}px</label>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={brandingPositions.stamp.x}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            stamp: { ...prev.stamp, x: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Y Offset: {brandingPositions.stamp.y}px</label>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={brandingPositions.stamp.y}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            stamp: { ...prev.stamp, y: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Scale: {brandingPositions.stamp.scale}x</label>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.5"
+                        step="0.05"
+                        value={brandingPositions.stamp.scale}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            stamp: { ...prev.stamp, scale: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Rotate: {brandingPositions.stamp.rotate}°</label>
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        value={brandingPositions.stamp.rotate}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            stamp: { ...prev.stamp, rotate: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2626,6 +2859,92 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         className="hidden"
                       />
                     </label>
+                  </div>
+                </div>
+
+                {/* Position & Scale Adjustments for Signature */}
+                <div className="border-t border-slate-100 pt-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-[#1E3A8A]" />
+                      <span>Signature Position & Scale Adjustments</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={handleSavePositions}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Coordinates</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">X Offset: {brandingPositions.signature.x}px</label>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={brandingPositions.signature.x}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            signature: { ...prev.signature, x: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Y Offset: {brandingPositions.signature.y}px</label>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={brandingPositions.signature.y}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            signature: { ...prev.signature, y: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Scale: {brandingPositions.signature.scale}x</label>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.5"
+                        step="0.05"
+                        value={brandingPositions.signature.scale}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            signature: { ...prev.signature, scale: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Rotate: {brandingPositions.signature.rotate}°</label>
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        value={brandingPositions.signature.rotate}
+                        onChange={(e) =>
+                          setBrandingPositions((prev) => ({
+                            ...prev,
+                            signature: { ...prev.signature, rotate: Number(e.target.value) },
+                          }))
+                        }
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2817,19 +3136,49 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </select>
               </div>
 
-              {/* Student Passport / Image URL */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Student Photo / Image URL</label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/photo-... or enter photo URL"
-                  value={newStudent.passportUrl}
-                  onChange={(e) => setNewStudent({ ...newStudent, passportUrl: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
-                />
+              {/* Student Passport / Image URL & File Upload */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block">Student Passport / Photo</label>
+                  {newStudent.passportUrl?.includes('res.cloudinary.com') && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                      <Cloud className="w-3 h-3 text-emerald-600" /> Cloudinary CDN
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <label className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl cursor-pointer shadow-xs shrink-0 transition-all">
+                    {isUploadingStudentPhoto === 'new' ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                    <span>{isUploadingStudentPhoto === 'new' ? 'Uploading...' : 'Upload Image File'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingStudentPhoto === 'new'}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          handleStudentPhotoUpload(e.target.files[0], 'new');
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <input
+                    type="url"
+                    placeholder="or paste photo URL (https://...)"
+                    value={newStudent.passportUrl}
+                    onChange={(e) => setNewStudent({ ...newStudent, passportUrl: e.target.value })}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  />
+                </div>
                 
                 {/* Live Image Preview & Presets */}
-                <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
                   <div className="w-12 h-14 rounded-lg overflow-hidden border border-slate-300 shrink-0 bg-white shadow-2xs">
                     <img
                       src={newStudent.passportUrl.trim() || (newStudent.gender === 'Female' 
@@ -2986,19 +3335,49 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </select>
               </div>
 
-              {/* Student Photo / Image URL */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Student Photo / Image URL</label>
-                <input
-                  type="url"
-                  placeholder="Enter image URL e.g. https://images.unsplash.com/..."
-                  value={editingStudent.passportUrl || ''}
-                  onChange={(e) => setEditingStudent({ ...editingStudent, passportUrl: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
-                />
+              {/* Student Photo / Image URL & File Upload */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block">Student Passport / Photo</label>
+                  {editingStudent.passportUrl?.includes('res.cloudinary.com') && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                      <Cloud className="w-3 h-3 text-emerald-600" /> Cloudinary CDN
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <label className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl cursor-pointer shadow-xs shrink-0 transition-all">
+                    {isUploadingStudentPhoto === 'edit' ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                    <span>{isUploadingStudentPhoto === 'edit' ? 'Uploading...' : 'Upload Image File'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingStudentPhoto === 'edit'}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          handleStudentPhotoUpload(e.target.files[0], 'edit');
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <input
+                    type="url"
+                    placeholder="or paste photo URL (https://...)"
+                    value={editingStudent.passportUrl || ''}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, passportUrl: e.target.value })}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  />
+                </div>
 
                 {/* Live Image Preview & Quick Presets */}
-                <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
                   <div className="w-12 h-14 rounded-lg overflow-hidden border border-slate-300 shrink-0 bg-white shadow-2xs">
                     <img
                       src={editingStudent.passportUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250'}

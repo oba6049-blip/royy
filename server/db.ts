@@ -309,8 +309,14 @@ export async function getBranding() {
   return memoryStore.branding;
 }
 
-export async function updateBranding(type: 'logoUrl' | 'stampUrl' | 'signatureUrl', url: string) {
-  const update = { [type]: url, updatedAt: new Date().toISOString() };
+export async function updateBranding(typeOrObject: string | Record<string, any>, value?: any) {
+  let update: Record<string, any> = { updatedAt: new Date().toISOString() };
+  if (typeof typeOrObject === 'object' && typeOrObject !== null) {
+    update = { ...update, ...typeOrObject };
+  } else if (typeof typeOrObject === 'string') {
+    update[typeOrObject] = value;
+  }
+
   if (isMongoConnected && dbInstance) {
     await dbInstance.collection('branding').updateOne(
       { type: 'school_branding' },

@@ -290,6 +290,21 @@ export const api = {
     }
   },
 
+  async saveBrandingPositions(positions: Record<string, { x: number; y: number; scale: number; rotate: number }>): Promise<{ success: boolean; branding?: any }> {
+    try {
+      const res = await fetch('/api/branding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ positions }),
+      });
+      if (!res.ok) return { success: false };
+      const data = await res.json();
+      return { success: true, branding: data.branding };
+    } catch {
+      return { success: false };
+    }
+  },
+
   // Auth
   async loginAdmin(email: string, pass: string): Promise<any> {
     const cleanEmail = (email || '').trim().toLowerCase();
