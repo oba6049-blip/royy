@@ -121,7 +121,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 className="absolute -top-3 -right-3 bg-gradient-to-r from-[#F59E0B] to-[#d97706] text-white px-3.5 py-1.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold border border-yellow-300/40 z-20"
               >
                 <Award className="w-4 h-4 text-white" />
-                <span>Faith Academy Midterm Report</span>
+                <span>Faith Academy Student Report</span>
               </motion.div>
             </div>
           </motion.div>

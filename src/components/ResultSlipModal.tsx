@@ -1,79 +1,13 @@
 import React, { useState, useRef } from 'react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
 import { api } from '../services/api';
 import { 
   ShieldCheck as ShieldIcon, 
   Printer as PrintIcon, 
-  Download as DownloadIcon, 
   Share2 as ShareIcon, 
   X as CloseIcon, 
-  Check as CheckIcon,
-  Loader2 as SpinnerIcon
+  Check as CheckIcon
 } from 'lucide-react';
-
-// Helper to convert oklch CSS color functions to standard rgb/rgba for html2canvas compatibility
-const oklchCache = new Map<string, string>();
-
-const parseOklchToRgb = (colorStr: string): string => {
-  if (!colorStr || typeof colorStr !== 'string' || !colorStr.includes('oklch')) {
-    return colorStr || '';
-  }
-  if (oklchCache.has(colorStr)) {
-    return oklchCache.get(colorStr)!;
-  }
-
-  const replaced = colorStr.replace(/oklch\(\s*([\d.%]+)\s+([\d.%]+)\s+([\d.%]+)(?:\s*\/\s*([\d.%]+))?\s*\)/gi, (fullMatch, lRaw, cRaw, hRaw, aRaw) => {
-    try {
-      let L = lRaw.endsWith('%') ? parseFloat(lRaw) / 100 : parseFloat(lRaw);
-      let C = cRaw.endsWith('%') ? parseFloat(cRaw) / 100 : parseFloat(cRaw);
-      let H = parseFloat(hRaw);
-      let A = 1;
-      if (aRaw) {
-        A = aRaw.endsWith('%') ? parseFloat(aRaw) / 100 : parseFloat(aRaw);
-      }
-
-      if (isNaN(L) || isNaN(C) || isNaN(H)) return 'rgb(0,0,0)';
-
-      const hRad = (H * Math.PI) / 180;
-      const a = C * Math.cos(hRad);
-      const b = C * Math.sin(hRad);
-
-      const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
-      const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
-      const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
-
-      const lComp = l_ * l_ * l_;
-      const mComp = m_ * m_ * m_;
-      const sComp = s_ * s_ * s_;
-
-      const r_lin = +4.0767416621 * lComp - 3.3077115913 * mComp + 0.2309699292 * sComp;
-      const g_lin = -1.2684380046 * lComp + 2.6097574011 * mComp - 0.3413193965 * sComp;
-      const b_lin = -0.0041960863 * lComp - 0.7034186147 * mComp + 1.7076147010 * sComp;
-
-      const toSRGB = (val: number) => {
-        const clamped = Math.max(0, Math.min(1, val));
-        return clamped > 0.0031308
-          ? 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055
-          : 12.92 * clamped;
-      };
-
-      const rInt = Math.round(toSRGB(r_lin) * 255);
-      const gInt = Math.round(toSRGB(g_lin) * 255);
-      const bInt = Math.round(toSRGB(b_lin) * 255);
-
-      return A >= 0.99
-        ? `rgb(${rInt}, ${gInt}, ${bInt})`
-        : `rgba(${rInt}, ${gInt}, ${bInt}, ${A.toFixed(2)})`;
-    } catch {
-      return 'rgb(0,0,0)';
-    }
-  });
-
-  oklchCache.set(colorStr, replaced);
-  return replaced;
-};
 
 // Helper to generate a crisp SVG avatar data URI for fallback
 const createDefaultAvatarDataUrl = (name: string): string => {
@@ -110,7 +44,6 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
   branding: initialBranding,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [passportBase64, setPassportBase64] = useState<string>('');
   const [brandingState, setBrandingState] = useState<{ logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null } | null>(initialBranding || null);
   const printRef = useRef<HTMLDivElement>(null);
@@ -213,136 +146,6 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
     window.print();
   };
 
-  const handleDownloadPdf = async () => {
-    if (!printRef.current || !result) return;
-    setIsDownloadingPdf(true);
-
-    try {
-      const element = printRef.current;
-
-      // Timeout safety promise (8 seconds max)
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('PDF generation timed out')), 8000)
-      );
-
-      // Render crisp HD canvas using html2canvas scale: 2 for high DPI resolution
-      const renderPromise = html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        imageTimeout: 4000,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-        onclone: (clonedDoc) => {
-          // Add crossOrigin = 'anonymous' to cloned images
-          const images = clonedDoc.querySelectorAll('img');
-          images.forEach((img) => {
-            img.crossOrigin = 'anonymous';
-          });
-
-          // Convert any oklch color definitions in style tags to standard rgb
-          const styleTags = clonedDoc.querySelectorAll('style');
-          styleTags.forEach((styleEl) => {
-            if (styleEl.textContent && styleEl.textContent.includes('oklch')) {
-              styleEl.textContent = parseOklchToRgb(styleEl.textContent);
-            }
-          });
-
-          // Convert inline style attributes on all cloned elements
-          const allEls = clonedDoc.querySelectorAll('*');
-          allEls.forEach((el) => {
-            const htmlEl = el as HTMLElement;
-            if (htmlEl.getAttribute) {
-              const styleAttr = htmlEl.getAttribute('style');
-              if (styleAttr && styleAttr.includes('oklch')) {
-                htmlEl.setAttribute('style', parseOklchToRgb(styleAttr));
-              }
-            }
-          });
-
-          // Intercept getComputedStyle in cloned window so html2canvas color parser never encounters oklch strings
-          if (clonedDoc.defaultView) {
-            const origGetComputedStyle = clonedDoc.defaultView.getComputedStyle;
-            clonedDoc.defaultView.getComputedStyle = function (el: Element, pseudoElt?: string | null) {
-              const style = origGetComputedStyle.call(clonedDoc.defaultView, el, pseudoElt);
-              return new Proxy(style, {
-                get(target, prop, receiver) {
-                  if (prop === 'getPropertyValue') {
-                    return function (propertyName: string) {
-                      const val = target.getPropertyValue(propertyName);
-                      if (typeof val === 'string' && val.includes('oklch')) {
-                        return parseOklchToRgb(val);
-                      }
-                      return val;
-                    };
-                  }
-                  const val = Reflect.get(target, prop, receiver);
-                  if (typeof val === 'string' && val.includes('oklch')) {
-                    return parseOklchToRgb(val);
-                  }
-                  if (typeof val === 'function') {
-                    return val.bind(target);
-                  }
-                  return val;
-                }
-              });
-            };
-          }
-        },
-      });
-
-      const canvas = await Promise.race([renderPromise, timeoutPromise]);
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-      // Create A4 PDF document
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true,
-      });
-
-      const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
-      const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
-
-      const margin = 5;
-      const imgWidth = pageWidth - (margin * 2); // 200mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      if (imgHeight <= (pageHeight - (margin * 2))) {
-        pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight, undefined, 'FAST');
-      } else {
-        let heightLeft = imgHeight;
-        let position = margin;
-
-        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= (pageHeight - (margin * 2));
-
-        while (heightLeft > 0) {
-          position = heightLeft - imgHeight + margin;
-          pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
-          heightLeft -= (pageHeight - (margin * 2));
-        }
-      }
-
-      const cleanName = (result.fullName || result.studentId || 'Student')
-        .replace(/[^a-zA-Z0-9_-]/g, '_');
-      pdf.save(`ROYAL_ACADEMY_${cleanName}_Result_Slip.pdf`);
-    } catch (error) {
-      console.error('HD PDF generation error:', error);
-      // Fallback to browser print dialog if html2canvas/jsPDF encounters issues
-      window.print();
-    } finally {
-      setIsDownloadingPdf(false);
-    }
-  };
-
   const handleShare = () => {
     const url = `${window.location.origin}?studentId=${result.studentId}`;
     navigator.clipboard.writeText(url);
@@ -383,25 +186,6 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             >
               <PrintIcon className="w-4 h-4" />
               <span>Print Slip</span>
-            </button>
-
-            <button
-              onClick={handleDownloadPdf}
-              disabled={isDownloadingPdf}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-60"
-              title="Download high-definition PDF result slip"
-            >
-              {isDownloadingPdf ? (
-                <>
-                  <SpinnerIcon className="w-4 h-4 animate-spin text-white" />
-                  <span>Generating HD PDF...</span>
-                </>
-              ) : (
-                <>
-                  <DownloadIcon className="w-4 h-4" />
-                  <span>Download HD PDF</span>
-                </>
-              )}
             </button>
 
             <button
@@ -453,7 +237,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             {/* Top Center: School Name and Subheader Title */}
             <div className="text-center flex-1">
               <h1 className="text-[18px] font-bold text-black uppercase tracking-wider font-sans leading-tight">
-                {headerInfo.schoolName || 'FAITH ACADEMY IKORODU'}
+                {headerInfo.schoolName || 'FAITH ACADEMY'}
               </h1>
               <h2 className="text-[12px] font-bold text-black uppercase tracking-normal mt-1">
                 MIDTERM REPORT — {result.term?.toUpperCase() || 'TERM 1'} OF {result.academicSession || '2018/2019'} SESSION
@@ -490,12 +274,12 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
           <div className="mb-3">
             <table className="w-full text-[11px] text-black border-collapse border border-black font-sans" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead>
-                <tr className="bg-[#e5e5e5] text-black font-bold border-b border-black text-center" style={{ height: '26px' }}>
-                  <th className="border border-black text-center" style={{ width: '35px', padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>S/N</th>
-                  <th className="border border-black text-left" style={{ padding: '0 8px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>SUBJECT</th>
-                  <th className="border border-black text-center" style={{ width: '130px', padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>1ST SUMMARY (20)</th>
-                  <th className="border border-black text-center" style={{ width: '140px', padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>1ST SUMMARY (100%)</th>
-                  <th className="border border-black text-center" style={{ width: '90px', padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>GS / NGS</th>
+                <tr className="bg-[#e5e5e5] text-black font-bold border-b border-black text-center">
+                  <th className="border border-black text-center align-middle" style={{ width: '35px', padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>S/N</th>
+                  <th className="border border-black text-left align-middle" style={{ padding: '6px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>SUBJECT</th>
+                  <th className="border border-black text-center align-middle" style={{ width: '130px', padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>1ST SUMMARY (20)</th>
+                  <th className="border border-black text-center align-middle" style={{ width: '140px', padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>1ST SUMMARY (100%)</th>
+                  <th className="border border-black text-center align-middle" style={{ width: '90px', padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>GS / NGS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black font-normal">
@@ -507,12 +291,12 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                     const isGS = summary20 >= 10;
 
                     return (
-                      <tr key={sub.id || idx} style={{ height: '26px' }}>
-                        <td className="border border-black text-center font-mono" style={{ padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>{idx + 1}</td>
-                        <td className="border border-black text-left uppercase" style={{ padding: '0 8px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>{sub.subject}</td>
-                        <td className="border border-black text-center font-mono font-bold" style={{ padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>{summary20}</td>
-                        <td className="border border-black text-center font-mono font-bold" style={{ padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>{summary100}%</td>
-                        <td className="border border-black text-center font-bold" style={{ padding: '0 4px', height: '26px', lineHeight: '26px', verticalAlign: 'middle' }}>
+                      <tr key={sub.id || idx}>
+                        <td className="border border-black text-center font-mono align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{idx + 1}</td>
+                        <td className="border border-black text-left uppercase align-middle" style={{ padding: '6px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>{sub.subject}</td>
+                        <td className="border border-black text-center font-mono font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{summary20}</td>
+                        <td className="border border-black text-center font-mono font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{summary100}%</td>
+                        <td className="border border-black text-center font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
                           {isGS ? 'GS' : 'NGS'}
                         </td>
                       </tr>
@@ -520,7 +304,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="p-4 text-center font-bold text-slate-500 uppercase tracking-wider border border-black">
+                    <td colSpan={5} className="p-4 text-center font-bold text-slate-500 uppercase tracking-wider border border-black align-middle" style={{ padding: '12px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>
                       No subjects entered for this student yet.
                     </td>
                   </tr>
@@ -666,7 +450,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
           {/* 6. WATERMARK / FOOTER NOTICE */}
           <div className="text-center pt-2">
             <p className="text-[9px] font-bold uppercase tracking-wider text-black">
-              *** FAITH ACADEMY IKORODU OFFICIAL COMPUTER GENERATED MIDTERM RESULT SLIP ***
+              *** FAITH ACADEMY OFFICIAL COMPUTER GENERATED MIDTERM RESULT SLIP ***
             </p>
           </div>
 

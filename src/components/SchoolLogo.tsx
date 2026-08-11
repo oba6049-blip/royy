@@ -72,7 +72,7 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
                 lightMode ? 'text-[#64748B]' : 'text-[#94A3B8]'
               }`}
             >
-              IKORODU • MIDTERM REPORT
+              RESULT PORTAL
             </span>
           )}
         </div>
