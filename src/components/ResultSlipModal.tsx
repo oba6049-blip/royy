@@ -437,9 +437,16 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
               }}
             >
               {brandingState?.logoUrl ? (
-                <img src={brandingState.logoUrl} alt="School Logo" className="w-full h-full object-contain p-0.5" />
+                <img 
+                  src={brandingState.logoUrl} 
+                  alt="Faith Academy Logo" 
+                  className="w-full h-full object-contain p-0.5" 
+                />
               ) : (
-                <ShieldIcon className="w-10 h-10 text-slate-900" />
+                <div className="w-full h-full bg-[#1E3A8A] flex flex-col items-center justify-center p-1 text-white text-center">
+                  <ShieldIcon className="w-8 h-8 text-[#F59E0B]" />
+                  <span className="text-[6px] font-extrabold tracking-tighter uppercase mt-0.5 leading-none">FAITH ACADEMY</span>
+                </div>
               )}
             </div>
 
@@ -598,13 +605,13 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             </div>
 
             {/* RIGHT BOX: AUTHENTICATION, STAMP & SIGNATURE */}
-            <div className="border border-black p-2 bg-white text-[10px] flex flex-col justify-between relative min-h-[140px]">
+            <div className="border border-black p-2 bg-white text-[10px] flex flex-col justify-between relative min-h-[150px]">
               <h4 className="font-bold text-[11px] uppercase border-b border-black pb-0.5 text-black text-center">
                 AUTHENTICATION
               </h4>
 
               {/* Stamp & Signature Canvas Overlay Area */}
-              <div className="relative flex-1 my-1 flex items-center justify-center overflow-hidden min-h-[70px]">
+              <div className="relative flex-1 my-1 flex items-center justify-center overflow-hidden min-h-[85px]">
                 {/* Official Rubber Stamp */}
                 <div
                   className="absolute z-10 pointer-events-none"
@@ -615,11 +622,11 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                   }}
                 >
                   {brandingState?.stampUrl ? (
-                    <img src={brandingState.stampUrl} alt="Official Stamp" className="w-16 h-16 object-contain" />
+                    <img src={brandingState.stampUrl} alt="Official Stamp" className="w-24 h-24 object-contain" />
                   ) : (
-                    <div className="w-16 h-16 border border-dashed border-black rounded-full flex flex-col items-center justify-center p-1 text-center bg-transparent">
-                      <span className="text-[6px] font-bold uppercase leading-none text-black">FAITH ACADEMY</span>
-                      <span className="text-[5px] uppercase leading-none mt-0.5 text-black">OFFICIAL STAMP</span>
+                    <div className="w-24 h-24 border border-dashed border-black rounded-full flex flex-col items-center justify-center p-1.5 text-center bg-transparent">
+                      <span className="text-[8px] font-extrabold uppercase leading-none text-black">FAITH ACADEMY</span>
+                      <span className="text-[7px] font-bold uppercase leading-none mt-1 text-black">OFFICIAL STAMP</span>
                     </div>
                   )}
                 </div>
@@ -634,9 +641,9 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                   }}
                 >
                   {brandingState?.signatureUrl ? (
-                    <img src={brandingState.signatureUrl} alt="Principal Signature" className="h-10 max-w-[130px] object-contain" />
+                    <img src={brandingState.signatureUrl} alt="Principal Signature" className="h-14 max-w-[180px] object-contain" />
                   ) : (
-                    <span className="font-bold text-xs italic tracking-wider text-black">Principal Signature</span>
+                    <span className="font-bold text-sm italic tracking-wider text-black">Principal Signature</span>
                   )}
                 </div>
               </div>

@@ -20,6 +20,7 @@ import { StudentLoginPage } from './components/StudentLoginPage';
 import { StudentDashboardPage } from './components/StudentDashboardPage';
 
 import { StudentResult } from './types';
+import { MOCK_STUDENTS } from './data/mockData';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'home' | 'student-login' | 'student-dashboard' | 'admin-login' | 'admin-dashboard'>('home');
@@ -155,7 +156,12 @@ export default function App() {
         <HeroSection
           onCheckResultClick={handleCheckResultClick}
           onLearnMoreClick={handleLearnMoreClick}
-          onQuickVerifyClick={handleOpenQRModal}
+          onQuickVerifyClick={(studentId) => {
+            const student = MOCK_STUDENTS[studentId] || Object.values(MOCK_STUDENTS)[0];
+            if (student) {
+              handleOpenResultSlip(student);
+            }
+          }}
         />
 
         {/* Floating Statistics Counters */}

@@ -784,13 +784,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
   const handleAddSubjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSubject.code || !newSubject.name) {
-      triggerToast('Please provide subject code and subject name.');
+    if (!newSubject.name.trim()) {
+      triggerToast('Please provide a subject title.');
       return;
     }
+    const generatedCode = newSubject.code.trim() ? newSubject.code.toUpperCase() : (newSubject.name.trim().substring(0, 3).toUpperCase() + Math.floor(Math.random() * 899 + 100));
     const created = {
-      code: newSubject.code.toUpperCase(),
-      name: newSubject.name,
+      code: generatedCode,
+      name: newSubject.name.trim(),
       category: newSubject.category,
       teacher: newSubject.teacher || 'Unassigned Instructor',
     };
@@ -799,7 +800,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setSubjectList([...subjectList, created]);
     setIsAddSubjectOpen(false);
     setNewSubject({ code: '', name: '', category: 'General Core', teacher: '' });
-    triggerToast(`Subject "${created.name}" (${created.code}) created and synced to MongoDB database!`);
+    triggerToast(`Subject "${created.name}" created and synced to database!`);
   };
 
   const handleDeleteSubjectConfirm = async () => {
@@ -808,7 +809,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setDeleteSubjectCandidate(null);
     await api.deleteSubject(target.code);
     setSubjectList(subjectList.filter(s => s.code !== target.code));
-    triggerToast(`Subject "${target.name}" (${target.code}) permanently deleted from database.`);
+    triggerToast(`Subject "${target.name}" permanently deleted from database.`);
   };
 
   const handleViewStudent = async (st: any) => {
@@ -912,7 +913,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
       const branding = await api.getBranding();
       if (branding) {
-        if (branding.logoUrl) setLogoPreview(branding.logoUrl);
+        setLogoPreview(branding.logoUrl || null);
         if (branding.stampUrl) setStampPreview(branding.stampUrl);
         if (branding.signatureUrl) setSignaturePreview(branding.signatureUrl);
         if (branding.positions) {
@@ -1654,7 +1655,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 uppercase text-[10px] tracking-wider">
-                      <th className="p-4">Subject Code</th>
                       <th className="p-4">Subject Title</th>
                       <th className="p-4">Category</th>
                       <th className="p-4">Lead Instructor</th>
@@ -1663,8 +1663,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                     {subjectList.map((s) => (
-                      <tr key={s.code} className="hover:bg-blue-50/30 transition-colors">
-                        <td className="p-4 font-mono font-bold text-[#1E3A8A]">{s.code}</td>
+                      <tr key={s.code || s.name} className="hover:bg-blue-50/30 transition-colors">
                         <td className="p-4 font-bold text-[#0F172A]">{s.name}</td>
                         <td className="p-4">
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
@@ -3798,18 +3797,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
             <form onSubmit={handleAddSubjectSubmit} className="space-y-3">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Subject Code</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. FUR 101 or ICT 101"
-                  value={newSubject.code}
-                  onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-mono font-bold text-[#1E3A8A]"
-                />
-              </div>
-
-              <div>
                 <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Subject Title</label>
                 <input
                   type="text"
@@ -3874,7 +3861,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             <AlertCircle className="w-10 h-10 text-red-600 mx-auto" />
             <h3 className="text-base font-bold text-[#0F172A]">Delete Curriculum Subject</h3>
             <p className="text-xs text-slate-500">
-              Are you sure you want to remove <span className="font-bold text-[#1E3A8A]">{deleteSubjectCandidate.code} - {deleteSubjectCandidate.name}</span> from the database?
+              Are you sure you want to remove <span className="font-bold text-[#1E3A8A]">{deleteSubjectCandidate.name}</span> from the database?
             </p>
 
             <div className="pt-2 flex justify-center gap-3">

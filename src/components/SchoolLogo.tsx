@@ -31,7 +31,7 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      {/* Royal Crest Emblem */}
+      {/* School Crest Logo */}
       <div
         className={`relative flex items-center justify-center rounded-xl bg-gradient-to-br from-[#1E3A8A] via-[#1e40af] to-[#0F172A] p-2 text-white shadow-md border border-[#F59E0B]/30 ${sizeClasses[size]}`}
       >
@@ -64,7 +64,7 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
               lightMode ? 'text-[#0F172A]' : 'text-white'
             }`}
           >
-            ROYAL ACADEMY
+            FAITH ACADEMY
           </span>
           {showSubtext && (
             <span
@@ -72,7 +72,7 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
                 lightMode ? 'text-[#64748B]' : 'text-[#94A3B8]'
               }`}
             >
-              Excellence & Integrity
+              IKORODU • MIDTERM REPORT
             </span>
           )}
         </div>
