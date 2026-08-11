@@ -389,13 +389,13 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             </div>
 
             {/* RIGHT BOX: AUTHENTICATION, STAMP & SIGNATURE */}
-            <div className="border border-black p-2 bg-white text-[10px] flex flex-col justify-between relative min-h-[150px]">
+            <div className="border border-black p-2 bg-white text-[10px] flex flex-col justify-between relative min-h-[165px]">
               <h4 className="font-bold text-[11px] uppercase border-b border-black pb-0.5 text-black text-center">
                 AUTHENTICATION
               </h4>
 
               {/* Stamp & Signature Canvas Overlay Area */}
-              <div className="relative flex-1 my-1 flex items-center justify-center overflow-hidden min-h-[85px]">
+              <div className="relative flex-1 my-1 flex items-center justify-center overflow-visible min-h-[100px]">
                 {/* Official Rubber Stamp */}
                 <div
                   className="absolute z-10 pointer-events-none"
@@ -406,11 +406,11 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                   }}
                 >
                   {brandingState?.stampUrl ? (
-                    <img src={brandingState.stampUrl} alt="Official Stamp" className="w-24 h-24 object-contain" />
+                    <img src={brandingState.stampUrl} alt="Official Stamp" className="w-32 h-32 object-contain" />
                   ) : (
-                    <div className="w-24 h-24 border border-dashed border-black rounded-full flex flex-col items-center justify-center p-1.5 text-center bg-transparent">
-                      <span className="text-[8px] font-extrabold uppercase leading-none text-black">FAITH ACADEMY</span>
-                      <span className="text-[7px] font-bold uppercase leading-none mt-1 text-black">OFFICIAL STAMP</span>
+                    <div className="w-32 h-32 border-2 border-dashed border-black rounded-full flex flex-col items-center justify-center p-2 text-center bg-transparent">
+                      <span className="text-[10px] font-extrabold uppercase leading-none text-black">FAITH ACADEMY</span>
+                      <span className="text-[8px] font-bold uppercase leading-none mt-1 text-black">OFFICIAL STAMP</span>
                     </div>
                   )}
                 </div>
@@ -425,9 +425,9 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                   }}
                 >
                   {brandingState?.signatureUrl ? (
-                    <img src={brandingState.signatureUrl} alt="Principal Signature" className="h-14 max-w-[180px] object-contain" />
+                    <img src={brandingState.signatureUrl} alt="Principal Signature" className="h-20 max-w-[220px] object-contain" />
                   ) : (
-                    <span className="font-bold text-sm italic tracking-wider text-black">Principal Signature</span>
+                    <span className="font-bold text-lg font-serif italic tracking-wider text-black">Principal Signature</span>
                   )}
                 </div>
               </div>
