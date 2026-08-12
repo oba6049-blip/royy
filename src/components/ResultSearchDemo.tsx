@@ -328,10 +328,10 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                           Position: {activeResultRank.ordinalPosition} / {activeResultRank.totalInClass}
                         </span>
                         <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px]">
-                          Average: {(activeResult.overallAverage || MOCK_STUDENTS[activeResult.studentId]?.overallAverage || 0).toFixed(1)}%
+                          Average: {(activeResult.overallAverage || 0).toFixed(1)}%
                         </span>
                         <span className="px-2 py-0.5 rounded-md bg-blue-50 text-[#1E3A8A] font-bold text-[10px]">
-                          GPA: {(activeResult.gpa || MOCK_STUDENTS[activeResult.studentId]?.gpa || 0).toFixed(2)}
+                          GPA: {(activeResult.gpa || 0).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -355,12 +355,12 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                           const total = Number(sub.total ?? 0);
                           const grade = (sub.grade || '').trim().toUpperCase();
                           const remark = (sub.remark || '').trim().toUpperCase();
-                          return ca > 0 || exam > 0 || total > 0 || (grade !== '' && grade !== 'PENDING') || (remark !== '' && remark !== 'PENDING');
+                          return ca > 0 || exam > 0 || total > 0 || (grade !== '' && grade !== 'PENDING' && grade !== 'UNRECORDED') || (remark !== '' && remark !== 'PENDING' && remark !== 'UNRECORDED');
                         });
                         if (validSubs.length === 0) {
                           return (
-                            <div className="col-span-2 bg-white p-3 rounded-xl border border-slate-200/80 text-center text-xs text-slate-400 italic">
-                              No subject scores entered for this student yet.
+                            <div className="col-span-2 bg-red-50 p-4 rounded-xl border border-red-200 text-center font-black text-xs text-red-700 uppercase tracking-wider">
+                              NO RESULT AVAILABLE FOR THIS TERM
                             </div>
                           );
                         }

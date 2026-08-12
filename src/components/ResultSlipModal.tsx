@@ -85,29 +85,76 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
 
   const activeResult = React.useMemo(() => {
     if (!result) return null;
-    if (!selectedTermKey) return result;
+
+    const hasValidScores = (subs: any[]) => {
+      if (!subs || !Array.isArray(subs) || subs.length === 0) return false;
+      return subs.some((s: any) => {
+        const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
+        const exam = Number(s.examScore ?? s.exam ?? 0);
+        const total = Number(s.total ?? (ca + exam));
+        return total > 0;
+      });
+    };
+
+    if (!selectedTermKey) {
+      if (!hasValidScores(result.subjects)) {
+        return {
+          ...result,
+          subjects: [],
+          overallTotal: 0,
+          overallAverage: 0,
+          gpa: 0,
+          position: 'N/A',
+          totalInClass: 'N/A',
+        };
+      }
+      return result;
+    }
 
     const matchedRecord = result.termRecords?.find(
       (r) => `${r.academicSession || ''}__${r.term || ''}` === selectedTermKey
     );
 
     if (matchedRecord) {
+      const valid = hasValidScores(matchedRecord.subjects || []);
       return {
         ...result,
         academicSession: matchedRecord.academicSession,
         term: matchedRecord.term,
         className: matchedRecord.className || result.className,
-        subjects: matchedRecord.subjects || [],
-        overallTotal: matchedRecord.overallTotal ?? result.overallTotal,
-        overallAverage: matchedRecord.overallAverage ?? result.overallAverage,
-        gpa: matchedRecord.gpa ?? result.gpa,
-        position: matchedRecord.position ?? result.position,
-        totalInClass: matchedRecord.totalInClass ?? result.totalInClass,
+        subjects: valid ? (matchedRecord.subjects || []) : [],
+        overallTotal: valid ? (matchedRecord.overallTotal ?? 0) : 0,
+        overallAverage: valid ? (matchedRecord.overallAverage ?? 0) : 0,
+        gpa: valid ? (matchedRecord.gpa ?? 0) : 0,
+        position: valid ? (matchedRecord.position ?? 'N/A') : 'N/A',
+        totalInClass: valid ? (matchedRecord.totalInClass ?? 'N/A') : 'N/A',
         principalRemark: matchedRecord.principalRemark || result.principalRemark,
       };
     }
 
-    return result;
+    const parts = selectedTermKey.split('__');
+    const sess = parts[0] || result.academicSession;
+    const trm = parts[1] || result.term;
+
+    if (
+      (result.academicSession || (result as any).session) === sess &&
+      result.term === trm &&
+      hasValidScores(result.subjects)
+    ) {
+      return result;
+    }
+
+    return {
+      ...result,
+      academicSession: sess,
+      term: trm,
+      subjects: [],
+      overallTotal: 0,
+      overallAverage: 0,
+      gpa: 0,
+      position: 'N/A',
+      totalInClass: 'N/A',
+    };
   }, [result, selectedTermKey]);
 
   const currentResult = activeResult || result;
@@ -425,8 +472,8 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="p-4 text-center font-bold text-slate-500 uppercase tracking-wider border border-black align-middle" style={{ padding: '12px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>
-                      No subjects entered for this student yet.
+                    <td colSpan={5} className="p-6 text-center font-black text-red-700 bg-red-50 uppercase tracking-wider border border-black align-middle text-xs" style={{ padding: '16px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>
+                      NO RESULT AVAILABLE FOR THIS TERM
                     </td>
                   </tr>
                 )}

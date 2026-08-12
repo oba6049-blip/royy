@@ -154,12 +154,12 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
       let found = student.termRecords.find(r => isMatchingSessionAndTerm(session, term, r.academicSession, r.term));
       if (found) return found;
 
-      // 2. Try class name and term match (if admission session remains constant across levels)
+      // 2. Try class name and term match
       if (expectedClass) {
         found = student.termRecords.find(r => 
           r.className && expectedClass &&
           (r.className.toLowerCase().includes(expectedClass.toLowerCase()) || expectedClass.toLowerCase().includes(r.className.toLowerCase())) &&
-          isMatchingSessionAndTerm(session, term, session, r.term)
+          isMatchingSessionAndTerm(session, term, r.academicSession || session, r.term)
         );
         if (found) return found;
       }
@@ -286,7 +286,17 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
     return getMatchingTermRecord(publishedStudent || initialStudent, selectedSession, selectedTerm);
   }, [publishedStudent, initialStudent, selectedSession, selectedTerm]);
 
-  const hasPublishedResult = Boolean(currentTermRecord);
+  const hasPublishedResult = useMemo(() => {
+    if (!currentTermRecord) return false;
+    const subs = currentTermRecord.subjects;
+    if (!subs || !Array.isArray(subs) || subs.length === 0) return false;
+    return subs.some((s: any) => {
+      const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
+      const exam = Number(s.examScore ?? s.exam ?? 0);
+      const total = Number(s.total ?? (ca + exam));
+      return total > 0;
+    });
+  }, [currentTermRecord]);
 
   // Perform search / term-filter handler (locked strictly to logged-in student)
   const handlePerformSearch = async (e?: React.FormEvent) => {
@@ -310,7 +320,14 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
       const sessionInfo = enrolledSessions.find(s => s.session === selectedSession);
       const sessionClass = sessionInfo ? sessionInfo.className : targetStudent.className;
 
-      if (matchedRec) {
+      const hasValidScores = matchedRec?.subjects && Array.isArray(matchedRec.subjects) && matchedRec.subjects.some((s: any) => {
+        const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
+        const exam = Number(s.examScore ?? s.exam ?? 0);
+        const total = Number(s.total ?? (ca + exam));
+        return total > 0;
+      });
+
+      if (matchedRec && hasValidScores) {
         const updatedResult: StudentResult = {
           ...targetStudent,
           academicSession: selectedSession,
@@ -337,7 +354,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
           gpa: 0,
         };
         setActiveStudent(emptyResult);
-        setSearchError(`No examination results published for ${selectedTerm} (${selectedSession}) in ${sessionClass}. Since no data was entered by the school administration for this term, no results are available.`);
+        setSearchError(`NO RESULT AVAILABLE FOR THIS TERM (${selectedTerm} - ${selectedSession}). No examination scores have been entered for this term.`);
       }
     } catch {
       setIsSearching(false);
@@ -345,7 +362,14 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
       const sessionInfo = enrolledSessions.find(s => s.session === selectedSession);
       const sessionClass = sessionInfo ? sessionInfo.className : initialStudent.className;
 
-      if (matchedRec) {
+      const hasValidScores = matchedRec?.subjects && Array.isArray(matchedRec.subjects) && matchedRec.subjects.some((s: any) => {
+        const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
+        const exam = Number(s.examScore ?? s.exam ?? 0);
+        const total = Number(s.total ?? (ca + exam));
+        return total > 0;
+      });
+
+      if (matchedRec && hasValidScores) {
         setActiveStudent({
           ...initialStudent,
           academicSession: selectedSession,
@@ -370,7 +394,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
           averageScore: 0,
           gpa: 0,
         });
-        setSearchError(`No examination results published for ${selectedTerm} (${selectedSession}) in ${sessionClass}. Since no data was entered by the school administration for this term, no results are available.`);
+        setSearchError(`NO RESULT AVAILABLE FOR THIS TERM (${selectedTerm} - ${selectedSession}). No examination scores have been entered for this term.`);
       }
     }
   };

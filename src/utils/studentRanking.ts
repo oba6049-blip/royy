@@ -218,6 +218,15 @@ export function calculateDynamicStudentPosition(
     s => s.studentId && s.studentId.toUpperCase() === currentKey
   );
 
+  if (studentSubjects.length === 0 || calculatedAverage === 0) {
+    return {
+      position: 0,
+      totalInClass: Math.max(customAllStudentsList?.length || 0, currentStudent.totalInClass || 35),
+      ordinalPosition: 'N/A',
+      calculatedAverage: 0,
+    };
+  }
+
   const numPos = typeof currentStudent.position === 'number' 
     ? currentStudent.position 
     : (parseInt(String(currentStudent.position || 1), 10) || 1);
