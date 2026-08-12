@@ -43,7 +43,50 @@ export const MOCK_STUDENTS: Record<string, StudentResult> = {
     classTeacherRemark: 'Faridah is an extraordinarily gifted scholar who has earned top valedictorian position with near flawless academic performance.',
     principalRemark: 'Valedictorian candidate. Highest academic distinction honor achieved.',
     verificationHash: 'RA-SEC-99F1A280C1E4',
-    issueDate: 'August 05, 2025'
+    issueDate: 'August 05, 2025',
+    termRecords: [
+      {
+        academicSession: '2024/2025 Academic Session',
+        term: 'First Term',
+        className: 'Senior Secondary School 3 (SSS 3 - Science)',
+        subjects: [
+          { id: 'sub-1', subject: 'Mathematics', caScore: 40, examScore: 57, total: 97, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-2', subject: 'English Language', caScore: 37, examScore: 55, total: 92, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-3', subject: 'Physics', caScore: 39, examScore: 56, total: 95, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-4', subject: 'Chemistry', caScore: 37, examScore: 54, total: 91, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-5', subject: 'Biology', caScore: 36, examScore: 55, total: 91, grade: 'A1', remark: 'EXCELLENT' }
+        ],
+        overallTotal: 466,
+        overallAverage: 93.2,
+        gpa: 4.00
+      },
+      {
+        academicSession: '2023/2024 Academic Session',
+        term: '3rd Term (Final Session)',
+        className: 'Senior Secondary School 2 (SSS 2 - Science)',
+        subjects: [
+          { id: 'sub-1', subject: 'Mathematics', caScore: 39, examScore: 55, total: 94, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-2', subject: 'English Language', caScore: 36, examScore: 53, total: 89, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-3', subject: 'Physics', caScore: 38, examScore: 54, total: 92, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-4', subject: 'Chemistry', caScore: 36, examScore: 52, total: 88, grade: 'A1', remark: 'EXCELLENT' }
+        ],
+        overallTotal: 363,
+        overallAverage: 90.75,
+        gpa: 3.95
+      },
+      {
+        academicSession: '2022/2023 Academic Session',
+        term: '3rd Term (Final Session)',
+        className: 'Senior Secondary School 1 (SSS 1 - Science)',
+        subjects: [
+          { id: 'sub-1', subject: 'Mathematics', caScore: 38, examScore: 52, total: 90, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-2', subject: 'English Language', caScore: 35, examScore: 50, total: 85, grade: 'A1', remark: 'EXCELLENT' }
+        ],
+        overallTotal: 175,
+        overallAverage: 87.5,
+        gpa: 3.88
+      }
+    ]
   },
 
   '2025104': {
@@ -88,7 +131,50 @@ export const MOCK_STUDENTS: Record<string, StudentResult> = {
     classTeacherRemark: 'David has consistently demonstrated exceptional intellectual curiosity and academic discipline throughout the session. A brilliant role model for his peers.',
     principalRemark: 'An outstanding academic record. Highly recommended for university admission with distinction honors.',
     verificationHash: 'RA-SEC-89A4B290C7D1',
-    issueDate: 'August 05, 2025'
+    issueDate: 'August 05, 2025',
+    termRecords: [
+      {
+        academicSession: '2024/2025 Academic Session',
+        term: 'First Term',
+        className: 'Senior Secondary School 3 (SSS 3 - Science)',
+        subjects: [
+          { id: 'sub-1', subject: 'Mathematics', caScore: 38, examScore: 54, total: 92, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-2', subject: 'English Language', caScore: 36, examScore: 52, total: 88, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-3', subject: 'Physics', caScore: 37, examScore: 51, total: 88, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-4', subject: 'Chemistry', caScore: 35, examScore: 50, total: 85, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-5', subject: 'Biology', caScore: 34, examScore: 50, total: 84, grade: 'A1', remark: 'EXCELLENT' }
+        ],
+        overallTotal: 437,
+        overallAverage: 87.4,
+        gpa: 3.85
+      },
+      {
+        academicSession: '2023/2024 Academic Session',
+        term: '3rd Term (Final Session)',
+        className: 'Senior Secondary School 2 (SSS 2 - Science)',
+        subjects: [
+          { id: 'sub-1', subject: 'Mathematics', caScore: 37, examScore: 52, total: 89, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-2', subject: 'English Language', caScore: 35, examScore: 50, total: 85, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-3', subject: 'Physics', caScore: 36, examScore: 49, total: 85, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-4', subject: 'Chemistry', caScore: 34, examScore: 48, total: 82, grade: 'A1', remark: 'EXCELLENT' }
+        ],
+        overallTotal: 341,
+        overallAverage: 85.25,
+        gpa: 3.75
+      },
+      {
+        academicSession: '2022/2023 Academic Session',
+        term: '3rd Term (Final Session)',
+        className: 'Senior Secondary School 1 (SSS 1 - Science)',
+        subjects: [
+          { id: 'sub-1', subject: 'Mathematics', caScore: 35, examScore: 48, total: 83, grade: 'A1', remark: 'EXCELLENT' },
+          { id: 'sub-2', subject: 'English Language', caScore: 34, examScore: 46, total: 80, grade: 'A1', remark: 'EXCELLENT' }
+        ],
+        overallTotal: 163,
+        overallAverage: 81.5,
+        gpa: 3.60
+      }
+    ]
   }
 };
 

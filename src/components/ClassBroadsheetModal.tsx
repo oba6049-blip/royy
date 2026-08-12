@@ -8,6 +8,8 @@ interface ClassBroadsheetModalProps {
   onClose: () => void;
   classNameSelected: string;
   classTeacherName: string;
+  sessionSelected?: string;
+  termSelected?: string;
   students: any[];
   subjectList: Array<{ code: string; name: string; category?: string; teacher?: string }>;
   schoolHeader: SchoolHeaderInfo;
@@ -28,6 +30,8 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
   onClose,
   classNameSelected,
   classTeacherName,
+  sessionSelected,
+  termSelected,
   students,
   subjectList,
   schoolHeader,
@@ -58,10 +62,39 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Filter students by class if specified
-  const classStudents = students.filter(s => 
-    classNameSelected === 'All' || s.className === classNameSelected || s.className?.includes(classNameSelected)
-  );
+  // Filter and map students by selected class, session, and term
+  const mappedStudents = students.map(s => {
+    if (sessionSelected && termSelected && s.termRecords && Array.isArray(s.termRecords)) {
+      const rec = s.termRecords.find(
+        (r: any) => (r.academicSession === sessionSelected || r.academicSession?.includes(sessionSelected.split(' ')[0])) &&
+             (r.term === termSelected || r.term?.includes(termSelected))
+      );
+      if (rec) {
+        return {
+          ...s,
+          className: rec.className || s.className,
+          subjects: rec.subjects || s.subjects,
+          overallTotal: rec.overallTotal ?? s.overallTotal,
+          overallAverage: rec.overallAverage ?? s.overallAverage,
+          averageScore: rec.overallAverage ?? s.averageScore,
+          gpa: rec.gpa ?? s.gpa,
+        };
+      }
+    }
+    return s;
+  });
+
+  const classStudents = mappedStudents.filter(s => {
+    const matchesClass = classNameSelected === 'All' || s.className === classNameSelected || s.className?.includes(classNameSelected);
+    if (!sessionSelected || !termSelected) return matchesClass;
+
+    const hasTermRec = s.termRecords?.some(
+      (r: any) => (r.academicSession === sessionSelected || r.academicSession?.includes(sessionSelected.split(' ')[0])) &&
+           (r.term === termSelected || r.term?.includes(termSelected))
+    );
+    const matchesTopLevel = (s.academicSession === sessionSelected || s.session === sessionSelected) && s.term === termSelected;
+    return matchesClass && (hasTermRec || matchesTopLevel);
+  });
 
   // Sort by score/average descending to derive rank
   const rankedStudents = [...classStudents].sort((a, b) => {
@@ -175,7 +208,7 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
                   OFFICIAL CLASS BROADSHEET & MASTER STUDENT SCORE LIST
                 </h2>
                 <p className="text-[10px] font-bold text-black uppercase tracking-widest mt-1">
-                  2024/2025 ACADEMIC SESSION — 1ST TERM (MIDTERM REPORT)
+                  {(sessionSelected || '2024/2025 ACADEMIC SESSION').toUpperCase()} — {(termSelected || '1ST TERM (MIDTERM REPORT)').toUpperCase()}
                 </p>
               </div>
 

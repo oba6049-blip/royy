@@ -117,12 +117,6 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Bottom Copyright Row */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} Royal Academy. All Rights Reserved. Powered by Royal Academy IT Directorate.</p>
-          
-          <div className="flex items-center gap-4 font-mono text-[11px]">
-            <span>SHA-256 Encrypted</span>
-            <span>•</span>
-            <span>WAEC / NECO Aligned</span>
-          </div>
         </div>
 
       </div>

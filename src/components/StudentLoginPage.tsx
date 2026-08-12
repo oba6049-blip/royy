@@ -32,7 +32,6 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
 }) => {
   const [surname, setSurname] = useState('');
   const [regId, setRegId] = useState('');
-  const [session, setSession] = useState('2025/2026 Academic Session');
   const [term, setTerm] = useState('First Term');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -221,38 +220,6 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
                     placeholder="e.g. 2025104"
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/10 transition-all shadow-xs tracking-widest"
                   />
-                </div>
-              </div>
-
-              {/* Session & Term Selection Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                    Academic Session
-                  </label>
-                  <select
-                    value={session}
-                    onChange={(e) => setSession(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:bg-white focus:border-[#1E3A8A]"
-                  >
-                    <option value="2025/2026 Academic Session">2025/2026 Session</option>
-                    <option value="2024/2025 Academic Session">2024/2025 Session</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                    Term
-                  </label>
-                  <select
-                    value={term}
-                    onChange={(e) => setTerm(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:bg-white focus:border-[#1E3A8A]"
-                  >
-                    <option value="First Term">First Term</option>
-                    <option value="Second Term">Second Term</option>
-                    <option value="Third Term (Final)">Third Term</option>
-                  </select>
                 </div>
               </div>
 

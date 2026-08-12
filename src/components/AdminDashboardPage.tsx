@@ -7,7 +7,38 @@ import { SchoolAnalyticsView } from './SchoolAnalyticsView';
 import { ADMIN_MOCK_STUDENTS } from '../data/mockData';
 import { api, DbStatus } from '../services/api';
 import { calculateDynamicStudentPosition } from '../utils/studentRanking';
-import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
+import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER, StudentTermRecord, SubjectGrade } from '../types';
+
+const upsertTermRecord = (
+  existingRecords: StudentTermRecord[] = [],
+  session: string,
+  term: string,
+  className: string,
+  subjects: any[],
+  overallTotal: number,
+  overallAverage: number,
+  gpa: number
+): StudentTermRecord[] => {
+  const records = [...existingRecords];
+  const idx = records.findIndex(r => r.academicSession === session && r.term === term);
+  const newRecord: StudentTermRecord = {
+    academicSession: session,
+    term,
+    className,
+    subjects: [...subjects],
+    overallTotal,
+    overallAverage,
+    gpa,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (idx !== -1) {
+    records[idx] = { ...records[idx], ...newRecord };
+  } else {
+    records.push(newRecord);
+  }
+  return records;
+};
 import {
   LayoutDashboard,
   Users,
@@ -100,7 +131,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   // Reports & Class Broadsheet State
   const [selectedReportClass, setSelectedReportClass] = useState('JSS 1 Gold');
   const [reportSearchQuery, setReportSearchQuery] = useState('');
-  const [selectedReportTerm, setSelectedReportTerm] = useState('1st Term (Midterm Report)');
+  const [selectedReportSession, setSelectedReportSession] = useState('2025/2026 Academic Session');
+  const [selectedReportTerm, setSelectedReportTerm] = useState('First Term');
   const [isClassBroadsheetOpen, setIsClassBroadsheetOpen] = useState(false);
 
   // School Header Settings State
@@ -122,6 +154,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     age: '15',
     passportUrl: '',
     parentContact: '+234 803 000 1234',
+    academicSession: '2025/2026 Academic Session',
+    term: 'First Term',
   });
 
   // Class State
@@ -170,6 +204,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   // Enter / Edit Results State
   const [scoreClass, setScoreClass] = useState('JSS 1 Gold');
   const [scoreSubject, setScoreSubject] = useState('');
+  const [scoreSession, setScoreSession] = useState('2025/2026 Academic Session');
+  const [scoreTerm, setScoreTerm] = useState('First Term');
   const [scoreEntries, setScoreEntries] = useState<Array<{
     id: string;
     name: string;
@@ -272,6 +308,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         midterm: row.midterm,
         caScore,
         examScore,
+        exam: examScore,
         total,
         grade,
         remark,
@@ -287,13 +324,29 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       const overallAverage = currentSubjects.length > 0 ? Number((overallTotal / currentSubjects.length).toFixed(1)) : 0;
       const gpa = Number((overallAverage / 25).toFixed(2));
 
+      const updatedTermRecords = upsertTermRecord(
+        student.termRecords || [],
+        scoreSession,
+        scoreTerm,
+        scoreClass,
+        currentSubjects,
+        overallTotal,
+        overallAverage,
+        gpa
+      );
+
       const updatedStudentObj = {
         ...student,
+        className: scoreClass,
+        term: scoreTerm,
+        academicSession: scoreSession,
+        session: scoreSession,
         subjects: currentSubjects,
         overallTotal,
         overallAverage,
         averageScore: overallAverage,
         gpa,
+        termRecords: updatedTermRecords,
       };
 
       updatedStudentsList[studentIdx] = updatedStudentObj;
@@ -302,7 +355,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     }
 
     setStudents(updatedStudentsList);
-    triggerToast(`Scores for ${updatedCount} student(s) in ${scoreClass} (${scoreSubject}) saved & published to portal!`);
+    triggerToast(`Scores for ${updatedCount} student(s) in ${scoreClass} (${scoreSubject}) for ${scoreTerm} (${scoreSession}) saved & published to portal!`);
   };
 
   // Edit Results by Reg ID State & Handlers
@@ -381,6 +434,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           ca1,
           ca2,
           midterm,
+          caScore: ca1 + ca2 + midterm,
+          examScore: exam,
           exam,
           total,
           grade,
@@ -410,14 +465,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       let ca1 = field === 'ca1' ? val : (item.ca1 || 0);
       let ca2 = field === 'ca2' ? val : (item.ca2 || 0);
       let midterm = field === 'midterm' ? val : (item.midterm || 0);
-      let exam = field === 'exam' ? val : (item.exam || 0);
+      let exam = field === 'exam' ? val : (item.exam !== undefined ? item.exam : (item.examScore || 0));
 
       ca1 = Math.min(10, Math.max(0, ca1));
       ca2 = Math.min(10, Math.max(0, ca2));
       midterm = Math.min(20, Math.max(0, midterm));
       exam = Math.min(60, Math.max(0, exam));
 
-      const total = Math.min(100, ca1 + ca2 + midterm + exam);
+      const caScore = ca1 + ca2 + midterm;
+      const examScore = exam;
+      const total = Math.min(100, caScore + examScore);
       let grade = 'F9';
       let remark = 'FAIL';
       if (total >= 80) { grade = 'A1'; remark = 'EXCELLENT'; }
@@ -434,6 +491,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         ca1,
         ca2,
         midterm,
+        caScore,
+        examScore: exam,
         exam,
         total,
         grade,
@@ -451,7 +510,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       const ca1 = Math.min(10, Math.max(0, Number(sub.ca1) || 0));
       const ca2 = Math.min(10, Math.max(0, Number(sub.ca2) || 0));
       const midterm = Math.min(20, Math.max(0, Number(sub.midterm) || 0));
-      const exam = Math.min(60, Math.max(0, Number(sub.exam) || 0));
+      const exam = Math.min(60, Math.max(0, Number(sub.exam !== undefined ? sub.exam : sub.examScore) || 0));
       const caScore = ca1 + ca2 + midterm;
       const examScore = exam;
       const total = caScore + examScore;
@@ -475,6 +534,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         midterm,
         caScore,
         examScore,
+        exam,
         total,
         grade,
         remark,
@@ -485,6 +545,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     const overallAverage = updatedSubjects.length > 0 ? Number((overallTotal / updatedSubjects.length).toFixed(1)) : 0;
     const gpa = Number((overallAverage / 25).toFixed(2));
 
+    const updatedTermRecords = upsertTermRecord(
+      fetchedStudent.termRecords || [],
+      fetchedStudent.academicSession || (fetchedStudent as any).session || '2025/2026 Academic Session',
+      fetchedStudent.term || 'First Term',
+      fetchedStudent.className || 'JSS 1 Gold',
+      updatedSubjects,
+      overallTotal,
+      overallAverage,
+      gpa
+    );
+
     const updatedStudentObj: StudentResult = {
       ...fetchedStudent,
       subjects: updatedSubjects,
@@ -492,12 +563,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       overallAverage,
       averageScore: overallAverage,
       gpa,
+      termRecords: updatedTermRecords,
     };
 
     await api.updateStudent(fetchedStudent.studentId, updatedStudentObj);
 
     setStudents(prev => prev.map(s => s.studentId === fetchedStudent.studentId ? updatedStudentObj : s));
     setFetchedStudent(updatedStudentObj);
+    setFetchedStudentSubjects(updatedSubjects);
 
     triggerToast(`Updated & published result for ${updatedStudentObj.fullName || (updatedStudentObj as any).name || 'student'} (${updatedStudentObj.studentId})!`);
   };
@@ -521,7 +594,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       exam: 0,
       total: 0,
       grade: 'F9',
-      remark: 'PENDING',
+      remark: 'FAIL',
     };
 
     setFetchedStudentSubjects(prev => [...prev, newSubObj]);
@@ -897,7 +970,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             examScore: 0,
             total: 0,
             grade: 'F9',
-            remark: 'PENDING',
+            remark: 'FAIL',
           }));
         }
       }
@@ -977,8 +1050,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         if (branding.principalRemark) setGlobalPrincipalRemark(branding.principalRemark);
         if (branding.positions) {
           setBrandingPositions((prev) => ({
-            ...prev,
-            ...branding.positions,
+            logo: { ...prev.logo, ...(branding.positions.logo || {}) },
+            stamp: { ...prev.stamp, ...(branding.positions.stamp || {}) },
+            signature: { ...prev.signature, ...(branding.positions.signature || {}) },
           }));
         }
       }
@@ -1099,7 +1173,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           examScore: 0,
           total: 0,
           grade: 'F9',
-          remark: 'PENDING'
+          remark: 'FAIL'
         }))
       : [];
 
@@ -1116,9 +1190,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       name: newStudent.name,
       fullName: newStudent.name,
       className: newStudent.className,
-      term: 'Third Term (2024/2025)',
-      session: '2024/2025',
-      academicSession: '2024/2025 Academic Session',
+      term: newStudent.term || 'First Term',
+      session: newStudent.academicSession || '2025/2026 Academic Session',
+      academicSession: newStudent.academicSession || '2025/2026 Academic Session',
       gpa: 3.8,
       averageScore: 86.5,
       overallAverage: 86.5,
@@ -1173,6 +1247,30 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'
         : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250';
 
+      const targetSession = editingStudent.academicSession || (editingStudent as any).session || '2025/2026 Academic Session';
+      const targetTerm = editingStudent.term || 'First Term';
+      const targetClass = editingStudent.className || 'JSS 1 Gold';
+
+      // 1. Snapshot existing subjects/scores into termRecords for the current active term
+      let updatedTermRecords = [...(editingStudent.termRecords || [])];
+      if (editingStudent.subjects && editingStudent.subjects.length > 0) {
+        updatedTermRecords = upsertTermRecord(
+          updatedTermRecords,
+          targetSession,
+          targetTerm,
+          targetClass,
+          editingStudent.subjects,
+          editingStudent.overallTotal || 0,
+          editingStudent.overallAverage || editingStudent.averageScore || 0,
+          editingStudent.gpa || 0
+        );
+      }
+
+      // 2. Check if a target record exists for the new session & term
+      const targetRecord = updatedTermRecords.find(
+        r => r.academicSession === targetSession && r.term === targetTerm
+      );
+
       const updatedObj = {
         ...editingStudent,
         name: editingStudent.fullName || (editingStudent as any).name,
@@ -1180,6 +1278,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         age: finalAge,
         house: editingStudent.house || 'Blue House',
         passportUrl: editingStudent.passportUrl?.trim() || defaultAvatar,
+        termRecords: updatedTermRecords,
+        ...(targetRecord ? {
+          subjects: targetRecord.subjects,
+          overallTotal: targetRecord.overallTotal,
+          overallAverage: targetRecord.overallAverage,
+          averageScore: targetRecord.overallAverage,
+          gpa: targetRecord.gpa,
+        } : {})
       };
 
       await api.updateStudent(editingStudent.studentId, updatedObj);
@@ -1189,7 +1295,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       }
       setIsEditStudentOpen(false);
       setEditingStudent(null);
-      triggerToast(`Successfully updated profile details for "${updatedObj.fullName}"!`);
+      triggerToast(`Successfully updated profile & academic session for "${updatedObj.fullName}"!`);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to update student profile.');
     }
@@ -1893,7 +1999,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2">
                   <div>
                     <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Target Class</label>
                     <select
@@ -1924,12 +2030,44 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     </select>
                   </div>
 
+                  <div>
+                    <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Academic Session *</label>
+                    <select
+                      value={scoreSession}
+                      onChange={(e) => setScoreSession(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-[#0F172A]"
+                    >
+                      <option value="2025/2026 Academic Session">2025/2026 Session</option>
+                      <option value="2024/2025 Academic Session">2024/2025 Session</option>
+                      <option value="2023/2024 Academic Session">2023/2024 Session</option>
+                      {sessions.map((s) => (
+                        <option key={s.id} value={`${s.year} Academic Session`}>{s.year} Session</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Academic Term *</label>
+                    <select
+                      value={scoreTerm}
+                      onChange={(e) => setScoreTerm(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-[#0F172A]"
+                    >
+                      <option value="First Term">First Term</option>
+                      <option value="Second Term">Second Term</option>
+                      <option value="Third Term (Final)">Third Term (Final)</option>
+                      {terms.map((t) => (
+                        <option key={t.id} value={t.name}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="flex items-end">
                     <button
-                      onClick={() => triggerToast(`Loaded score entry sheet for ${scoreClass} - ${scoreSubject}`)}
+                      onClick={() => triggerToast(`Loaded score entry sheet for ${scoreClass} - ${scoreSubject} (${scoreTerm}, ${scoreSession})`)}
                       className="w-full py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl cursor-pointer"
                     >
-                      Refresh Score Sheet ({scoreEntries.length} Student{scoreEntries.length === 1 ? '' : 's'})
+                      Refresh Sheet ({scoreEntries.length})
                     </button>
                   </div>
                 </div>
@@ -1939,7 +2077,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
                 <div className="p-4 bg-blue-50 border-b border-slate-200 flex items-center justify-between">
                   <span className="text-xs font-bold text-[#1E3A8A]">
-                    Score Matrix: {scoreClass} • {scoreSubject} (Third Term 2024/2025)
+                    Score Matrix: {scoreClass} • {scoreSubject} ({scoreTerm} — {scoreSession})
                   </span>
                   <span className="text-[10px] text-slate-500 font-mono">Max Total = 100%</span>
                 </div>
@@ -1995,7 +2133,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                     type="number"
                                     min="0"
                                     max="10"
-                                    value={row.ca1}
+                                    value={row.ca1 ?? 0}
                                     onChange={(e) => {
                                       const val = Math.min(10, Math.max(0, Number(e.target.value) || 0));
                                       setScoreEntries(scoreEntries.map((item, i) => i === idx ? { ...item, ca1: val } : item));
@@ -2008,7 +2146,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                     type="number"
                                     min="0"
                                     max="10"
-                                    value={row.ca2}
+                                    value={row.ca2 ?? 0}
                                     onChange={(e) => {
                                       const val = Math.min(10, Math.max(0, Number(e.target.value) || 0));
                                       setScoreEntries(scoreEntries.map((item, i) => i === idx ? { ...item, ca2: val } : item));
@@ -2021,7 +2159,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                     type="number"
                                     min="0"
                                     max="20"
-                                    value={row.midterm}
+                                    value={row.midterm ?? 0}
                                     onChange={(e) => {
                                       const val = Math.min(20, Math.max(0, Number(e.target.value) || 0));
                                       setScoreEntries(scoreEntries.map((item, i) => i === idx ? { ...item, midterm: val } : item));
@@ -2034,7 +2172,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                     type="number"
                                     min="0"
                                     max="60"
-                                    value={row.exam}
+                                    value={row.exam ?? 0}
                                     onChange={(e) => {
                                       const val = Math.min(60, Math.max(0, Number(e.target.value) || 0));
                                       setScoreEntries(scoreEntries.map((item, i) => i === idx ? { ...item, exam: val } : item));
@@ -2139,6 +2277,52 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               {/* Fetched Student Results Editor */}
               {fetchedStudent ? (
                 <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs space-y-6 p-6">
+                  {/* Historical Term Record Switcher for Fetched Student */}
+                  {fetchedStudent.termRecords && fetchedStudent.termRecords.length > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-amber-100 border border-amber-300 rounded-xl">
+                          <Clock className="w-4 h-4 text-amber-800 shrink-0" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-black text-amber-950 block">Historical Results Available ({fetchedStudent.termRecords.length} Term Records)</span>
+                          <span className="text-[11px] text-amber-800 font-medium">Select any past academic session/term to view, edit or print that result slip:</span>
+                        </div>
+                      </div>
+                      <select
+                        value={`${fetchedStudent.academicSession || ''}__${fetchedStudent.term || ''}`}
+                        onChange={(e) => {
+                          const [sess, trm] = e.target.value.split('__');
+                          const rec = fetchedStudent.termRecords?.find(r => r.academicSession === sess && r.term === trm);
+                          if (rec) {
+                            setFetchedStudent({
+                              ...fetchedStudent,
+                              academicSession: rec.academicSession,
+                              term: rec.term,
+                              className: rec.className || fetchedStudent.className,
+                              subjects: rec.subjects || [],
+                              overallTotal: rec.overallTotal ?? fetchedStudent.overallTotal,
+                              overallAverage: rec.overallAverage ?? fetchedStudent.overallAverage,
+                              gpa: rec.gpa ?? fetchedStudent.gpa,
+                            });
+                            setFetchedStudentSubjects(rec.subjects || []);
+                            triggerToast(`Loaded past result: ${rec.className} — ${rec.academicSession} (${rec.term})`);
+                          }
+                        }}
+                        className="bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] cursor-pointer shadow-xs shrink-0"
+                      >
+                        <option value={`${fetchedStudent.academicSession || ''}__${fetchedStudent.term || ''}`}>
+                          Selected: {fetchedStudent.className} — {fetchedStudent.academicSession} ({fetchedStudent.term})
+                        </option>
+                        {fetchedStudent.termRecords.map((r, i) => (
+                          <option key={i} value={`${r.academicSession || ''}__${r.term || ''}`}>
+                            {r.className || fetchedStudent.className} — {r.academicSession} ({r.term})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* Header Student Overview */}
                   <div className="bg-gradient-to-r from-[#1E3A8A] to-slate-900 p-5 rounded-2xl text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md">
                     <div className="flex items-center gap-3.5">
@@ -2196,7 +2380,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                             const ca1 = Math.min(10, Math.max(0, Number(sub.ca1) || 0));
                             const ca2 = Math.min(10, Math.max(0, Number(sub.ca2) || 0));
                             const midterm = Math.min(20, Math.max(0, Number(sub.midterm) || 0));
-                            const exam = Math.min(60, Math.max(0, Number(sub.exam) || 0));
+                            const exam = Math.min(60, Math.max(0, Number(sub.exam !== undefined ? sub.exam : sub.examScore) || 0));
                             const caScore = ca1 + ca2 + midterm;
                             const examScore = exam;
                             const total = caScore + examScore;
@@ -2214,7 +2398,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                             return {
                               id: sub.id,
                               subject: sub.subject,
-                              ca1, ca2, midterm, caScore, examScore, total, grade, remark,
+                              ca1, ca2, midterm, caScore, examScore, exam, total, grade, remark,
                             };
                           });
 
@@ -2270,8 +2454,26 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           </thead>
                           <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                             {fetchedStudentSubjects.map((row, idx) => {
-                              const total = Math.min(100, (row.ca1 || 0) + (row.ca2 || 0) + (row.midterm || 0) + (row.exam || 0));
-                              const grade = total >= 80 ? 'A1' : total >= 70 ? 'B2' : total >= 65 ? 'B3' : total >= 60 ? 'C4' : total >= 50 ? 'C6' : total >= 40 ? 'E8' : 'F9';
+                              const ca1 = Math.min(10, Math.max(0, Number(row.ca1) || 0));
+                              const ca2 = Math.min(10, Math.max(0, Number(row.ca2) || 0));
+                              const midterm = Math.min(20, Math.max(0, Number(row.midterm) || 0));
+                              const exam = Math.min(60, Math.max(0, Number(row.exam !== undefined ? row.exam : row.examScore) || 0));
+                              const total = Math.min(100, ca1 + ca2 + midterm + exam);
+
+                              let calculatedGrade = 'F9';
+                              let calculatedRemark = 'FAIL';
+                              if (total >= 80) { calculatedGrade = 'A1'; calculatedRemark = 'EXCELLENT'; }
+                              else if (total >= 70) { calculatedGrade = 'B2'; calculatedRemark = 'VERY GOOD'; }
+                              else if (total >= 65) { calculatedGrade = 'B3'; calculatedRemark = 'GOOD'; }
+                              else if (total >= 60) { calculatedGrade = 'C4'; calculatedRemark = 'CREDIT'; }
+                              else if (total >= 55) { calculatedGrade = 'C5'; calculatedRemark = 'CREDIT'; }
+                              else if (total >= 50) { calculatedGrade = 'C6'; calculatedRemark = 'CREDIT'; }
+                              else if (total >= 45) { calculatedGrade = 'D7'; calculatedRemark = 'PASS'; }
+                              else if (total >= 40) { calculatedGrade = 'E8'; calculatedRemark = 'PASS'; }
+
+                              const displayGrade = (row.grade && row.grade !== '' && row.grade !== 'PENDING') ? row.grade : calculatedGrade;
+                              const displayRemark = (row.remark && row.remark !== '' && row.remark !== 'PENDING') ? row.remark : calculatedRemark;
+
                               return (
                                 <tr key={row.id} className="hover:bg-slate-50/50">
                                   <td className="p-3 font-bold text-[#0F172A]">{row.subject}</td>
@@ -2280,7 +2482,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                       type="number"
                                       min="0"
                                       max="10"
-                                      value={row.ca1}
+                                      value={row.ca1 ?? 0}
                                       onChange={(e) => updateFetchedSubjectScore(idx, 'ca1', Number(e.target.value) || 0)}
                                       className="w-16 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                                     />
@@ -2290,7 +2492,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                       type="number"
                                       min="0"
                                       max="10"
-                                      value={row.ca2}
+                                      value={row.ca2 ?? 0}
                                       onChange={(e) => updateFetchedSubjectScore(idx, 'ca2', Number(e.target.value) || 0)}
                                       className="w-16 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                                     />
@@ -2300,7 +2502,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                       type="number"
                                       min="0"
                                       max="20"
-                                      value={row.midterm}
+                                      value={row.midterm ?? 0}
                                       onChange={(e) => updateFetchedSubjectScore(idx, 'midterm', Number(e.target.value) || 0)}
                                       className="w-16 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                                     />
@@ -2310,7 +2512,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                       type="number"
                                       min="0"
                                       max="60"
-                                      value={row.exam}
+                                      value={row.exam ?? 0}
                                       onChange={(e) => updateFetchedSubjectScore(idx, 'exam', Number(e.target.value) || 0)}
                                       className="w-16 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                                     />
@@ -2318,17 +2520,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                   <td className="p-3 font-bold font-mono text-[#1E3A8A] text-sm">{total}%</td>
                                   <td className="p-3">
                                     <span className={`px-2 py-0.5 rounded font-extrabold text-xs ${
-                                      grade === 'F9' || grade.startsWith('F') ? 'bg-red-100 text-red-700 border border-red-300 font-black' :
-                                      grade.startsWith('A') ? 'bg-emerald-100 text-emerald-800' :
-                                      grade.startsWith('B') ? 'bg-blue-100 text-blue-800' :
-                                      grade.startsWith('C') ? 'bg-amber-100 text-amber-800' :
+                                      displayGrade === 'F9' || displayGrade.startsWith('F') ? 'bg-red-100 text-red-700 border border-red-300 font-black' :
+                                      displayGrade.startsWith('A') ? 'bg-emerald-100 text-emerald-800' :
+                                      displayGrade.startsWith('B') ? 'bg-blue-100 text-blue-800' :
+                                      displayGrade.startsWith('C') ? 'bg-amber-100 text-amber-800' :
                                       'bg-red-100 text-red-800'
                                     }`}>
-                                      {grade}
+                                      {displayGrade}
                                     </span>
                                   </td>
-                                  <td className="p-3 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                                    {row.remark}
+                                  <td className="p-3">
+                                    <span className={`px-2 py-0.5 rounded font-extrabold text-[10px] uppercase tracking-wider inline-block ${
+                                      displayRemark === 'FAIL' || total < 40 ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-emerald-100 text-emerald-800'
+                                    }`}>
+                                      {displayRemark}
+                                    </span>
                                   </td>
                                   <td className="p-3 text-right">
                                     <button
@@ -3083,13 +3289,45 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             const currentClassTeacher = currentClassInfo?.teacher || 'Mrs. O. Adeleke';
             
             const classFilteredStudents = students.filter(s => {
-              const matchesClass = selectedReportClass === 'All' || s.className === selectedReportClass || s.className?.includes(selectedReportClass);
-              const matchesSearch = !reportSearchQuery || s.name.toLowerCase().includes(reportSearchQuery.toLowerCase()) || s.studentId.toLowerCase().includes(reportSearchQuery.toLowerCase());
-              return matchesClass && matchesSearch;
+              const matchingRecord = s.termRecords?.find(
+                r => (r.academicSession === selectedReportSession || r.academicSession?.includes(selectedReportSession.split(' ')[0])) &&
+                     (r.term === selectedReportTerm || r.term?.includes(selectedReportTerm))
+              );
+
+              const activeClass = matchingRecord ? matchingRecord.className : s.className;
+              const matchesClass = selectedReportClass === 'All' || activeClass === selectedReportClass || activeClass?.includes(selectedReportClass);
+              const matchesSearch = !reportSearchQuery || (s.fullName || (s as any).name || '').toLowerCase().includes(reportSearchQuery.toLowerCase()) || (s.studentId || '').toLowerCase().includes(reportSearchQuery.toLowerCase());
+
+              const hasResultForTerm = Boolean(matchingRecord) || (
+                (s.academicSession === selectedReportSession || (s as any).session === selectedReportSession) &&
+                s.term === selectedReportTerm
+              );
+
+              return matchesClass && matchesSearch && hasResultForTerm;
+            });
+
+            // Map each student to their exact term record for selected session and term
+            const mappedClassStudents = classFilteredStudents.map(s => {
+              const rec = s.termRecords?.find(
+                r => (r.academicSession === selectedReportSession || r.academicSession?.includes(selectedReportSession.split(' ')[0])) &&
+                     (r.term === selectedReportTerm || r.term?.includes(selectedReportTerm))
+              );
+              if (rec) {
+                return {
+                  ...s,
+                  className: rec.className || s.className,
+                  subjects: rec.subjects || s.subjects,
+                  overallTotal: rec.overallTotal ?? s.overallTotal,
+                  overallAverage: rec.overallAverage ?? s.overallAverage,
+                  averageScore: rec.overallAverage ?? s.averageScore,
+                  gpa: rec.gpa ?? s.gpa,
+                };
+              }
+              return s;
             });
 
             // Sort by score for ranking
-            const rankedClassStudents = [...classFilteredStudents].sort((a, b) => {
+            const rankedClassStudents = [...mappedClassStudents].sort((a, b) => {
               const scoreA = Number(a.averageScore || a.overallAverage || (a.gpa ? a.gpa * 25 : 0)) || 0;
               const scoreB = Number(b.averageScore || b.overallAverage || (b.gpa ? b.gpa * 25 : 0)) || 0;
               return scoreB - scoreA;
@@ -3158,12 +3396,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   </div>
 
                   {/* SELECTOR CONTROLS ROW */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2">
                     {/* Class Selector */}
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5 flex items-center gap-1">
                         <Filter className="w-3.5 h-3.5 text-[#1E3A8A]" />
-                        Select Academic Class Stream *
+                        Select Class Stream *
                       </label>
                       <select
                         value={selectedReportClass}
@@ -3179,20 +3417,44 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       </select>
                     </div>
 
-                    {/* Academic Session / Term Selector */}
+                    {/* Academic Session Selector */}
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5 flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-[#1E3A8A]" />
-                        Academic Term & Session *
+                        Academic Session *
+                      </label>
+                      <select
+                        value={selectedReportSession}
+                        onChange={(e) => setSelectedReportSession(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                      >
+                        <option value="2025/2026 Academic Session">2025/2026 Session</option>
+                        <option value="2024/2025 Academic Session">2024/2025 Session</option>
+                        <option value="2023/2024 Academic Session">2023/2024 Session</option>
+                        {sessions.map((s) => (
+                          <option key={s.id} value={`${s.year} Academic Session`}>{s.year} Session</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Academic Term Selector */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                        Academic Term *
                       </label>
                       <select
                         value={selectedReportTerm}
                         onChange={(e) => setSelectedReportTerm(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                       >
-                        <option value="1st Term (Midterm Report)">2024/2025 Session — 1st Term (Midterm Report)</option>
-                        <option value="2nd Term (Full Session)">2024/2025 Session — 2nd Term (Winter/Spring)</option>
-                        <option value="3rd Term (Final Promotion)">2024/2025 Session — 3rd Term (Promotion Exam)</option>
+                        <option value="First Term">First Term</option>
+                        <option value="Second Term">Second Term</option>
+                        <option value="Third Term (Final)">Third Term (Final)</option>
+                        <option value="1st Term (Midterm Report)">1st Term (Midterm Report)</option>
+                        {terms.map((t) => (
+                          <option key={t.id} value={t.name}>{t.name}</option>
+                        ))}
                       </select>
                     </div>
 
@@ -3200,12 +3462,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5 flex items-center gap-1">
                         <Search className="w-3.5 h-3.5 text-[#1E3A8A]" />
-                        Search Student in {selectedReportClass}
+                        Search Student
                       </label>
                       <div className="relative">
                         <input
                           type="text"
-                          placeholder="Search by name or registration ID..."
+                          placeholder="Search by name or reg ID..."
                           value={reportSearchQuery}
                           onChange={(e) => setReportSearchQuery(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs font-semibold text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
@@ -3464,6 +3726,41 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </select>
               </div>
 
+              {/* Session and Term Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Academic Session *</label>
+                  <select
+                    value={newStudent.academicSession}
+                    onChange={(e) => setNewStudent({ ...newStudent, academicSession: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  >
+                    <option value="2025/2026 Academic Session">2025/2026 Academic Session</option>
+                    <option value="2024/2025 Academic Session">2024/2025 Academic Session</option>
+                    <option value="2023/2024 Academic Session">2023/2024 Academic Session</option>
+                    {sessions.map((s) => (
+                      <option key={s.id} value={`${s.year} Academic Session`}>{s.year} Academic Session</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Academic Term *</label>
+                  <select
+                    value={newStudent.term}
+                    onChange={(e) => setNewStudent({ ...newStudent, term: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  >
+                    <option value="First Term">First Term</option>
+                    <option value="Second Term">Second Term</option>
+                    <option value="Third Term (Final)">Third Term (Final)</option>
+                    {terms.map((t) => (
+                      <option key={t.id} value={t.name}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {/* Gender and Age Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -3663,6 +3960,41 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </select>
               </div>
 
+              {/* Session and Term Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Academic Session *</label>
+                  <select
+                    value={editingStudent.academicSession || editingStudent.session || '2025/2026 Academic Session'}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, academicSession: e.target.value, session: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  >
+                    <option value="2025/2026 Academic Session">2025/2026 Academic Session</option>
+                    <option value="2024/2025 Academic Session">2024/2025 Academic Session</option>
+                    <option value="2023/2024 Academic Session">2023/2024 Academic Session</option>
+                    {sessions.map((s) => (
+                      <option key={s.id} value={`${s.year} Academic Session`}>{s.year} Academic Session</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Academic Term *</label>
+                  <select
+                    value={editingStudent.term || 'First Term'}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, term: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  >
+                    <option value="First Term">First Term</option>
+                    <option value="Second Term">Second Term</option>
+                    <option value="Third Term (Final)">Third Term (Final)</option>
+                    {terms.map((t) => (
+                      <option key={t.id} value={t.name}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {/* Gender and Age Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -3825,6 +4157,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           logoUrl: logoPreview,
           stampUrl: stampPreview,
           signatureUrl: signaturePreview,
+          principalRemark: globalPrincipalRemark,
           positions: brandingPositions,
         }}
       />
@@ -4611,6 +4944,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         onClose={() => setIsClassBroadsheetOpen(false)}
         classNameSelected={selectedReportClass}
         classTeacherName={classList.find(c => c.name === selectedReportClass)?.teacher || 'Mrs. O. Adeleke'}
+        sessionSelected={selectedReportSession}
+        termSelected={selectedReportTerm}
         students={students}
         subjectList={subjectList}
         schoolHeader={schoolHeader}

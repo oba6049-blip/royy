@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { StudentResult } from '../types';
 import { ResultSlipModal } from './ResultSlipModal';
 import { SchoolLogo } from './SchoolLogo';
@@ -19,6 +19,8 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
+  FileX,
   FileText,
   Sparkles,
   Menu,
@@ -51,6 +53,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
 
   // Active Student Result State
   const [activeStudent, setActiveStudent] = useState<StudentResult>(initialStudent);
+  const [publishedStudent, setPublishedStudent] = useState<StudentResult>(initialStudent);
   const [allStudentsList, setAllStudentsList] = useState<any[]>([]);
   const [brandingState, setBrandingState] = useState<any>(null);
 
@@ -61,13 +64,18 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
         setAllStudentsList(res);
       }
     }).catch(() => {});
+    api.getStudentById(initialStudent.studentId).then(res => {
+      if (isMounted && res) {
+        setPublishedStudent(res);
+      }
+    }).catch(() => {});
     api.getBranding().then(b => {
       if (isMounted && b) {
         setBrandingState(b);
       }
     }).catch(() => {});
     return () => { isMounted = false; };
-  }, []);
+  }, [initialStudent.studentId]);
 
   // Helper for grade badge colors (F9 is prominently colored red)
   const getGradeColorClass = (grade: string) => {
@@ -92,7 +100,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
 
   // Search & Filter state
   const [searchStudentId, setSearchStudentId] = useState(initialStudent.studentId);
-  const [selectedSession, setSelectedSession] = useState(initialStudent.academicSession || '2025/2026 Academic Session');
+  const [selectedSession, setSelectedSession] = useState(initialStudent.academicSession || (initialStudent as any).session || '2025/2026 Academic Session');
   const [selectedTerm, setSelectedTerm] = useState(initialStudent.term || 'First Term');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -110,6 +118,176 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
     }).catch(() => {});
   }, []);
 
+  // Helper to check if selected session and term match the admin-published result
+  const isMatchingSessionAndTerm = (
+    selSess: string,
+    selTerm: string,
+    pubSess?: string,
+    pubTerm?: string
+  ) => {
+    if (!pubSess || !pubTerm) return false;
+
+    const normSelSess = selSess.toLowerCase().replace(/academic|session|\s/g, '');
+    const normPubSess = pubSess.toLowerCase().replace(/academic|session|\s/g, '');
+
+    if (normSelSess !== normPubSess) return false;
+
+    const getTermId = (t: string) => {
+      const l = t.toLowerCase();
+      if (l.includes('first') || l.includes('1st') || l.includes('1')) return '1';
+      if (l.includes('second') || l.includes('2nd') || l.includes('2')) return '2';
+      if (l.includes('third') || l.includes('3rd') || l.includes('3')) return '3';
+      return l.replace(/\s/g, '');
+    };
+
+    return getTermId(selTerm) === getTermId(pubTerm);
+  };
+
+  const getMatchingTermRecord = (student: StudentResult | null, session: string, term: string) => {
+    if (!student) return null;
+
+    const sessionInfo = enrolledSessions?.find(s => s.session === session);
+    const expectedClass = sessionInfo?.className;
+
+    if (student.termRecords && Array.isArray(student.termRecords)) {
+      // 1. Try exact session and term match
+      let found = student.termRecords.find(r => isMatchingSessionAndTerm(session, term, r.academicSession, r.term));
+      if (found) return found;
+
+      // 2. Try class name and term match (if admission session remains constant across levels)
+      if (expectedClass) {
+        found = student.termRecords.find(r => 
+          r.className && expectedClass &&
+          (r.className.toLowerCase().includes(expectedClass.toLowerCase()) || expectedClass.toLowerCase().includes(r.className.toLowerCase())) &&
+          isMatchingSessionAndTerm(session, term, session, r.term)
+        );
+        if (found) return found;
+      }
+    }
+
+    if (isMatchingSessionAndTerm(session, term, student.academicSession || (student as any).session, student.term)) {
+      return {
+        academicSession: student.academicSession || (student as any).session,
+        term: student.term,
+        className: student.className,
+        subjects: student.subjects,
+        overallTotal: student.overallTotal,
+        overallAverage: student.overallAverage || (student as any).averageScore,
+        gpa: student.gpa,
+      };
+    }
+    return null;
+  };
+
+  const publishedSession = publishedStudent?.academicSession || (publishedStudent as any)?.session || initialStudent.academicSession || (initialStudent as any)?.session || '2025/2026 Academic Session';
+  const currentClassName = publishedStudent?.className || initialStudent.className || 'JSS 2 Gold';
+  const publishedTerm = publishedStudent?.term || initialStudent.term || 'First Term';
+
+  // Compute enrolled sessions list dynamically based on student registration history & promotion status
+  const enrolledSessions = useMemo(() => {
+    const list: { session: string; className: string; isCurrent: boolean }[] = [];
+    
+    // Always include current active session
+    list.push({
+      session: publishedSession,
+      className: currentClassName,
+      isCurrent: true,
+    });
+
+    // Check if termRecords exist on student record
+    const targetStudent = publishedStudent || initialStudent;
+    if (targetStudent.termRecords && Array.isArray(targetStudent.termRecords)) {
+      targetStudent.termRecords.forEach(rec => {
+        if (rec.academicSession && !list.some(item => item.session === rec.academicSession)) {
+          list.push({
+            session: rec.academicSession,
+            className: rec.className || currentClassName,
+            isCurrent: false,
+          });
+        }
+      });
+    }
+
+    // Check if previous sessions exist on student record
+    if ((publishedStudent as any)?.previousSessions && Array.isArray((publishedStudent as any).previousSessions)) {
+      (publishedStudent as any).previousSessions.forEach((prev: any) => {
+        if (!list.some(item => item.session === prev.session)) {
+          list.push({ session: prev.session, className: prev.className || 'Previous Class', isCurrent: false });
+        }
+      });
+    } else {
+      // Automatic promotion history inference for seamless experience
+      if (currentClassName.includes('JSS 2')) {
+        if (!list.some(i => i.session === '2024/2025 Academic Session')) {
+          list.push({
+            session: '2024/2025 Academic Session',
+            className: currentClassName.replace('JSS 2', 'JSS 1'),
+            isCurrent: false,
+          });
+        }
+      } else if (currentClassName.includes('JSS 3')) {
+        if (!list.some(i => i.session === '2024/2025 Academic Session')) {
+          list.push({
+            session: '2024/2025 Academic Session',
+            className: currentClassName.replace('JSS 3', 'JSS 2'),
+            isCurrent: false,
+          });
+        }
+        if (!list.some(i => i.session === '2023/2024 Academic Session')) {
+          list.push({
+            session: '2023/2024 Academic Session',
+            className: currentClassName.replace('JSS 3', 'JSS 1'),
+            isCurrent: false,
+          });
+        }
+      } else if (currentClassName.includes('SSS 2')) {
+        if (!list.some(i => i.session === '2024/2025 Academic Session')) {
+          list.push({
+            session: '2024/2025 Academic Session',
+            className: currentClassName.replace('SSS 2', 'SSS 1'),
+            isCurrent: false,
+          });
+        }
+      } else if (currentClassName.includes('SSS 3')) {
+        if (!list.some(i => i.session === '2024/2025 Academic Session')) {
+          list.push({
+            session: '2024/2025 Academic Session',
+            className: currentClassName.replace('SSS 3', 'SSS 2'),
+            isCurrent: false,
+          });
+        }
+        if (!list.some(i => i.session === '2023/2024 Academic Session')) {
+          list.push({
+            session: '2023/2024 Academic Session',
+            className: currentClassName.replace('SSS 3', 'SSS 1'),
+            isCurrent: false,
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [publishedSession, currentClassName, publishedStudent, initialStudent]);
+
+  // Handle student session switching across enrolled history
+  const handleSessionChange = (newSession: string) => {
+    setSelectedSession(newSession);
+    const sessionInfo = enrolledSessions.find(item => item.session === newSession);
+    if (sessionInfo) {
+      setActiveStudent(prev => ({
+        ...prev,
+        academicSession: newSession,
+        className: sessionInfo.className,
+      }));
+    }
+  };
+
+  const currentTermRecord = useMemo(() => {
+    return getMatchingTermRecord(publishedStudent || initialStudent, selectedSession, selectedTerm);
+  }, [publishedStudent, initialStudent, selectedSession, selectedTerm]);
+
+  const hasPublishedResult = Boolean(currentTermRecord);
+
   // Perform search / term-filter handler (locked strictly to logged-in student)
   const handlePerformSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -123,59 +301,141 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
       const fetched = await api.getStudentById(cleanId);
       setIsSearching(false);
 
+      const targetStudent = fetched || initialStudent;
       if (fetched) {
+        setPublishedStudent(fetched);
+      }
+
+      const matchedRec = getMatchingTermRecord(targetStudent, selectedSession, selectedTerm);
+      const sessionInfo = enrolledSessions.find(s => s.session === selectedSession);
+      const sessionClass = sessionInfo ? sessionInfo.className : targetStudent.className;
+
+      if (matchedRec) {
         const updatedResult: StudentResult = {
-          ...fetched,
+          ...targetStudent,
           academicSession: selectedSession,
           term: selectedTerm,
+          className: matchedRec.className || sessionClass,
+          subjects: matchedRec.subjects || [],
+          overallTotal: matchedRec.overallTotal ?? targetStudent.overallTotal,
+          overallAverage: matchedRec.overallAverage ?? targetStudent.overallAverage,
+          averageScore: matchedRec.overallAverage ?? targetStudent.averageScore,
+          gpa: matchedRec.gpa ?? targetStudent.gpa,
         };
         setActiveStudent(updatedResult);
-        setSearchSuccess(`Updated view for ${selectedSession} - ${selectedTerm}.`);
+        setSearchSuccess(`Displaying academic records for ${selectedTerm} (${selectedSession}) — ${updatedResult.className}.`);
       } else {
-        const mockMatch: StudentResult = {
-          ...initialStudent,
+        const emptyResult: StudentResult = {
+          ...targetStudent,
           academicSession: selectedSession,
           term: selectedTerm,
+          className: sessionClass,
+          subjects: [],
+          overallTotal: 0,
+          overallAverage: 0,
+          averageScore: 0,
+          gpa: 0,
         };
-        setActiveStudent(mockMatch);
-        setSearchSuccess(`Updated view for ${selectedSession} - ${selectedTerm}.`);
+        setActiveStudent(emptyResult);
+        setSearchError(`No examination results published for ${selectedTerm} (${selectedSession}) in ${sessionClass}. Since no data was entered by the school administration for this term, no results are available.`);
       }
     } catch {
       setIsSearching(false);
-      const mockMatch: StudentResult = {
-        ...initialStudent,
-        academicSession: selectedSession,
-        term: selectedTerm,
-      };
-      setActiveStudent(mockMatch);
-      setSearchSuccess(`Updated view for ${selectedSession} - ${selectedTerm}.`);
+      const matchedRec = getMatchingTermRecord(initialStudent, selectedSession, selectedTerm);
+      const sessionInfo = enrolledSessions.find(s => s.session === selectedSession);
+      const sessionClass = sessionInfo ? sessionInfo.className : initialStudent.className;
+
+      if (matchedRec) {
+        setActiveStudent({
+          ...initialStudent,
+          academicSession: selectedSession,
+          term: selectedTerm,
+          className: matchedRec.className || sessionClass,
+          subjects: matchedRec.subjects || [],
+          overallTotal: matchedRec.overallTotal ?? initialStudent.overallTotal,
+          overallAverage: matchedRec.overallAverage ?? initialStudent.overallAverage,
+          averageScore: matchedRec.overallAverage ?? initialStudent.averageScore,
+          gpa: matchedRec.gpa ?? initialStudent.gpa,
+        });
+        setSearchSuccess(`Displaying academic records for ${selectedTerm} (${selectedSession}) — ${matchedRec.className || sessionClass}.`);
+      } else {
+        setActiveStudent({
+          ...initialStudent,
+          academicSession: selectedSession,
+          term: selectedTerm,
+          className: sessionClass,
+          subjects: [],
+          overallTotal: 0,
+          overallAverage: 0,
+          averageScore: 0,
+          gpa: 0,
+        });
+        setSearchError(`No examination results published for ${selectedTerm} (${selectedSession}) in ${sessionClass}. Since no data was entered by the school administration for this term, no results are available.`);
+      }
     }
   };
 
+  useEffect(() => {
+    handlePerformSearch();
+
+    const handleRealtimeUpdate = () => {
+      handlePerformSearch();
+    };
+
+    window.addEventListener('school_portal_data_updated', handleRealtimeUpdate);
+    window.addEventListener('storage', handleRealtimeUpdate);
+    return () => {
+      window.removeEventListener('school_portal_data_updated', handleRealtimeUpdate);
+      window.removeEventListener('storage', handleRealtimeUpdate);
+    };
+  }, [selectedSession, selectedTerm]);
+
   const handlePrintResult = () => {
+    if (!hasPublishedResult) {
+      alert(`No examination results published for ${selectedTerm} (${selectedSession}). Please switch to ${publishedTerm} (${publishedSession}) to view or print your result slip.`);
+      return;
+    }
     setIsResultSlipModalOpen(true);
     setTimeout(() => {
       window.print();
     }, 250);
   };
 
-  const studentSubjects = filterStudentSubjectsByAdmin(activeStudent?.subjects, adminSubjects);
+  const handleOpenModal = () => {
+    if (!hasPublishedResult) {
+      alert(`No examination results published for ${selectedTerm} (${selectedSession}). Please switch to ${publishedTerm} (${publishedSession}) to view or print your result slip.`);
+      return;
+    }
+    setIsResultSlipModalOpen(true);
+  };
 
-  const subjectsPassed = studentSubjects.filter(s => (s.total || 0) >= 40 && s.grade !== 'F9').length;
-  const subjectsFailed = studentSubjects.filter(s => (s.total || 0) < 40 || s.grade === 'F9').length;
-  const totalScoreCalculated = studentSubjects.reduce((acc, s) => acc + (s.total || 0), 0);
+  const studentSubjects = hasPublishedResult 
+    ? filterStudentSubjectsByAdmin(activeStudent?.subjects || publishedStudent?.subjects, adminSubjects)
+    : [];
+
+  const isSubPassed = (s: any) => {
+    const ca = s.caScore !== undefined ? s.caScore : ((s.ca1 || 0) + (s.ca2 || 0) + (s.midterm || 0));
+    const exam = s.examScore !== undefined ? s.examScore : (s.exam || 0);
+    const total = s.total !== undefined ? s.total : (ca + exam);
+    const grade = s.grade || (total >= 80 ? 'A1' : total >= 70 ? 'B2' : total >= 65 ? 'B3' : total >= 60 ? 'C4' : total >= 55 ? 'C5' : total >= 50 ? 'C6' : total >= 45 ? 'D7' : total >= 40 ? 'E8' : 'F9');
+    return total >= 50 && grade !== 'F9' && grade !== 'F';
+  };
+
+  const subjectsPassed = hasPublishedResult ? studentSubjects.filter(s => isSubPassed(s)).length : 0;
+  const subjectsFailed = hasPublishedResult ? studentSubjects.filter(s => !isSubPassed(s)).length : 0;
+  const totalScoreCalculated = hasPublishedResult ? studentSubjects.reduce((acc, s) => acc + (s.total || 0), 0) : 0;
   
-  const averageScoreCalculated = studentSubjects.length > 0 
+  const averageScoreCalculated = (hasPublishedResult && studentSubjects.length > 0) 
     ? Number((totalScoreCalculated / studentSubjects.length).toFixed(1)) 
-    : (studentSubjects.length === 0 ? 0 : (activeStudent?.overallAverage || (activeStudent as any)?.averageScore || 0));
+    : 0;
 
-  const gpaCalculated = (studentSubjects.length > 0 && activeStudent?.gpa && activeStudent.gpa > 0) 
-    ? activeStudent.gpa 
-    : (averageScoreCalculated > 0 ? Number((averageScoreCalculated / 25).toFixed(2)) : 0);
+  const gpaCalculated = (hasPublishedResult && studentSubjects.length > 0) 
+    ? (activeStudent?.gpa && activeStudent.gpa > 0 ? activeStudent.gpa : Number((averageScoreCalculated / 25).toFixed(2)))
+    : 0;
 
   const dynamicRank = calculateDynamicStudentPosition(activeStudent, allStudentsList);
-  const positionVal = dynamicRank.ordinalPosition;
-  const totalInClassVal = dynamicRank.totalInClass;
+  const positionVal = hasPublishedResult ? dynamicRank.ordinalPosition : 'N/A';
+  const totalInClassVal = hasPublishedResult ? dynamicRank.totalInClass : 'N/A';
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-['Inter',sans-serif] flex flex-col md:flex-row selection:bg-[#1E3A8A]/10 selection:text-[#1E3A8A]">
@@ -406,7 +666,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
           {/* Header Quick Actions */}
           <div className="hidden sm:flex items-center gap-2">
             <button
-              onClick={() => setIsResultSlipModalOpen(true)}
+              onClick={handleOpenModal}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-950 bg-[#F59E0B] hover:bg-amber-500 rounded-xl shadow-xs transition-all cursor-pointer"
             >
               <Eye className="w-3.5 h-3.5" />
@@ -449,14 +709,43 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                       </div>
                       <h1 className="text-xl sm:text-2xl font-black text-white font-['Plus_Jakarta_Sans']">{activeStudent.fullName}</h1>
                       <p className="text-xs text-blue-100">
-                        {activeStudent.className} • {activeStudent.academicSession} ({activeStudent.term})
+                        {activeStudent.className} • Reg ID: <span className="font-mono font-bold text-amber-300">{activeStudent.studentId}</span>
                       </p>
+                      
+                      {/* Enrolled Session Selector & Term Switcher Pills */}
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <select
+                          value={selectedSession || ''}
+                          onChange={(e) => handleSessionChange(e.target.value)}
+                          className="px-2.5 py-1 text-[11px] font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg focus:outline-none focus:bg-blue-900 cursor-pointer"
+                        >
+                          {enrolledSessions.map((item) => (
+                            <option key={`${item.session}-${item.className}`} value={item.session} className="text-slate-900 font-sans font-medium">
+                              {item.className} — {item.session}{item.isCurrent ? ' (Active Class)' : ''}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          value={selectedTerm || ''}
+                          onChange={(e) => {
+                            const newTerm = e.target.value;
+                            setSelectedTerm(newTerm);
+                            setActiveStudent(prev => ({ ...prev, term: newTerm }));
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30 rounded-lg focus:outline-none focus:bg-blue-900 cursor-pointer"
+                        >
+                          <option value="First Term" className="text-slate-900 font-sans">First Term</option>
+                          <option value="Second Term" className="text-slate-900 font-sans">Second Term</option>
+                          <option value="Third Term (Final)" className="text-slate-900 font-sans">Third Term</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2.5 w-full sm:w-auto">
                     <button
-                      onClick={() => setIsResultSlipModalOpen(true)}
+                      onClick={handleOpenModal}
                       className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-950 bg-[#F59E0B] hover:bg-amber-400 rounded-xl transition-all cursor-pointer shadow-xs"
                     >
                       <Eye className="w-4 h-4" />
@@ -474,30 +763,65 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                 </div>
               </div>
 
+              {/* No Results Warning Alert Banner */}
+              {!hasPublishedResult && (
+                <div className="p-5 bg-amber-50 border border-amber-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 bg-amber-100 rounded-xl text-amber-800 shrink-0 mt-0.5">
+                      <AlertTriangle className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-amber-950 font-['Plus_Jakarta_Sans'] flex items-center gap-2">
+                        <span>No Results Published for {selectedTerm} ({selectedSession})</span>
+                      </h3>
+                      <p className="text-xs text-amber-800 mt-1">
+                        The school administration has not entered or published examination results for your Registration ID under this selected academic session and term.
+                      </p>
+                      <p className="text-xs font-semibold text-slate-700 mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span>Your published result is available under:</span>
+                        <span className="px-2 py-0.5 bg-blue-100 text-[#1E3A8A] rounded-md font-bold">{publishedTerm} ({publishedSession})</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedSession(publishedSession);
+                      setSelectedTerm(publishedTerm);
+                      setActiveStudent(prev => ({ ...prev, academicSession: publishedSession, term: publishedTerm }));
+                    }}
+                    className="px-4 py-2 bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shrink-0 shadow-xs"
+                  >
+                    Switch to Published Term &rarr;
+                  </button>
+                </div>
+              )}
+
               {/* Simple Stats Cards - White Card Styling matching Admin Dashboard */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Overall Average</span>
                   <div className="text-2xl font-black text-slate-900 font-mono">
-                    {averageScoreCalculated.toFixed(1)}%
+                    {hasPublishedResult ? `${averageScoreCalculated.toFixed(1)}%` : 'N/A'}
                   </div>
-                  <p className="text-[10px] text-emerald-600 font-bold">GPA: {gpaCalculated.toFixed(2)} / 4.0</p>
+                  <p className="text-[10px] text-emerald-600 font-bold">
+                    {hasPublishedResult ? `GPA: ${gpaCalculated.toFixed(2)} / 4.0` : 'No Published Scores'}
+                  </p>
                 </div>
 
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Class Position</span>
                   <div className="text-2xl font-black text-amber-600 font-mono">
-                    {positionVal} <span className="text-xs font-normal text-slate-400">/ {totalInClassVal}</span>
+                    {hasPublishedResult ? positionVal : 'N/A'} {hasPublishedResult && <span className="text-xs font-normal text-slate-400">/ {totalInClassVal}</span>}
                   </div>
-                  <p className="text-[10px] text-blue-700 font-semibold">Class Rank</p>
+                  <p className="text-[10px] text-blue-700 font-semibold">{hasPublishedResult ? 'Class Rank' : 'No Position Assigned'}</p>
                 </div>
 
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Passed Subjects</span>
                   <div className="text-2xl font-black text-emerald-600 font-mono">
-                    {subjectsPassed} <span className="text-xs text-slate-400 font-normal">/ {studentSubjects.length}</span>
+                    {hasPublishedResult ? subjectsPassed : '0'} {hasPublishedResult && <span className="text-xs text-slate-400 font-normal">/ {studentSubjects.length}</span>}
                   </div>
-                  <p className="text-[10px] text-slate-500 font-medium">Failed: {subjectsFailed}</p>
+                  <p className="text-[10px] text-slate-500 font-medium">{hasPublishedResult ? `Failed: ${subjectsFailed}` : 'No Records'}</p>
                 </div>
               </div>
 
@@ -506,7 +830,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 font-['Plus_Jakarta_Sans']">Subject Grade Breakdown</h3>
-                    <p className="text-xs text-slate-500">Current session exam results</p>
+                    <p className="text-xs text-slate-500">{selectedTerm} ({selectedSession}) examination results</p>
                   </div>
                   <button
                     onClick={() => setActiveTab('subjects')}
@@ -529,7 +853,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-800">
-                      {studentSubjects.length > 0 ? (
+                      {hasPublishedResult && studentSubjects.length > 0 ? (
                         studentSubjects.map((sub, idx) => (
                           <tr key={sub.id || idx} className="hover:bg-slate-50/80">
                             <td className="py-3 px-3 font-bold text-slate-900">{sub.subject}</td>
@@ -546,8 +870,26 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={6} className="py-6 text-center text-slate-500 font-medium">
-                            No subject scores entered for this student yet.
+                          <td colSpan={6} className="py-8 text-center bg-slate-50/60">
+                            <div className="max-w-md mx-auto space-y-2">
+                              <FileX className="w-8 h-8 text-slate-400 mx-auto" />
+                              <p className="text-xs font-bold text-slate-800 font-['Plus_Jakarta_Sans']">
+                                No Results Found for {selectedTerm} ({selectedSession})
+                              </p>
+                              <p className="text-[11px] text-slate-500">
+                                Examination scores have not been published by the admin for this term.
+                              </p>
+                              <button
+                                onClick={() => {
+                                  setSelectedSession(publishedSession);
+                                  setSelectedTerm(publishedTerm);
+                                  setActiveStudent(prev => ({ ...prev, academicSession: publishedSession, term: publishedTerm }));
+                                }}
+                                className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1E3A8A] text-white font-bold text-[11px] rounded-lg cursor-pointer hover:bg-blue-900 transition-all"
+                              >
+                                <span>Switch to {publishedTerm} Results</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -629,16 +971,18 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                        Session *
+                        Academic Session
                       </label>
                       <select
-                        value={selectedSession}
-                        onChange={(e) => setSelectedSession(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-[#1E3A8A]"
+                        value={selectedSession || ''}
+                        onChange={(e) => handleSessionChange(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-[#1E3A8A]"
                       >
-                        <option value="2025/2026 Academic Session">2025/2026 Academic Session</option>
-                        <option value="2024/2025 Academic Session">2024/2025 Academic Session</option>
-                        <option value="2023/2024 Academic Session">2023/2024 Academic Session</option>
+                        {enrolledSessions.map((item) => (
+                          <option key={`${item.session}-${item.className}`} value={item.session}>
+                            {item.className} — {item.session}{item.isCurrent ? ' (Active Class)' : ''}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -647,7 +991,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                         Term *
                       </label>
                       <select
-                        value={selectedTerm}
+                        value={selectedTerm || ''}
                         onChange={(e) => setSelectedTerm(e.target.value)}
                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-[#1E3A8A]"
                       >
@@ -688,7 +1032,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
 
                   <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => setIsResultSlipModalOpen(true)}
+                      onClick={handleOpenModal}
                       className="px-3.5 py-2 text-xs font-bold text-slate-950 bg-[#F59E0B] hover:bg-amber-400 rounded-xl shadow-xs cursor-pointer"
                     >
                       View Result
@@ -715,7 +1059,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-800">
-                      {studentSubjects.length > 0 ? (
+                      {hasPublishedResult && studentSubjects.length > 0 ? (
                         studentSubjects.map((sub, idx) => (
                           <tr key={sub.id || idx} className="hover:bg-slate-50/80">
                             <td className="py-2.5 px-3 font-bold text-slate-900">{sub.subject}</td>
@@ -732,8 +1076,8 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={6} className="py-6 text-center text-slate-500 font-medium italic">
-                            No subjects created or entered for this student yet.
+                          <td colSpan={6} className="py-6 text-center text-slate-500 font-medium">
+                            No published examination results found for {selectedTerm} ({selectedSession}).
                           </td>
                         </tr>
                       )}
@@ -774,7 +1118,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-800">
-                      {studentSubjects.length > 0 ? (
+                      {hasPublishedResult && studentSubjects.length > 0 ? (
                         studentSubjects.map((sub, idx) => (
                           <tr key={sub.id || idx} className="hover:bg-slate-50/80">
                             <td className="py-3 px-4 font-bold text-slate-900 text-sm">{sub.subject}</td>
@@ -792,7 +1136,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                       ) : (
                         <tr>
                           <td colSpan={6} className="py-6 text-center text-slate-500 font-medium">
-                            No subject scores entered for this student yet.
+                            No published subject scores found for {selectedTerm} ({selectedSession}).
                           </td>
                         </tr>
                       )}
@@ -821,7 +1165,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => setIsResultSlipModalOpen(true)}
+                    onClick={handleOpenModal}
                     className="px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-2"
                   >
                     <Eye className="w-4 h-4 text-[#F59E0B]" />
@@ -836,6 +1180,15 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                   </button>
                 </div>
               </div>
+
+              {!hasPublishedResult && (
+                <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                  <p className="text-xs text-amber-900 font-medium">
+                    No result slip available to print for <strong>{selectedTerm} ({selectedSession})</strong>. Please select <strong>{publishedTerm} ({publishedSession})</strong> to print your result.
+                  </p>
+                </div>
+              )}
 
               {/* Action Banner Card */}
               <div className="bg-linear-to-r from-[#1E3A8A] to-blue-900 text-white rounded-2xl p-6 shadow-md border border-blue-800 space-y-3">
@@ -853,7 +1206,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
 
                 <div className="pt-2 flex flex-wrap gap-3">
                   <button
-                    onClick={() => setIsResultSlipModalOpen(true)}
+                    onClick={handleOpenModal}
                     className="px-5 py-2.5 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2 transition-all"
                   >
                     <FileText className="w-4 h-4" />

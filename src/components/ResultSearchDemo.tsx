@@ -205,25 +205,6 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                   </div>
                 </div>
 
-                {/* Session Dropdown */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                    Academic Session
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={selectedSession}
-                      onChange={(e) => setSelectedSession(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] appearance-none pr-10"
-                    >
-                      {SESSIONS_LIST.map((session) => (
-                        <option key={session} value={session}>{session}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-
                 {/* Term Dropdown */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
@@ -419,9 +400,16 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                       
                       <div className="text-right shrink-0">
                         <span className="text-[10px] font-bold uppercase text-slate-400 block">Status</span>
-                        <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                          {activeResult.status}
-                        </span>
+                        {(() => {
+                          const avg = activeResult.overallAverage ?? activeResult.averageScore ?? 0;
+                          const isPass = avg >= 50;
+                          const statusLabel = isPass ? (activeResult.status || 'Good Standing (GS)') : 'Not In Good Standing (NGS)';
+                          return (
+                            <span className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10px] ${isPass ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800 font-extrabold'}`}>
+                              {statusLabel}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

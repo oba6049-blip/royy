@@ -9,6 +9,21 @@ export interface SubjectGrade {
   creditHours?: number;
 }
 
+export interface StudentTermRecord {
+  academicSession: string; // e.g. 2024/2025 Academic Session
+  term: string; // e.g. First Term
+  className: string; // e.g. JSS 1 Gold
+  subjects: SubjectGrade[];
+  overallTotal: number;
+  overallAverage: number;
+  gpa: number;
+  position?: number | string;
+  totalInClass?: number;
+  status?: string;
+  issueDate?: string;
+  updatedAt?: string;
+}
+
 export interface StudentResult {
   studentId: string; // e.g. 2025104
   fullName: string;
@@ -35,13 +50,14 @@ export interface StudentResult {
   overallTotal: number;
   overallAverage: number;
   gpa: number; // 4.0 scale e.g. 3.88
-  position: number;
+  position: number | string;
   totalInClass: number;
-  status: 'PROMOTED' | 'PROMOTED ON TRIAL' | 'GRADUATED' | 'REPEAT';
+  status: 'PROMOTED' | 'PROMOTED ON TRIAL' | 'GRADUATED' | 'REPEAT' | string;
   classTeacherRemark: string;
   principalRemark: string;
   verificationHash: string;
   issueDate: string;
+  termRecords?: StudentTermRecord[];
 }
 
 export interface FAQItem {

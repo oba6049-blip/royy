@@ -218,7 +218,10 @@ export function calculateDynamicStudentPosition(
     s => s.studentId && s.studentId.toUpperCase() === currentKey
   );
 
-  const derivedPosition = rankIdx !== -1 ? rankIdx + 1 : (currentStudent.position || 1);
+  const numPos = typeof currentStudent.position === 'number' 
+    ? currentStudent.position 
+    : (parseInt(String(currentStudent.position || 1), 10) || 1);
+  const derivedPosition: number = rankIdx !== -1 ? rankIdx + 1 : numPos;
   const totalInClass = Math.max(classPeersWithScores.length, currentStudent.totalInClass || 35);
 
   const formatOrdinal = (num: number) => {

@@ -34,7 +34,7 @@ interface ResultSlipModalProps {
   onClose: () => void;
   onVerifyQR: () => void;
   schoolHeader?: SchoolHeaderInfo;
-  branding?: { logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null };
+  branding?: { logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null; principalRemark?: string | null; positions?: any };
 }
 
 export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
@@ -49,7 +49,68 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
   const [passportBase64, setPassportBase64] = useState<string>('');
   const [brandingState, setBrandingState] = useState<{ logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null; principalRemark?: string | null; positions?: any } | null>(initialBranding || null);
   const [adminSubjects, setAdminSubjects] = useState<any[]>([]);
+  const [selectedTermKey, setSelectedTermKey] = useState<string>('');
   const printRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (result) {
+      setSelectedTermKey(`${result.academicSession || ''}__${result.term || ''}`);
+    }
+  }, [result]);
+
+  const availableTermOptions = React.useMemo(() => {
+    if (!result) return [];
+    const list: Array<{ key: string; label: string }> = [];
+
+    const mainKey = `${result.academicSession || ''}__${result.term || ''}`;
+    list.push({
+      key: mainKey,
+      label: `${result.className || ''} — ${result.academicSession || ''} (${result.term || ''})`,
+    });
+
+    if (result.termRecords && Array.isArray(result.termRecords)) {
+      result.termRecords.forEach((r) => {
+        const k = `${r.academicSession || ''}__${r.term || ''}`;
+        if (!list.some((item) => item.key === k)) {
+          list.push({
+            key: k,
+            label: `${r.className || result.className} — ${r.academicSession || ''} (${r.term || ''})`,
+          });
+        }
+      });
+    }
+
+    return list;
+  }, [result]);
+
+  const activeResult = React.useMemo(() => {
+    if (!result) return null;
+    if (!selectedTermKey) return result;
+
+    const matchedRecord = result.termRecords?.find(
+      (r) => `${r.academicSession || ''}__${r.term || ''}` === selectedTermKey
+    );
+
+    if (matchedRecord) {
+      return {
+        ...result,
+        academicSession: matchedRecord.academicSession,
+        term: matchedRecord.term,
+        className: matchedRecord.className || result.className,
+        subjects: matchedRecord.subjects || [],
+        overallTotal: matchedRecord.overallTotal ?? result.overallTotal,
+        overallAverage: matchedRecord.overallAverage ?? result.overallAverage,
+        gpa: matchedRecord.gpa ?? result.gpa,
+        position: matchedRecord.position ?? result.position,
+        totalInClass: matchedRecord.totalInClass ?? result.totalInClass,
+        principalRemark: matchedRecord.principalRemark || result.principalRemark,
+      };
+    }
+
+    return result;
+  }, [result, selectedTermKey]);
+
+  const currentResult = activeResult || result;
 
   // Load branding & admin subjects if not provided in props
   React.useEffect(() => {
@@ -72,20 +133,19 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
   // Pre-convert passport photo URL to base64 Data URL for instant, error-free html2canvas PDF rendering
   React.useEffect(() => {
     let isMounted = true;
-    const defaultAvatar = createDefaultAvatarDataUrl(result?.fullName || 'Student');
+    const defaultAvatar = createDefaultAvatarDataUrl(currentResult?.fullName || 'Student');
 
-    if (!result?.passportUrl) {
+    if (!currentResult?.passportUrl) {
       setPassportBase64(defaultAvatar);
       return;
     }
 
-    const src = result.passportUrl;
+    const src = currentResult.passportUrl;
     if (src.startsWith('data:')) {
       setPassportBase64(src);
       return;
     }
 
-    // Try converting image URL to base64 via fetch or canvas
     fetch(src, { mode: 'cors' })
       .then((res) => {
         if (!res.ok) throw new Error('Network response was not ok');
@@ -105,7 +165,6 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
         }
       })
       .catch(() => {
-        // Fallback to Image canvas loading
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.src = src;
@@ -132,9 +191,8 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [result?.passportUrl, result?.fullName, isOpen]);
+  }, [currentResult?.passportUrl, currentResult?.fullName, isOpen]);
 
-  // Retrieve current school header settings from prop or localStorage or fallback
   const getHeaderInfo = (): SchoolHeaderInfo => {
     if (schoolHeader) return schoolHeader;
     try {
@@ -148,28 +206,61 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
 
   const headerInfo = getHeaderInfo();
 
-  if (!isOpen || !result) return null;
+  if (!isOpen || !currentResult) return null;
 
   const handlePrint = () => {
     window.print();
   };
 
   const handleShare = () => {
-    const url = `${window.location.origin}?studentId=${result.studentId}`;
+    const url = `${window.location.origin}?studentId=${currentResult.studentId}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
-  // Calculate subjects passed / failed & totals dynamically
-  const studentSubjects = filterStudentSubjectsByAdmin(result?.subjects, adminSubjects);
+  // Score evaluation helpers
+  const getSubjectTotal = (sub: any) => {
+    if (sub.total !== undefined && sub.total !== null) return Number(sub.total);
+    const ca = sub.caScore !== undefined ? Number(sub.caScore) : ((Number(sub.ca1) || 0) + (Number(sub.ca2) || 0) + (Number(sub.midterm) || 0));
+    const exam = Number(sub.examScore) || 0;
+    return ca + exam;
+  };
 
-  const subjectsPassed = studentSubjects.filter(s => (s.total || 0) >= 40 && s.grade !== 'F9').length;
-  const subjectsFailed = studentSubjects.filter(s => (s.total || 0) < 40 || s.grade === 'F9').length;
-  const totalScoreCalculated = studentSubjects.reduce((acc, s) => acc + (s.total || 0), 0);
+  const getSubjectGrade = (sub: any, total: number) => {
+    if (sub.grade && sub.grade !== '' && sub.grade !== 'PENDING') return sub.grade;
+    if (total >= 80) return 'A';
+    if (total >= 70) return 'B1';
+    if (total >= 60) return 'B2';
+    if (total >= 55) return 'P1';
+    if (total >= 50) return 'P2';
+    return 'F9';
+  };
+
+  const getSubjectRemark = (sub: any, total: number) => {
+    if (sub.remark && sub.remark !== '' && sub.remark !== 'PENDING') return sub.remark;
+    if (total >= 80) return 'EXCELLENT';
+    if (total >= 70) return 'VERY GOOD';
+    if (total >= 60) return 'GOOD';
+    if (total >= 50) return 'CREDIT';
+    return 'FAIL';
+  };
+
+  const isSubjectPassed = (sub: any) => {
+    const total = getSubjectTotal(sub);
+    const grade = getSubjectGrade(sub, total);
+    return total >= 50 && grade !== 'F9' && grade !== 'F';
+  };
+
+  // Calculate subjects passed / failed & totals dynamically
+  const studentSubjects = filterStudentSubjectsByAdmin(currentResult?.subjects, adminSubjects);
+
+  const subjectsPassed = studentSubjects.filter(s => isSubjectPassed(s)).length;
+  const subjectsFailed = studentSubjects.filter(s => !isSubjectPassed(s)).length;
+  const totalScoreCalculated = studentSubjects.reduce((acc, s) => acc + getSubjectTotal(s), 0);
   const averageScoreCalculated = studentSubjects.length > 0 
     ? (totalScoreCalculated / studentSubjects.length) 
-    : (studentSubjects.length === 0 ? 0 : (result?.overallAverage || 0));
+    : (studentSubjects.length === 0 ? 0 : (currentResult?.overallAverage || 0));
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 result-slip-modal-wrapper">
@@ -185,7 +276,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
               <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
                 Official Student Result Sheet
               </h3>
-              <p className="text-xs text-blue-200 font-mono">Admission No (Reg ID): {result.studentId}</p>
+              <p className="text-xs text-blue-200 font-mono">Admission No (Reg ID): {currentResult.studentId}</p>
             </div>
           </div>
 
@@ -216,6 +307,26 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Term / Session Record Switcher */}
+        {availableTermOptions.length > 0 && (
+          <div className="bg-slate-100 border-b border-slate-200 px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 no-print shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#1E3A8A]">Select Academic Session & Term Result:</span>
+            </div>
+            <select
+              value={selectedTermKey || (availableTermOptions[0]?.key ?? '')}
+              onChange={(e) => setSelectedTermKey(e.target.value)}
+              className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+            >
+              {availableTermOptions.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Printable Result Sheet Body (Faith Academy Exact Specification) */}
         <div ref={printRef} className="p-6 sm:p-8 overflow-y-auto print-area bg-white text-black font-sans box-border" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
@@ -251,7 +362,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                 {headerInfo.schoolName || 'FAITH ACADEMY'}
               </h1>
               <h2 className="text-[12px] font-bold text-black uppercase tracking-normal mt-1">
-                MIDTERM REPORT — {result.term?.toUpperCase() || '3RD TERM'} OF {result.academicSession || '2024/2025 Academic Session'}
+                MIDTERM REPORT — {currentResult.term?.toUpperCase() || '3RD TERM'} OF {currentResult.academicSession || '2024/2025 Academic Session'}
               </h2>
             </div>
 
@@ -264,19 +375,19 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[11px]">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-black">NAME:</span>
-                <span className="font-bold text-black uppercase">{result.fullName}</span>
+                <span className="font-bold text-black uppercase">{currentResult.fullName}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-black">CLASS:</span>
-                <span className="font-bold text-black uppercase">{result.className}</span>
+                <span className="font-bold text-black uppercase">{currentResult.className}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-black">ADM NO:</span>
-                <span className="font-bold text-black uppercase font-mono">{result.studentId}</span>
+                <span className="font-bold text-black uppercase font-mono">{currentResult.studentId}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-black">GENDER:</span>
-                <span className="font-bold text-black uppercase">{result.gender || 'MALE'}</span>
+                <span className="font-bold text-black uppercase">{currentResult.gender || 'MALE'}</span>
               </div>
             </div>
           </div>
@@ -290,24 +401,23 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                   <th className="border border-black text-left align-middle" style={{ padding: '6px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>SUBJECT</th>
                   <th className="border border-black text-center align-middle" style={{ width: '130px', padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>1ST SUMMARY (20)</th>
                   <th className="border border-black text-center align-middle" style={{ width: '140px', padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>1ST SUMMARY (100%)</th>
-                  <th className="border border-black text-center align-middle" style={{ width: '90px', padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>GS / NGS</th>
+                  <th className="border border-black text-center align-middle" style={{ width: '80px', padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>STATUS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black font-normal">
                 {studentSubjects.length > 0 ? (
                   studentSubjects.map((sub, idx) => {
                     const rawCa = sub.caScore !== undefined ? sub.caScore : ((sub.ca1 || 0) + (sub.ca2 || 0) + (sub.midterm || 0));
-                    const summary20 = Math.min(20, Math.round((rawCa / 40) * 20 || rawCa));
-                    const summary100 = sub.total !== undefined ? sub.total : (rawCa + (sub.examScore || 0));
-                    const isGS = summary20 >= 10;
+                    const totalScore = getSubjectTotal(sub);
+                    const isGS = isSubjectPassed(sub);
 
                     return (
                       <tr key={sub.id || idx}>
                         <td className="border border-black text-center font-mono align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{idx + 1}</td>
                         <td className="border border-black text-left uppercase align-middle" style={{ padding: '6px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>{sub.subject}</td>
-                        <td className="border border-black text-center font-mono font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{summary20}</td>
-                        <td className="border border-black text-center font-mono font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{summary100}%</td>
-                        <td className={`border border-black text-center font-bold align-middle ${!isGS ? 'text-red-600 font-extrabold' : ''}`} style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
+                        <td className="border border-black text-center font-mono font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{rawCa}</td>
+                        <td className="border border-black text-center font-mono font-black align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>{totalScore}%</td>
+                        <td className={`border border-black text-center font-extrabold align-middle ${!isGS ? 'text-red-600 font-extrabold' : 'text-emerald-800'}`} style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
                           {isGS ? 'GS' : 'NGS'}
                         </td>
                       </tr>
@@ -455,10 +565,14 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
           {/* 5. REMARKS SECTION */}
           <div className="border border-black p-2 bg-white text-[11px] mb-3">
             <span className="font-bold text-black uppercase">PRINCIPAL'S REMARK: </span>
-            <span className="italic text-black">
-              {brandingState?.principalRemark !== undefined && brandingState?.principalRemark !== null
-                ? (brandingState.principalRemark.trim() || 'N/A')
-                : (result.principalRemark?.trim() || 'N/A')}
+            <span className="italic text-black font-semibold uppercase">
+              {(
+                currentResult?.principalRemark ||
+                (currentResult as any)?.remarks ||
+                brandingState?.principalRemark ||
+                initialBranding?.principalRemark ||
+                ''
+              ).trim() || 'AN ENCOURAGING PERFORMANCE. KEEP IT UP.'}
             </span>
           </div>
 

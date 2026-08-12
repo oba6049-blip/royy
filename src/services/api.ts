@@ -70,6 +70,9 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(studentData),
       });
+      if (res.ok && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('school_portal_data_updated', { detail: studentData }));
+      }
       return res.ok;
     } catch {
       return false;
@@ -83,6 +86,9 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),
       });
+      if (res.ok && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('school_portal_data_updated', { detail: { id, ...updateData } }));
+      }
       return res.ok;
     } catch {
       return false;
@@ -94,6 +100,9 @@ export const api = {
       const res = await fetch(`/api/students/${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
+      if (res.ok && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('school_portal_data_updated', { detail: { deletedId: id } }));
+      }
       return res.ok;
     } catch {
       return false;

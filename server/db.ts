@@ -153,37 +153,44 @@ export async function getAllStudents() {
 }
 
 export async function getStudentById(studentId: string) {
+  const cleanId = String(studentId || '').trim();
   if (isMongoConnected && dbInstance) {
-    return await dbInstance.collection('students').findOne({ studentId }, { projection: { _id: 0 } });
+    return await dbInstance.collection('students').findOne(
+      { studentId: { $regex: new RegExp(`^${cleanId}$`, 'i') } },
+      { projection: { _id: 0 } }
+    );
   }
-  return memoryStore.students.find(s => s.studentId.toUpperCase() === studentId.toUpperCase()) || null;
+  return memoryStore.students.find(s => String(s.studentId || '').trim().toUpperCase() === cleanId.toUpperCase()) || null;
 }
 
 export async function createStudent(studentData: any) {
+  const cleanId = String(studentData.studentId || '').trim();
+  const normalizedData = { ...studentData, studentId: cleanId };
   if (isMongoConnected && dbInstance) {
     await dbInstance.collection('students').updateOne(
-      { studentId: studentData.studentId },
-      { $set: studentData },
+      { studentId: cleanId },
+      { $set: normalizedData },
       { upsert: true }
     );
   }
-  const idx = memoryStore.students.findIndex(s => s.studentId === studentData.studentId);
+  const idx = memoryStore.students.findIndex(s => String(s.studentId || '').trim().toUpperCase() === cleanId.toUpperCase());
   if (idx >= 0) {
-    memoryStore.students[idx] = studentData;
+    memoryStore.students[idx] = normalizedData;
   } else {
-    memoryStore.students.unshift(studentData);
+    memoryStore.students.unshift(normalizedData);
   }
-  return studentData;
+  return normalizedData;
 }
 
 export async function updateStudent(studentId: string, updateData: any) {
+  const cleanId = String(studentId || '').trim();
   if (isMongoConnected && dbInstance) {
     await dbInstance.collection('students').updateOne(
-      { studentId },
+      { studentId: { $regex: new RegExp(`^${cleanId}$`, 'i') } },
       { $set: updateData }
     );
   }
-  const idx = memoryStore.students.findIndex(s => s.studentId === studentId);
+  const idx = memoryStore.students.findIndex(s => String(s.studentId || '').trim().toUpperCase() === cleanId.toUpperCase());
   if (idx >= 0) {
     memoryStore.students[idx] = { ...memoryStore.students[idx], ...updateData };
     return memoryStore.students[idx];
@@ -192,10 +199,11 @@ export async function updateStudent(studentId: string, updateData: any) {
 }
 
 export async function deleteStudent(studentId: string) {
+  const cleanId = String(studentId || '').trim();
   if (isMongoConnected && dbInstance) {
-    await dbInstance.collection('students').deleteOne({ studentId });
+    await dbInstance.collection('students').deleteOne({ studentId: { $regex: new RegExp(`^${cleanId}$`, 'i') } });
   }
-  memoryStore.students = memoryStore.students.filter(s => s.studentId !== studentId);
+  memoryStore.students = memoryStore.students.filter(s => String(s.studentId || '').trim().toUpperCase() !== cleanId.toUpperCase());
   return true;
 }
 
