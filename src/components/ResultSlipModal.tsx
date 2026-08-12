@@ -47,7 +47,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [passportBase64, setPassportBase64] = useState<string>('');
-  const [brandingState, setBrandingState] = useState<{ logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null } | null>(initialBranding || null);
+  const [brandingState, setBrandingState] = useState<{ logoUrl?: string | null; stampUrl?: string | null; signatureUrl?: string | null; principalRemark?: string | null; positions?: any } | null>(initialBranding || null);
   const [adminSubjects, setAdminSubjects] = useState<any[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -455,7 +455,11 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
           {/* 5. REMARKS SECTION */}
           <div className="border border-black p-2 bg-white text-[11px] mb-3">
             <span className="font-bold text-black uppercase">PRINCIPAL'S REMARK: </span>
-            <span className="italic text-black">{result.principalRemark || 'A commendable performance. Keep up the good work.'}</span>
+            <span className="italic text-black">
+              {brandingState?.principalRemark !== undefined && brandingState?.principalRemark !== null
+                ? (brandingState.principalRemark.trim() || 'N/A')
+                : (result.principalRemark?.trim() || 'N/A')}
+            </span>
           </div>
 
           {/* 6. WATERMARK / FOOTER NOTICE */}

@@ -52,22 +52,19 @@ export function calculateDynamicStudentPosition(
   // 2. Build a full list of all available students in the school
   const poolOfStudentsMap = new Map<string, any>();
 
-  // Add standard mock students first
-  Object.values(MOCK_STUDENTS).forEach(s => {
-    if (s && s.studentId) poolOfStudentsMap.set(s.studentId.toUpperCase(), s);
-  });
-
-  // Add admin mock students
-  ADMIN_MOCK_STUDENTS.forEach(s => {
-    if (s && s.studentId) {
-      const existing = poolOfStudentsMap.get(s.studentId.toUpperCase()) || {};
-      poolOfStudentsMap.set(s.studentId.toUpperCase(), { ...existing, ...s });
-    }
-  });
-
-  // Add custom list if passed (e.g. from API or admin state)
-  if (customAllStudentsList && Array.isArray(customAllStudentsList)) {
+  if (customAllStudentsList && Array.isArray(customAllStudentsList) && customAllStudentsList.length > 0) {
     customAllStudentsList.forEach(s => {
+      if (s && s.studentId) {
+        poolOfStudentsMap.set(s.studentId.toUpperCase(), { ...s });
+      }
+    });
+  } else {
+    // Fallback to base mock students if no API list is provided
+    Object.values(MOCK_STUDENTS).forEach(s => {
+      if (s && s.studentId) poolOfStudentsMap.set(s.studentId.toUpperCase(), s);
+    });
+
+    ADMIN_MOCK_STUDENTS.forEach(s => {
       if (s && s.studentId) {
         const existing = poolOfStudentsMap.get(s.studentId.toUpperCase()) || {};
         poolOfStudentsMap.set(s.studentId.toUpperCase(), { ...existing, ...s });
@@ -90,41 +87,122 @@ export function calculateDynamicStudentPosition(
 
   const allPool = Array.from(poolOfStudentsMap.values());
 
-  // 3. Normalize current student's class name for matching
-  const currentClassRaw = (currentStudent.className || '').trim();
-  const currentClassNorm = currentClassRaw.toLowerCase();
+  // 3. Helper to determine if two class names represent the same class/stream
+  const isSameClass = (classA: string, classB: string): boolean => {
+    if (!classA || !classB) return true;
 
-  // 4. Filter pool for students in the same class / stream
-  const classPeers = allPool.filter(st => {
-    if (!st) return false;
-    const stClassRaw = (st.className || st.class || '').trim();
-    const stClassNorm = stClassRaw.toLowerCase();
+    const rawA = classA.trim().toLowerCase();
+    const rawB = classB.trim().toLowerCase();
 
-    if (!stClassNorm || !currentClassNorm) return true;
+    if (rawA === rawB) return true;
 
-    // Exact match
-    if (stClassNorm === currentClassNorm) return true;
+    const normA = rawA
+      .replace(/senior secondary school\s*/g, 'sss ')
+      .replace(/junior secondary school\s*/g, 'jss ')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    // Check key stream signatures like "sss 3", "sss 2", "sss 1", "jss 3", "jss 2", "jss 1"
-    const streams = ['sss 3', 'sss 2', 'sss 1', 'jss 3', 'jss 2', 'jss 1'];
-    for (const stream of streams) {
-      if (currentClassNorm.includes(stream) && stClassNorm.includes(stream)) {
+    const normB = rawB
+      .replace(/senior secondary school\s*/g, 'sss ')
+      .replace(/junior secondary school\s*/g, 'jss ')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (normA === normB) return true;
+
+    // 1. Grade level check
+    const levels = ['sss 3', 'sss 2', 'sss 1', 'jss 3', 'jss 2', 'jss 1'];
+    let levelA = '';
+    let levelB = '';
+
+    for (const lvl of levels) {
+      if (normA.includes(lvl)) levelA = lvl;
+      if (normB.includes(lvl)) levelB = lvl;
+    }
+
+    if (levelA && levelB && levelA !== levelB) {
+      return false;
+    }
+
+    // 2. Track / Stream check
+    const tracks = ['science', 'arts', 'commercial', 'vocational'];
+    let trackA = '';
+    let trackB = '';
+
+    for (const trk of tracks) {
+      if (normA.includes(trk)) trackA = trk;
+      if (normB.includes(trk)) trackB = trk;
+    }
+
+    if (trackA && trackB && trackA !== trackB) {
+      return false;
+    }
+
+    // 3. Arm / Letter check (Arm A vs Arm B)
+    const isArmA_A = /\b(a|arm a|science a|arts a)\b/.test(normA);
+    const isArmB_A = /\b(b|arm b|science b|arts b)\b/.test(normA);
+
+    const isArmA_B = /\b(a|arm a|science a|arts a)\b/.test(normB);
+    const isArmB_B = /\b(b|arm b|science b|arts b)\b/.test(normB);
+
+    if ((isArmA_A && isArmB_B) || (isArmB_A && isArmA_B)) {
+      return false;
+    }
+
+    if ((isArmB_A && !isArmB_B) || (isArmB_B && !isArmB_A)) {
+      return false;
+    }
+
+    if (levelA && levelB && levelA === levelB) {
+      if (!trackA || !trackB || trackA === trackB) {
         return true;
       }
     }
 
-    return stClassNorm.includes(currentClassNorm) || currentClassNorm.includes(stClassNorm);
+    return normA.includes(normB) || normB.includes(normA);
+  };
+
+  // 4. Filter pool for students in the same class / stream
+  const currentClassRaw = (currentStudent.className || '').trim();
+  const classPeers = allPool.filter(st => {
+    if (!st) return false;
+    const stClassRaw = (st.className || st.class || '').trim();
+    return isSameClass(currentClassRaw, stClassRaw);
   });
 
-  // 5. Calculate computed average score for each peer
+  // 5. Calculate computed average score for each peer using ONLY valid scored subjects
   const classPeersWithScores = classPeers.map(st => {
-    let avg = 0;
-    if (st.subjects && Array.isArray(st.subjects) && st.subjects.length > 0) {
-      const tot = st.subjects.reduce((acc: number, sub: any) => acc + (Number(sub.total) || 0), 0);
-      avg = Number((tot / st.subjects.length).toFixed(1));
-    } else {
-      avg = Number(st.overallAverage || st.averageScore || (st.gpa ? st.gpa * 25 : 0)) || 0;
+    if (st.studentId && st.studentId.toUpperCase() === currentKey) {
+      return {
+        studentId: st.studentId,
+        name: st.fullName || st.name,
+        averageScore: calculatedAverage,
+      };
     }
+
+    let avg = 0;
+    const rawSubs = Array.isArray(st.subjects) ? st.subjects : [];
+    const validSubs = rawSubs.filter((sub: any) => {
+      if (!sub || typeof sub !== 'object') return false;
+      const name = (sub.subject || sub.name || '').trim();
+      if (!name) return false;
+      const ca = Number(sub.caScore ?? sub.ca ?? 0);
+      const exam = Number(sub.examScore ?? sub.exam ?? 0);
+      const total = Number(sub.total ?? 0);
+      const grade = (sub.grade || '').trim().toUpperCase();
+      const remark = (sub.remark || '').trim().toUpperCase();
+      return ca > 0 || exam > 0 || total > 0 || (grade !== '' && grade !== 'PENDING' && grade !== 'UNRECORDED') || (remark !== '' && remark !== 'PENDING' && remark !== 'UNRECORDED');
+    });
+
+    if (validSubs.length > 0) {
+      const tot = validSubs.reduce((acc: number, sub: any) => acc + (Number(sub.total) || 0), 0);
+      avg = Number((tot / validSubs.length).toFixed(1));
+    } else {
+      avg = Number(st.overallAverage || st.averageScore || 0);
+    }
+
     return {
       studentId: st.studentId,
       name: st.fullName || st.name,

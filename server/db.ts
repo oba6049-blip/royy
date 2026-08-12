@@ -45,6 +45,7 @@ let memoryStore = {
     logoUrl: null as string | null,
     stampUrl: null as string | null,
     signatureUrl: null as string | null,
+    principalRemark: 'Exemplary academic effort, commendable discipline, and steady progress across all subjects. Keep striving for excellence!',
     updatedAt: new Date().toISOString()
   },
   admins: [
@@ -336,6 +337,18 @@ export async function updateBranding(typeOrObject: string | Record<string, any>,
   }
   memoryStore.branding = { ...memoryStore.branding, ...update };
   return memoryStore.branding;
+}
+
+export async function batchUpdateStudentsPrincipalRemark(remark: string) {
+  if (isMongoConnected && dbInstance) {
+    await dbInstance.collection('students').updateMany(
+      {},
+      { $set: { principalRemark: remark, updatedAt: new Date().toISOString() } }
+    );
+  }
+  Object.values(memoryStore.students).forEach(s => {
+    if (s) s.principalRemark = remark;
+  });
 }
 
 // Admin Auth

@@ -305,6 +305,21 @@ export const api = {
     }
   },
 
+  async savePrincipalRemark(principalRemark: string): Promise<{ success: boolean; branding?: any }> {
+    try {
+      const res = await fetch('/api/branding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ principalRemark }),
+      });
+      if (!res.ok) return { success: false };
+      const data = await res.json();
+      return { success: true, branding: data.branding };
+    } catch {
+      return { success: false };
+    }
+  },
+
   // Auth
   async loginAdmin(email: string, pass: string): Promise<any> {
     const cleanEmail = (email || '').trim().toLowerCase();

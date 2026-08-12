@@ -56,6 +56,14 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    api.getStudents().then((res) => {
+      if (Array.isArray(res)) {
+        setStudents(res);
+      }
+    }).catch(() => {});
+  }, []);
+
   // Inline login state if logged out
   const [internalAdmin, setInternalAdmin] = useState<AdminUser | null>({
     name: 'Adewale (System Admin)',
@@ -376,7 +384,7 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
                       <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
                         <span className="text-[10px] font-bold uppercase text-slate-400 block">Class Average</span>
                         <span className="text-2xl font-black text-[#F59E0B] font-['Plus_Jakarta_Sans'] mt-1 block">84.2%</span>
-                        <span className="text-[10px] text-slate-400 mt-1 block">GPA ~3.68 Scale</span>
+                        <span className="text-[10px] text-slate-400 mt-1 block">3rd Term Final</span>
                       </div>
 
                       <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
@@ -437,7 +445,6 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
                           <th className="p-3">Student ID</th>
                           <th className="p-3">Student Name</th>
                           <th className="p-3">Class</th>
-                          <th className="p-3">GPA</th>
                           <th className="p-3">Average</th>
                           <th className="p-3">Status</th>
                           <th className="p-3 text-right">Action</th>
@@ -449,7 +456,6 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
                             <td className="p-3 font-mono text-blue-400 font-bold">{st.studentId}</td>
                             <td className="p-3 font-bold text-white">{st.name}</td>
                             <td className="p-3 text-slate-400">{st.className}</td>
-                            <td className="p-3 font-bold text-amber-400">{st.gpa.toFixed(2)}</td>
                             <td className="p-3 font-mono font-bold text-emerald-400">{st.averageScore}%</td>
                             <td className="p-3">
                               <span

@@ -89,95 +89,6 @@ export const MOCK_STUDENTS: Record<string, StudentResult> = {
     principalRemark: 'An outstanding academic record. Highly recommended for university admission with distinction honors.',
     verificationHash: 'RA-SEC-89A4B290C7D1',
     issueDate: 'August 05, 2025'
-  },
-
-  '2025108': {
-    studentId: '2025108',
-    fullName: 'Sophia Isabella Martinez',
-    passportUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
-    gender: 'Female',
-    age: '16 Yrs',
-    house: 'Sapphire House',
-    className: 'Senior Secondary School 2 (SSS 2 - Arts)',
-    academicSession: '2024/2025 Academic Session',
-    term: '3rd Term (Final Session)',
-    dateOfBirth: '2008-09-22',
-    attendance: {
-      timesOpened: 120,
-      timesPresent: 115,
-      timesAbsent: 5
-    },
-    behavioralTraits: {
-      punctuality: 4,
-      neatness: 5,
-      leadership: 5,
-      honesty: 5
-    },
-    subjects: [
-      { id: 'sub-1', subject: 'English Language', caScore: 39, examScore: 54, total: 93, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-2', subject: 'Mathematics', caScore: 30, examScore: 45, total: 75, grade: 'B2', remark: 'VERY GOOD' },
-      { id: 'sub-3', subject: 'Literature in English', caScore: 38, examScore: 53, total: 91, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-4', subject: 'Government', caScore: 36, examScore: 51, total: 87, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-5', subject: 'Christian Religious Studies', caScore: 37, examScore: 52, total: 89, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-6', subject: 'Civic Education', caScore: 36, examScore: 50, total: 86, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-7', subject: 'Economics', caScore: 34, examScore: 48, total: 82, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-8', subject: 'French Language', caScore: 37, examScore: 52, total: 89, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-9', subject: 'History', caScore: 35, examScore: 51, total: 86, grade: 'A1', remark: 'EXCELLENT' }
-    ],
-    overallTotal: 785,
-    overallAverage: 87.2,
-    gpa: 3.78,
-    position: 2,
-    totalInClass: 38,
-    status: 'PROMOTED',
-    classTeacherRemark: 'Sophia is a natural communicator with impressive creative insight. Her dedication to excellence in humanities is commendable.',
-    principalRemark: 'Promoted to SSS 3. Keep up the high standard of excellence.',
-    verificationHash: 'RA-SEC-92C8F310B4E8',
-    issueDate: 'August 05, 2025'
-  },
-
-  '2025110': {
-    studentId: '2025110',
-    fullName: 'Marcus Sterling Vance',
-    passportUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400',
-    gender: 'Male',
-    age: '15 Yrs',
-    house: 'Emerald House',
-    className: 'Junior Secondary School 3 (JSS 3 - B)',
-    academicSession: '2024/2025 Academic Session',
-    term: '3rd Term (Final Session)',
-    dateOfBirth: '2010-11-05',
-    attendance: {
-      timesOpened: 120,
-      timesPresent: 119,
-      timesAbsent: 1
-    },
-    behavioralTraits: {
-      punctuality: 5,
-      neatness: 4,
-      leadership: 4,
-      honesty: 5
-    },
-    subjects: [
-      { id: 'sub-1', subject: 'Mathematics', caScore: 36, examScore: 50, total: 86, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-2', subject: 'English Studies', caScore: 34, examScore: 51, total: 85, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-3', subject: 'Basic Science', caScore: 36, examScore: 52, total: 88, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-4', subject: 'Basic Technology', caScore: 34, examScore: 49, total: 83, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-5', subject: 'Social Studies', caScore: 35, examScore: 50, total: 85, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-6', subject: 'Civic Education', caScore: 36, examScore: 52, total: 88, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-7', subject: 'Business Studies', caScore: 32, examScore: 48, total: 80, grade: 'A1', remark: 'EXCELLENT' },
-      { id: 'sub-8', subject: 'Cultural & Creative Arts', caScore: 35, examScore: 49, total: 84, grade: 'A1', remark: 'EXCELLENT' }
-    ],
-    overallTotal: 679,
-    overallAverage: 86.2,
-    gpa: 3.71,
-    position: 3,
-    totalInClass: 45,
-    status: 'PROMOTED',
-    classTeacherRemark: 'Marcus shows great promise in stem subjects. Very polite and disciplined student.',
-    principalRemark: 'Promoted to Senior Secondary School 1 (SSS 1 Science Stream). Congratulations!',
-    verificationHash: 'RA-SEC-11D9E421A9C3',
-    issueDate: 'August 05, 2025'
   }
 };
 
@@ -402,10 +313,5 @@ export const FAQ_DATA: FAQItem[] = [
 
 export const ADMIN_MOCK_STUDENTS: AdminStudentSummary[] = [
   { studentId: '2025101', name: 'Adeyemi Faridah', className: 'SSS 3 Science A', gpa: 4.00, status: 'Published', lastUpdated: 'Today, 08:00 AM', averageScore: 94.9 },
-  { studentId: '2025104', name: 'Fariat (David Okon)', className: 'SSS 3 Science A', gpa: 3.92, status: 'Published', lastUpdated: 'Today, 08:30 AM', averageScore: 89.4 },
-  { studentId: '2025108', name: 'Sophia Isabella Martinez', className: 'SSS 2 Arts B', gpa: 3.78, status: 'Published', lastUpdated: 'Today, 09:15 AM', averageScore: 87.2 },
-  { studentId: '2025110', name: 'Marcus Sterling Vance', className: 'JSS 3 B', gpa: 3.71, status: 'Published', lastUpdated: 'Yesterday', averageScore: 86.2 },
-  { studentId: '2025114', name: 'Amara Grace Washington', className: 'SSS 1 Commercial', gpa: 3.65, status: 'Pending Review', lastUpdated: 'Yesterday', averageScore: 84.8 },
-  { studentId: '2025120', name: 'Julian Benedict Vance', className: 'JSS 1 A', gpa: 3.50, status: 'Draft', lastUpdated: '2 days ago', averageScore: 81.0 },
-  { studentId: '2025125', name: 'Claire Eleanor DuPont', className: 'SSS 3 Science B', gpa: 3.95, status: 'Published', lastUpdated: '3 days ago', averageScore: 91.5 }
+  { studentId: '2025104', name: 'Fariat (David Okon)', className: 'SSS 3 Science A', gpa: 3.92, status: 'Published', lastUpdated: 'Today, 08:30 AM', averageScore: 89.4 }
 ];

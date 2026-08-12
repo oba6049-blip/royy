@@ -23,6 +23,7 @@ import {
   deleteTerm,
   getBranding,
   updateBranding,
+  batchUpdateStudentsPrincipalRemark,
   verifyAdmin,
 } from './db.js';
 import { uploadToCloudinary, isCloudinaryConfigured } from './cloudinary.js';
@@ -290,13 +291,18 @@ app.get('/api/branding', async (req, res) => {
 
 app.post('/api/branding', async (req, res) => {
   try {
-    const { type, url, positions } = req.body;
+    const { type, url, positions, principalRemark } = req.body;
+    if (principalRemark !== undefined) {
+      const updated = await updateBranding({ principalRemark });
+      await batchUpdateStudentsPrincipalRemark(principalRemark);
+      return res.json({ success: true, branding: updated });
+    }
     if (positions) {
       const updated = await updateBranding({ positions });
       return res.json({ success: true, branding: updated });
     }
     if (!type) {
-      return res.status(400).json({ error: 'Type or positions required.' });
+      return res.status(400).json({ error: 'Type, principalRemark or positions required.' });
     }
     let finalUrl = url || '';
     if (url && (url.startsWith('data:') || url.length > 500)) {

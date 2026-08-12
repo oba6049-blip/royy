@@ -48,7 +48,8 @@ import {
   Server,
   RefreshCw,
   Cloud,
-  Sliders
+  Sliders,
+  MessageSquare
 } from 'lucide-react';
 
 interface AdminUser {
@@ -539,6 +540,52 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [stampPreview, setStampPreview] = useState<string | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [isUploadingBranding, setIsUploadingBranding] = useState<string | null>(null);
+  const [globalPrincipalRemark, setGlobalPrincipalRemark] = useState<string>(
+    'Exemplary academic effort, commendable discipline, and steady progress across all subjects. Keep striving for excellence!'
+  );
+  const [isSavingPrincipalRemark, setIsSavingPrincipalRemark] = useState<boolean>(false);
+
+  const handleDeleteGlobalPrincipalRemark = async () => {
+    if (globalPrincipalRemark && !window.confirm('Are you sure you want to delete the Principal remark comment from all results?')) {
+      return;
+    }
+    setIsSavingPrincipalRemark(true);
+    try {
+      const res = await api.savePrincipalRemark('');
+      if (res.success) {
+        setGlobalPrincipalRemark('');
+        triggerToast('Principal remark comment deleted and removed from all results.');
+        setStudents(prev => prev.map(st => ({ ...st, principalRemark: '' })));
+      } else {
+        triggerToast('Failed to delete principal remark.');
+      }
+    } catch {
+      triggerToast('Error deleting principal remark.');
+    } finally {
+      setIsSavingPrincipalRemark(false);
+    }
+  };
+
+  const handleSaveGlobalPrincipalRemark = async () => {
+    if (!globalPrincipalRemark.trim()) {
+      handleDeleteGlobalPrincipalRemark();
+      return;
+    }
+    setIsSavingPrincipalRemark(true);
+    try {
+      const res = await api.savePrincipalRemark(globalPrincipalRemark.trim());
+      if (res.success) {
+        triggerToast('Principal remark saved and applied globally to all results!');
+        setStudents(prev => prev.map(st => ({ ...st, principalRemark: globalPrincipalRemark.trim() })));
+      } else {
+        triggerToast('Failed to save principal remark.');
+      }
+    } catch {
+      triggerToast('Error saving principal remark.');
+    } finally {
+      setIsSavingPrincipalRemark(false);
+    }
+  };
 
   const [brandingPositions, setBrandingPositions] = useState<{
     logo: { x: number; y: number; scale: number; rotate: number };
@@ -908,7 +955,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       setDbStatus(status);
 
       const realStudents = await api.getStudents();
-      if (realStudents && realStudents.length > 0) {
+      if (Array.isArray(realStudents)) {
         setStudents(realStudents);
       }
 
@@ -927,6 +974,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         setLogoPreview(branding.logoUrl || null);
         if (branding.stampUrl) setStampPreview(branding.stampUrl);
         if (branding.signatureUrl) setSignaturePreview(branding.signatureUrl);
+        if (branding.principalRemark) setGlobalPrincipalRemark(branding.principalRemark);
         if (branding.positions) {
           setBrandingPositions((prev) => ({
             ...prev,
@@ -1519,7 +1567,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         <th className="p-4">Student Name</th>
                         <th className="p-4">Class</th>
                         <th className="p-4">Term</th>
-                        <th className="p-4">GPA</th>
                         <th className="p-4">Status</th>
                         <th className="p-4 text-right">Actions</th>
                       </tr>
@@ -1537,7 +1584,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                             <td className="p-4 font-bold text-[#0F172A]">{st.name}</td>
                             <td className="p-4">{st.className}</td>
                             <td className="p-4 text-slate-500">{st.session}</td>
-                            <td className="p-4 font-bold text-[#F59E0B]">{st.gpa.toFixed(2)}</td>
                             <td className="p-4">
                               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                 {st.status}
@@ -2128,14 +2174,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         </span>
                       </div>
 
-                      <div className="bg-white/10 px-3.5 py-2 rounded-xl border border-white/10 text-center">
-                        <span className="text-[10px] uppercase text-slate-300 font-bold block">GPA (4.0)</span>
-                        <span className="text-base font-black font-mono text-[#F59E0B]">
-                          {fetchedStudentSubjects.length > 0
-                            ? ((fetchedStudentSubjects.reduce((acc, s) => acc + (s.total || 0), 0) / fetchedStudentSubjects.length) / 25).toFixed(2)
-                            : fetchedStudent.gpa || '0.00'}
-                        </span>
-                      </div>
+
 
                       <button
                         type="button"
@@ -2957,6 +2996,81 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1E3A8A]"
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Principal Official Remark & Comment Section */}
+                <div className="border-t-2 border-slate-200 pt-8 mt-8 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-6 rounded-3xl text-white shadow-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-amber-400 font-bold border border-white/10">
+                        <MessageSquare className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black font-['Plus_Jakarta_Sans'] flex items-center gap-2">
+                          <span>Principal's Official Remark & Comment</span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                            Global Default
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-300 max-w-xl">
+                          This comment automatically appears across all student result slips, portal report cards, and digital broadsheets.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSaveGlobalPrincipalRemark}
+                        disabled={isSavingPrincipalRemark}
+                        className="px-5 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSavingPrincipalRemark ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4" />
+                        )}
+                        <span>{isSavingPrincipalRemark ? 'Saving & Applying...' : 'Save & Apply to All Results'}</span>
+                      </button>
+                      {globalPrincipalRemark ? (
+                        <button
+                          type="button"
+                          onClick={handleDeleteGlobalPrincipalRemark}
+                          disabled={isSavingPrincipalRemark}
+                          className="px-4 py-3 bg-rose-500/20 hover:bg-rose-600 text-rose-200 hover:text-white border border-rose-500/30 font-extrabold text-xs rounded-2xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          title="Delete and remove comment from all results"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete Comment</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
+                        Official Principal Comment Text:
+                      </label>
+                      {globalPrincipalRemark ? (
+                        <button
+                          type="button"
+                          onClick={handleDeleteGlobalPrincipalRemark}
+                          disabled={isSavingPrincipalRemark}
+                          className="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete / Clear Comment</span>
+                        </button>
+                      ) : null}
+                    </div>
+                    <textarea
+                      rows={3}
+                      value={globalPrincipalRemark}
+                      onChange={(e) => setGlobalPrincipalRemark(e.target.value)}
+                      placeholder="Type the principal's official comment here..."
+                      className="w-full p-4 text-sm font-medium text-slate-900 bg-white border border-slate-300 rounded-2xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent transition-all shadow-xs"
+                    />
                   </div>
                 </div>
               </div>
@@ -4019,7 +4133,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-slate-500 font-mono">
-                          GPA: {st.gpa || st.overallAverage || 'N/A'}
+                          Avg: {st.averageScore ? `${st.averageScore.toFixed(1)}%` : st.overallAverage ? `${st.overallAverage.toFixed(1)}%` : 'N/A'}
                         </span>
                         <button
                           onClick={() => {

@@ -52,12 +52,18 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
   // Active Student Result State
   const [activeStudent, setActiveStudent] = useState<StudentResult>(initialStudent);
   const [allStudentsList, setAllStudentsList] = useState<any[]>([]);
+  const [brandingState, setBrandingState] = useState<any>(null);
 
   useEffect(() => {
     let isMounted = true;
     api.getStudents().then(res => {
       if (isMounted && res && Array.isArray(res) && res.length > 0) {
         setAllStudentsList(res);
+      }
+    }).catch(() => {});
+    api.getBranding().then(b => {
+      if (isMounted && b) {
+        setBrandingState(b);
       }
     }).catch(() => {});
     return () => { isMounted = false; };
@@ -568,7 +574,9 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                     Principal Remark
                   </h4>
                   <p className="text-xs text-slate-700 italic bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    "{activeStudent.principalRemark}"
+                    "{brandingState?.principalRemark !== undefined && brandingState?.principalRemark !== null
+                      ? (brandingState.principalRemark.trim() || 'N/A (No principal comment set)')
+                      : (activeStudent.principalRemark?.trim() || 'N/A (No principal comment set)')}"
                   </p>
                 </div>
               </div>

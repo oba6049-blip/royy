@@ -75,7 +75,7 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
       } else if (MOCK_STUDENTS[cleaned]) {
         setActiveResult(MOCK_STUDENTS[cleaned]);
       } else {
-        setErrorMsg(`No record found for 7-digit Registration Number "${studentIdInput}". Try sample student IDs like "2025104", "2025108", or "2025110".`);
+        setErrorMsg(`No record found for 7-digit Registration Number "${studentIdInput}". Try sample student IDs like "2025101" or "2025104".`);
       }
     } catch {
       setIsLoading(false);
@@ -155,7 +155,7 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                   Try Sample Student IDs
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {Object.keys(MOCK_STUDENTS).map((id) => (
+                  {(allStudentsList.length > 0 ? allStudentsList.map(s => s.studentId) : Object.keys(MOCK_STUDENTS)).map((id) => (
                     <button
                       key={id}
                       type="button"
