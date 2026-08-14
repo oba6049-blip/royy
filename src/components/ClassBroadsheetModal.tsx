@@ -67,33 +67,51 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
     if (sessionSelected && termSelected && s.termRecords && Array.isArray(s.termRecords)) {
       const rec = s.termRecords.find(
         (r: any) => (r.academicSession === sessionSelected || r.academicSession?.includes(sessionSelected.split(' ')[0])) &&
-             (r.term === termSelected || r.term?.includes(termSelected))
+             (r.term === termSelected || r.term?.includes(termSelected)) &&
+             (classNameSelected === 'All' || !r.className || r.className === classNameSelected || r.className.includes(classNameSelected) || classNameSelected.includes(r.className))
       );
       if (rec) {
+        const isPub = rec.isPublished !== false && rec.status !== 'Unpublished';
         return {
           ...s,
           className: rec.className || s.className,
-          subjects: rec.subjects || s.subjects,
-          overallTotal: rec.overallTotal ?? s.overallTotal,
-          overallAverage: rec.overallAverage ?? s.overallAverage,
-          averageScore: rec.overallAverage ?? s.averageScore,
-          gpa: rec.gpa ?? s.gpa,
+          subjects: isPub ? (rec.subjects || []) : [],
+          overallTotal: isPub ? (rec.overallTotal ?? 0) : 0,
+          overallAverage: isPub ? (rec.overallAverage ?? 0) : 0,
+          averageScore: isPub ? (rec.overallAverage ?? 0) : 0,
+          gpa: isPub ? (rec.gpa ?? 0) : 0,
         };
       }
     }
-    return s;
+
+    const matchesTopLevel = (!sessionSelected || s.academicSession === sessionSelected || s.session === sessionSelected) &&
+                            (!termSelected || s.term === termSelected) &&
+                            (classNameSelected === 'All' || s.className === classNameSelected || s.className?.includes(classNameSelected));
+
+    if (matchesTopLevel) {
+      const isPub = s.isPublished !== false && s.status !== 'Unpublished';
+      return {
+        ...s,
+        subjects: isPub ? (s.subjects || []) : [],
+        overallTotal: isPub ? (s.overallTotal ?? 0) : 0,
+        overallAverage: isPub ? (s.overallAverage ?? 0) : 0,
+        averageScore: isPub ? (s.overallAverage ?? 0) : 0,
+        gpa: isPub ? (s.gpa ?? 0) : 0,
+      };
+    }
+
+    return {
+      ...s,
+      subjects: [],
+      overallTotal: 0,
+      overallAverage: 0,
+      averageScore: 0,
+      gpa: 0,
+    };
   });
 
   const classStudents = mappedStudents.filter(s => {
-    const matchesClass = classNameSelected === 'All' || s.className === classNameSelected || s.className?.includes(classNameSelected);
-    if (!sessionSelected || !termSelected) return matchesClass;
-
-    const hasTermRec = s.termRecords?.some(
-      (r: any) => (r.academicSession === sessionSelected || r.academicSession?.includes(sessionSelected.split(' ')[0])) &&
-           (r.term === termSelected || r.term?.includes(termSelected))
-    );
-    const matchesTopLevel = (s.academicSession === sessionSelected || s.session === sessionSelected) && s.term === termSelected;
-    return matchesClass && (hasTermRec || matchesTopLevel);
+    return classNameSelected === 'All' || s.className === classNameSelected || s.className?.includes(classNameSelected);
   });
 
   // Sort by score/average descending to derive rank
@@ -230,7 +248,7 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
             </div>
             <div>
               <span className="font-bold text-slate-600 block uppercase text-[9px]">Form Master / Class Teacher:</span>
-              <span className="font-bold text-black text-[12px]">{classTeacherName || 'Mrs. O. Adeleke'}</span>
+              <span className="font-bold text-black text-[12px]">{classTeacherName || 'Form Master'}</span>
             </div>
             <div>
               <span className="font-bold text-slate-600 block uppercase text-[9px]">Total Enrolled Students:</span>
@@ -348,7 +366,7 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
                 "Class performance for {classNameSelected} reflects commendable effort across core subjects. All student scores have been verified against continuous assessment records."
               </p>
               <div className="mt-4 pt-2 border-t border-dashed border-black flex justify-between items-center text-[10px]">
-                <span className="font-bold text-black">Form Master: {classTeacherName || 'Mrs. O. Adeleke'}</span>
+                <span className="font-bold text-black">Form Master: {classTeacherName || 'Form Master'}</span>
                 <span className="font-bold italic text-black">Signed & Approved</span>
               </div>
             </div>

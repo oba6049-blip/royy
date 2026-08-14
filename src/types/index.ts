@@ -3,9 +3,13 @@ export interface SubjectGrade {
   subject: string;
   caScore: number; // e.g. 30/30 or 40/40
   examScore: number; // e.g. 70/70 or 60/60
+  ca1?: number;
+  ca2?: number;
+  midterm?: number;
+  exam?: number;
   total: number; // e.g. 100
-  grade: 'A1' | 'B2' | 'B3' | 'C4' | 'C5' | 'C6' | 'D7' | 'E8' | 'F9';
-  remark: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'CREDIT' | 'PASS' | 'FAIR' | 'POOR' | 'FAIL';
+  grade: 'A1' | 'B2' | 'B3' | 'C4' | 'C5' | 'C6' | 'D7' | 'E8' | 'F9' | string;
+  remark: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'CREDIT' | 'PASS' | 'FAIR' | 'POOR' | 'FAIL' | string;
   creditHours?: number;
 }
 
@@ -20,6 +24,7 @@ export interface StudentTermRecord {
   position?: number | string;
   totalInClass?: number;
   status?: string;
+  isPublished?: boolean;
   issueDate?: string;
   updatedAt?: string;
 }
@@ -58,6 +63,8 @@ export interface StudentResult {
   verificationHash: string;
   issueDate: string;
   termRecords?: StudentTermRecord[];
+  deletedTerms?: string[];
+  deletedStages?: string[];
 }
 
 export interface FAQItem {

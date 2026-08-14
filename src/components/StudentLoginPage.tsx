@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { SchoolLogo } from './SchoolLogo';
 import { api } from '../services/api';
-import { MOCK_STUDENTS } from '../data/mockData';
 import { StudentResult } from '../types';
 import {
   GraduationCap,
@@ -63,16 +62,9 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
     setIsLoading(true);
 
     try {
-      // 1. Try fetching real student from backend API
-      const apiStudent = await api.getStudentById(cleanRegId);
+      // 1. Fetch real student from backend API
+      const candidateStudent = await api.getStudentById(cleanRegId);
       
-      let candidateStudent: StudentResult | null = apiStudent;
-
-      // 2. Fallback to local MOCK_STUDENTS if API did not return or server is offline
-      if (!candidateStudent && MOCK_STUDENTS[cleanRegId]) {
-        candidateStudent = MOCK_STUDENTS[cleanRegId];
-      }
-
       setIsLoading(false);
 
       if (candidateStudent) {
@@ -96,14 +88,6 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
       }
     } catch {
       setIsLoading(false);
-      // Fallback local check
-      if (MOCK_STUDENTS[cleanRegId]) {
-        const student = MOCK_STUDENTS[cleanRegId];
-        if (student.fullName.toLowerCase().includes(cleanSurname)) {
-          onLoginSuccess(student);
-          return;
-        }
-      }
       setErrorMessage(`Unable to authenticate student ID "${cleanRegId}". Please verify your Registration ID and Surname.`);
     }
   };

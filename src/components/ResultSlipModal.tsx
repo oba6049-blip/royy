@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
-import { MOCK_STUDENTS } from '../data/mockData';
 import { api } from '../services/api';
 import { filterStudentSubjectsByAdmin } from '../utils/subjectUtils';
 import { 
@@ -60,25 +59,42 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
 
   const availableTermOptions = React.useMemo(() => {
     if (!result) return [];
-    const list: Array<{ key: string; label: string }> = [];
+    const list: Array<{ key: string; label: string; normKey: string }> = [];
 
-    const mainKey = `${result.academicSession || ''}__${result.term || ''}`;
-    list.push({
-      key: mainKey,
-      label: `${result.className || ''} — ${result.academicSession || ''} (${result.term || ''})`,
-    });
+    const normSess = (s: string) => (s || '').toLowerCase().replace(/academic|session|\s/g, '');
+    const getTermId = (t: string) => {
+      const l = (t || '').toLowerCase();
+      if (l.includes('first') || l.includes('1st') || l.includes('1')) return '1';
+      if (l.includes('second') || l.includes('2nd') || l.includes('2')) return '2';
+      if (l.includes('third') || l.includes('3rd') || l.includes('3')) return '3';
+      return l.replace(/\s/g, '');
+    };
+    const normTerm = (t: string) => getTermId(t);
+    const normClass = (c: string) => (c || '').toLowerCase().replace(/\s/g, '');
+
+    const addOpt = (sess: string, trm: string, cls: string) => {
+      if (!sess || !trm) return;
+      const nS = normSess(sess);
+      const nT = normTerm(trm);
+      const nC = normClass(cls || result.className || '');
+      const nKey = `${nS}__${nT}__${nC}`;
+
+      if (!list.some(o => o.normKey === nKey)) {
+        list.push({
+          key: `${sess}__${trm}`,
+          normKey: nKey,
+          label: `${cls || result.className || ''} — ${sess} (${trm})`,
+        });
+      }
+    };
 
     if (result.termRecords && Array.isArray(result.termRecords)) {
       result.termRecords.forEach((r) => {
-        const k = `${r.academicSession || ''}__${r.term || ''}`;
-        if (!list.some((item) => item.key === k)) {
-          list.push({
-            key: k,
-            label: `${r.className || result.className} — ${r.academicSession || ''} (${r.term || ''})`,
-          });
-        }
+        addOpt(r.academicSession, r.term, r.className || result.className);
       });
     }
+
+    addOpt(result.academicSession, result.term, result.className);
 
     return list;
   }, [result]);
@@ -111,12 +127,26 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
       return result;
     }
 
+    const normSess = (s: string) => (s || '').toLowerCase().replace(/academic|session|\s/g, '');
+    const getTermId = (t: string) => {
+      const l = (t || '').toLowerCase();
+      if (l.includes('first') || l.includes('1st') || l.includes('1')) return '1';
+      if (l.includes('second') || l.includes('2nd') || l.includes('2')) return '2';
+      if (l.includes('third') || l.includes('3rd') || l.includes('3')) return '3';
+      return l.replace(/\s/g, '');
+    };
+    const normTerm = (t: string) => getTermId(t);
+
+    const [selSess, selTerm] = selectedTermKey.split('__');
+    const nS = normSess(selSess);
+    const nT = normTerm(selTerm);
+
     const matchedRecord = result.termRecords?.find(
-      (r) => `${r.academicSession || ''}__${r.term || ''}` === selectedTermKey
+      (r) => normSess(r.academicSession) === nS && normTerm(r.term) === nT
     );
 
     if (matchedRecord) {
-      const valid = hasValidScores(matchedRecord.subjects || []);
+      const valid = matchedRecord.isPublished !== false && matchedRecord.status !== 'Unpublished' && hasValidScores(matchedRecord.subjects || []);
       return {
         ...result,
         academicSession: matchedRecord.academicSession,
@@ -139,6 +169,8 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
     if (
       (result.academicSession || (result as any).session) === sess &&
       result.term === trm &&
+      result.isPublished !== false &&
+      result.status !== 'Unpublished' &&
       hasValidScores(result.subjects)
     ) {
       return result;
@@ -309,6 +341,31 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
     ? (totalScoreCalculated / studentSubjects.length) 
     : (studentSubjects.length === 0 ? 0 : (currentResult?.overallAverage || 0));
 
+  const getDynamicPrincipalRemark = (
+    avgScore: number,
+    gpa: number,
+    passedCount: number,
+    totalCount: number
+  ): string => {
+    if (totalCount === 0) {
+      return 'NO EXAMINATION SCORES PUBLISHED FOR THIS ACADEMIC TERM.';
+    }
+
+    if (avgScore >= 80 || gpa >= 3.75) {
+      return 'AN OUTSTANDING AND EXEMPLARY ACADEMIC PERFORMANCE! DEMONSTRATES EXCEPTIONAL INTELLECTUAL DISTINCTION, DISCIPLINE, AND HIGH CAPABILITY. KEEP UP THIS BRILLIANT TRAJECTORY.';
+    } else if (avgScore >= 70 || gpa >= 3.00) {
+      return 'A VERY GOOD ACADEMIC PERFORMANCE. SHOWS STRONG EFFORT, CONSISTENT APPLICATION, AND HIGH COMMITMENT TO LEARNING. STRIVE FOR TOP DISTINCTION NEXT TERM.';
+    } else if (avgScore >= 60 || gpa >= 2.50) {
+      return 'A GOOD AND CREDITABLE ACADEMIC PERFORMANCE. SATISFACTORY EFFORT DEMONSTRATED. WITH GREATER FOCUS AND REGULAR REVISION, EVEN HIGHER GRADES CAN BE ACHIEVED.';
+    } else if (avgScore >= 50 || gpa >= 2.00) {
+      return 'A SATISFACTORY PASSING PERFORMANCE. ACADEMIC STANDARD MET, BUT MORE DEDICATION, INTENSIVE STUDY, AND BETTER TIME MANAGEMENT ARE RECOMMENDED TO IMPROVE RESULTS.';
+    } else if (avgScore >= 40 || gpa >= 1.50) {
+      return 'FAIR ATTEMPT, BUT PERFORMANCE REQUIRES SIGNIFICANT IMPROVEMENT. SITTING UP, DILIGENT STUDY HABITS, AND CLOSE ACADEMIC SUPERVISION ARE STRONGLY ADVISED.';
+    } else {
+      return 'PERFORMANCE IS BELOW EXPECTED ACADEMIC STANDARDS. URGENT REMEDIAL INTERVENTION, STRICT STUDY DISCIPLINE, AND PROMPT PARENTAL MONITORING ARE REQUIRED.';
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 result-slip-modal-wrapper">
       <div className="relative bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-4 sm:my-8 max-h-[94vh] flex flex-col result-slip-modal-content">
@@ -409,7 +466,7 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                 {headerInfo.schoolName || 'FAITH ACADEMY'}
               </h1>
               <h2 className="text-[12px] font-bold text-black uppercase tracking-normal mt-1">
-                MIDTERM REPORT — {currentResult.term?.toUpperCase() || '3RD TERM'} OF {currentResult.academicSession || '2024/2025 Academic Session'}
+                MIDTERM REPORT — {(currentResult.term || '').toUpperCase()} OF {(currentResult.academicSession || '').toUpperCase()}
               </h2>
             </div>
 
@@ -472,8 +529,8 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center font-black text-red-700 bg-red-50 uppercase tracking-wider border border-black align-middle text-xs" style={{ padding: '16px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>
-                      NO RESULT AVAILABLE FOR THIS TERM
+                    <td colSpan={5} className="p-6 text-center font-bold text-amber-950 bg-amber-50 uppercase tracking-wide border border-black align-middle text-xs" style={{ padding: '16px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>
+                      No result has been published for the selected Academic Session and Academic Term.
                     </td>
                   </tr>
                 )}
@@ -613,13 +670,12 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
           <div className="border border-black p-2 bg-white text-[11px] mb-3">
             <span className="font-bold text-black uppercase">PRINCIPAL'S REMARK: </span>
             <span className="italic text-black font-semibold uppercase">
-              {(
-                currentResult?.principalRemark ||
-                (currentResult as any)?.remarks ||
-                brandingState?.principalRemark ||
-                initialBranding?.principalRemark ||
-                ''
-              ).trim() || 'AN ENCOURAGING PERFORMANCE. KEEP IT UP.'}
+              {getDynamicPrincipalRemark(
+                averageScoreCalculated,
+                currentResult?.gpa || 0,
+                subjectsPassed,
+                studentSubjects.length
+              )}
             </span>
           </div>
 

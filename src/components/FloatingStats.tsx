@@ -1,9 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { STATS_DATA } from '../data/mockData';
+import { api } from '../services/api';
 import { Zap, Users, ShieldCheck, Clock } from 'lucide-react';
 
 export const FloatingStats: React.FC = () => {
+  const [stats, setStats] = useState([
+    { id: 's1', value: '0', label: 'Registered Students', description: 'Total active student records' },
+    { id: 's2', value: '100%', label: 'Verification Rate', description: 'Cryptographic result authenticity' },
+    { id: 's3', value: '0', label: 'Active Classes', description: 'Academic classes in portal' },
+    { id: 's4', value: '0.05s', label: 'Instant Fetch', description: 'Real-time result generation' },
+  ]);
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      api.getStudents(),
+      api.getClasses(),
+    ]).then(([students, classes]) => {
+      if (!isMounted) return;
+      const studentCount = Array.isArray(students) ? students.length : 0;
+      const classCount = Array.isArray(classes) ? classes.length : 0;
+
+      setStats([
+        { id: 's1', value: studentCount.toString(), label: 'Registered Students', description: 'Total active student records' },
+        { id: 's2', value: '100%', label: 'Verification Rate', description: 'Cryptographic result authenticity' },
+        { id: 's3', value: classCount.toString(), label: 'Active Classes', description: 'Academic classes in portal' },
+        { id: 's4', value: '0.05s', label: 'Instant Fetch', description: 'Real-time result generation' },
+      ]);
+    }).catch(() => {});
+
+    return () => { isMounted = false; };
+  }, []);
+
   const statIcons = [
     <Zap key="1" className="w-5 h-5 text-[#F59E0B]" />,
     <Users key="2" className="w-5 h-5 text-[#60A5FA]" />,
@@ -14,7 +42,7 @@ export const FloatingStats: React.FC = () => {
   return (
     <section className="relative z-10 -mt-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {STATS_DATA.map((stat, idx) => (
+        {stats.map((stat, idx) => (
           <motion.div
             key={stat.id}
             initial={{ opacity: 0, y: 20 }}

@@ -1,7 +1,36 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { TESTIMONIALS_DATA } from '../data/mockData';
 import { Star, Quote, Heart, Sparkles } from 'lucide-react';
+
+const TESTIMONIALS_DATA = [
+  {
+    id: '1',
+    name: 'Dr. Elizabeth Sterling',
+    role: 'Parent of Senior High Graduate',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200',
+    quote: 'Checking my son’s final examination results was ridiculously fast and smooth. The printed report slip looked as official as university transcripts!',
+    rating: 5,
+    tag: 'Parent'
+  },
+  {
+    id: '2',
+    name: 'Michael Chen',
+    role: 'Vice Principal (Academics)',
+    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200',
+    quote: 'The admin dashboard cut our result processing time from weeks down to under two hours. The automated QR verification eliminated result tampering completely.',
+    rating: 5,
+    tag: 'Teacher'
+  },
+  {
+    id: '3',
+    name: 'Samantha Vance',
+    role: 'Head Girl & SSS 3 Honor Student',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200',
+    quote: 'I love that I can check my grades on my smartphone the second they are released without logging into complicated accounts or facing crashed servers.',
+    rating: 5,
+    tag: 'Student'
+  }
+];
 
 export const TestimonialsSection: React.FC = () => {
   const [filter, setFilter] = useState<'All' | 'Parent' | 'Teacher' | 'Student'>('All');

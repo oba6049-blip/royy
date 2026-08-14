@@ -61,7 +61,7 @@ export const SchoolAnalyticsView: React.FC<SchoolAnalyticsViewProps> = ({
     if (s.averageScore !== undefined && s.averageScore !== null) return Number(s.averageScore);
     if (s.overallAverage !== undefined && s.overallAverage !== null) return Number(s.overallAverage);
     if (s.gpa !== undefined && s.gpa !== null) return Number(s.gpa) * 25;
-    return 75; // Default sensible fallback
+    return 0;
   };
 
   // Filtered Students based on active controls

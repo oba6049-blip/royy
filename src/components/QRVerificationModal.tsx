@@ -1,5 +1,6 @@
-import React from 'react';
-import { MOCK_STUDENTS } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import { StudentResult } from '../types';
 import { ShieldCheck, CheckCircle2, QrCode, X, Copy, ExternalLink, Sparkles } from 'lucide-react';
 
 interface QRVerificationModalProps {
@@ -13,12 +14,56 @@ export const QRVerificationModal: React.FC<QRVerificationModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const [student, setStudent] = useState<StudentResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && studentId) {
+      setLoading(true);
+      api.getStudentById(studentId).then((res) => {
+        setStudent(res);
+        setLoading(false);
+      }).catch(() => {
+        setStudent(null);
+        setLoading(false);
+      });
+    } else {
+      setStudent(null);
+    }
+  }, [isOpen, studentId]);
+
   if (!isOpen) return null;
 
-  const defaultStudent = MOCK_STUDENTS['2025104'] || Object.values(MOCK_STUDENTS)[0];
-  const student = studentId ? (MOCK_STUDENTS[studentId] || defaultStudent) : defaultStudent;
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl max-w-md w-full p-8 text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-[#1E3A8A] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-bold text-slate-700">Verifying Cryptographic Record...</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (!student) return null;
+  if (!student) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center space-y-4 relative">
+          <button onClick={onClose} className="absolute right-4 top-4 p-1.5 hover:bg-slate-100 rounded-xl text-slate-400">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 mx-auto flex items-center justify-center">
+            <ShieldCheck className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-extrabold text-slate-900">Student Record Not Found</h3>
+          <p className="text-xs text-slate-500">No verified record was found in the database for Registration ID "{studentId}".</p>
+          <button onClick={onClose} className="w-full py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl">
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">

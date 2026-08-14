@@ -1,33 +1,32 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StudentResult } from '../types';
+import { StudentResult, StudentTermRecord, SubjectGrade } from '../types';
 import { ResultSlipModal } from './ResultSlipModal';
 import { SchoolLogo } from './SchoolLogo';
-import { MOCK_STUDENTS } from '../data/mockData';
 import { api } from '../services/api';
 import { filterStudentSubjectsByAdmin } from '../utils/subjectUtils';
 import { calculateDynamicStudentPosition } from '../utils/studentRanking';
 import {
-  LayoutDashboard,
-  Search,
+  History,
   BookOpen,
   Printer,
-  Download,
   GraduationCap,
   LogOut,
   ArrowLeft,
   User,
-  ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  AlertTriangle,
-  FileX,
-  FileText,
-  Sparkles,
+  Clock,
+  Eye,
+  Award,
+  TrendingUp,
+  School,
+  Calendar,
+  Layers,
+  HelpCircle,
   Menu,
   X,
-  Eye,
-  RefreshCw,
-  HelpCircle
+  FileText,
+  ShieldCheck
 } from 'lucide-react';
 
 interface StudentDashboardPageProps {
@@ -37,373 +36,94 @@ interface StudentDashboardPageProps {
 }
 
 type StudentTabType =
-  | 'overview'
-  | 'check-result'
+  | 'history'
   | 'subjects'
-  | 'print-slip'
   | 'help';
+
+interface UnifiedHistoricalRow {
+  rowNumber: number;
+  compositeKey: string;
+  className: string;
+  academicSession: string;
+  term: string;
+  status: 'Published' | 'Pending' | 'Not Published';
+  datePublished: string;
+  isPublished: boolean;
+  subjectsCount: number;
+  totalScore: number;
+  averageScore: number;
+  gpa: number;
+  rawRecord?: StudentTermRecord | StudentResult;
+}
 
 export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
   student: initialStudent,
   onLogout,
   onBackToWebsite,
 }) => {
-  const [activeTab, setActiveTab] = useState<StudentTabType>('overview');
+  const [activeTab, setActiveTab] = useState<StudentTabType>('history');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Active Student Result State
-  const [activeStudent, setActiveStudent] = useState<StudentResult>(initialStudent);
+  // Live Student Data State fetched from DB
   const [publishedStudent, setPublishedStudent] = useState<StudentResult>(initialStudent);
   const [allStudentsList, setAllStudentsList] = useState<any[]>([]);
+  const [adminSubjects, setAdminSubjects] = useState<any[]>([]);
+  const [systemSessions, setSystemSessions] = useState<any[]>([]);
+  const [systemTerms, setSystemTerms] = useState<any[]>([]);
   const [brandingState, setBrandingState] = useState<any>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    api.getStudents().then(res => {
-      if (isMounted && res && Array.isArray(res) && res.length > 0) {
-        setAllStudentsList(res);
-      }
-    }).catch(() => {});
-    api.getStudentById(initialStudent.studentId).then(res => {
-      if (isMounted && res) {
-        setPublishedStudent(res);
-      }
-    }).catch(() => {});
-    api.getBranding().then(b => {
-      if (isMounted && b) {
-        setBrandingState(b);
-      }
-    }).catch(() => {});
-    return () => { isMounted = false; };
-  }, [initialStudent.studentId]);
-
-  // Helper for grade badge colors (F9 is prominently colored red)
-  const getGradeColorClass = (grade: string) => {
-    if (!grade) return 'bg-slate-100 text-slate-700 border-slate-200';
-    if (grade === 'F9' || grade.startsWith('F')) {
-      return 'bg-red-100 text-red-700 border-red-300 font-extrabold';
-    }
-    if (grade.startsWith('A')) {
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    }
-    if (grade.startsWith('B')) {
-      return 'bg-blue-50 text-blue-700 border-blue-200';
-    }
-    if (grade.startsWith('C')) {
-      return 'bg-amber-50 text-amber-700 border-amber-200';
-    }
-    if (grade.startsWith('D') || grade.startsWith('E')) {
-      return 'bg-orange-50 text-orange-700 border-orange-200';
-    }
-    return 'bg-slate-100 text-slate-700 border-slate-200';
-  };
-
-  // Search & Filter state
-  const [searchStudentId, setSearchStudentId] = useState(initialStudent.studentId);
-  const [selectedSession, setSelectedSession] = useState(initialStudent.academicSession || (initialStudent as any).session || '2025/2026 Academic Session');
-  const [selectedTerm, setSelectedTerm] = useState(initialStudent.term || 'First Term');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [searchSuccess, setSearchSuccess] = useState<string | null>(null);
-
-  // Modal Control States
+  // Modal Control States for Result Slip Template
   const [isResultSlipModalOpen, setIsResultSlipModalOpen] = useState(false);
-  const [adminSubjects, setAdminSubjects] = useState<any[]>([]);
+  const [modalStudentResult, setModalStudentResult] = useState<StudentResult | null>(null);
 
-  useEffect(() => {
-    api.getSubjects().then((subs) => {
-      if (Array.isArray(subs)) {
-        setAdminSubjects(subs);
-      }
-    }).catch(() => {});
-  }, []);
-
-  // Helper to check if selected session and term match the admin-published result
-  const isMatchingSessionAndTerm = (
-    selSess: string,
-    selTerm: string,
-    pubSess?: string,
-    pubTerm?: string
-  ) => {
-    if (!pubSess || !pubTerm) return false;
-
-    const normSelSess = selSess.toLowerCase().replace(/academic|session|\s/g, '');
-    const normPubSess = pubSess.toLowerCase().replace(/academic|session|\s/g, '');
-
-    if (normSelSess !== normPubSess) return false;
-
-    const getTermId = (t: string) => {
-      const l = t.toLowerCase();
-      if (l.includes('first') || l.includes('1st') || l.includes('1')) return '1';
-      if (l.includes('second') || l.includes('2nd') || l.includes('2')) return '2';
-      if (l.includes('third') || l.includes('3rd') || l.includes('3')) return '3';
-      return l.replace(/\s/g, '');
-    };
-
-    return getTermId(selTerm) === getTermId(pubTerm);
-  };
-
-  const getMatchingTermRecord = (student: StudentResult | null, session: string, term: string) => {
-    if (!student) return null;
-
-    const sessionInfo = enrolledSessions?.find(s => s.session === session);
-    const expectedClass = sessionInfo?.className;
-
-    if (student.termRecords && Array.isArray(student.termRecords)) {
-      // 1. Try exact session and term match
-      let found = student.termRecords.find(r => isMatchingSessionAndTerm(session, term, r.academicSession, r.term));
-      if (found) return found;
-
-      // 2. Try class name and term match
-      if (expectedClass) {
-        found = student.termRecords.find(r => 
-          r.className && expectedClass &&
-          (r.className.toLowerCase().includes(expectedClass.toLowerCase()) || expectedClass.toLowerCase().includes(r.className.toLowerCase())) &&
-          isMatchingSessionAndTerm(session, term, r.academicSession || session, r.term)
-        );
-        if (found) return found;
-      }
+  // Fetch live student and system meta on mount and sync
+  const fetchLiveData = () => {
+    if (initialStudent?.studentId) {
+      api.getStudentById(initialStudent.studentId)
+        .then((fetched) => {
+          if (fetched) {
+            setPublishedStudent(fetched);
+          }
+        })
+        .catch(() => {});
     }
 
-    if (isMatchingSessionAndTerm(session, term, student.academicSession || (student as any).session, student.term)) {
-      return {
-        academicSession: student.academicSession || (student as any).session,
-        term: student.term,
-        className: student.className,
-        subjects: student.subjects,
-        overallTotal: student.overallTotal,
-        overallAverage: student.overallAverage || (student as any).averageScore,
-        gpa: student.gpa,
-      };
-    }
-    return null;
-  };
+    api.getStudents()
+      .then((res) => {
+        if (Array.isArray(res)) setAllStudentsList(res);
+      })
+      .catch(() => {});
 
-  const publishedSession = publishedStudent?.academicSession || (publishedStudent as any)?.session || initialStudent.academicSession || (initialStudent as any)?.session || '2025/2026 Academic Session';
-  const currentClassName = publishedStudent?.className || initialStudent.className || 'JSS 2 Gold';
-  const publishedTerm = publishedStudent?.term || initialStudent.term || 'First Term';
+    api.getSubjects()
+      .then((subs) => {
+        if (Array.isArray(subs)) setAdminSubjects(subs);
+      })
+      .catch(() => {});
 
-  // Compute enrolled sessions list dynamically based on student registration history & promotion status
-  const enrolledSessions = useMemo(() => {
-    const list: { session: string; className: string; isCurrent: boolean }[] = [];
-    
-    // Always include current active session
-    list.push({
-      session: publishedSession,
-      className: currentClassName,
-      isCurrent: true,
-    });
+    api.getSessions()
+      .then((sess) => {
+        if (Array.isArray(sess)) setSystemSessions(sess);
+      })
+      .catch(() => {});
 
-    // Check if termRecords exist on student record
-    const targetStudent = publishedStudent || initialStudent;
-    if (targetStudent.termRecords && Array.isArray(targetStudent.termRecords)) {
-      targetStudent.termRecords.forEach(rec => {
-        if (rec.academicSession && !list.some(item => item.session === rec.academicSession)) {
-          list.push({
-            session: rec.academicSession,
-            className: rec.className || currentClassName,
-            isCurrent: false,
-          });
-        }
-      });
-    }
+    api.getTerms()
+      .then((tms) => {
+        if (Array.isArray(tms)) setSystemTerms(tms);
+      })
+      .catch(() => {});
 
-    // Check if previous sessions exist on student record
-    if ((publishedStudent as any)?.previousSessions && Array.isArray((publishedStudent as any).previousSessions)) {
-      (publishedStudent as any).previousSessions.forEach((prev: any) => {
-        if (!list.some(item => item.session === prev.session)) {
-          list.push({ session: prev.session, className: prev.className || 'Previous Class', isCurrent: false });
-        }
-      });
-    } else {
-      // Automatic promotion history inference for seamless experience
-      if (currentClassName.includes('JSS 2')) {
-        if (!list.some(i => i.session === '2024/2025 Academic Session')) {
-          list.push({
-            session: '2024/2025 Academic Session',
-            className: currentClassName.replace('JSS 2', 'JSS 1'),
-            isCurrent: false,
-          });
-        }
-      } else if (currentClassName.includes('JSS 3')) {
-        if (!list.some(i => i.session === '2024/2025 Academic Session')) {
-          list.push({
-            session: '2024/2025 Academic Session',
-            className: currentClassName.replace('JSS 3', 'JSS 2'),
-            isCurrent: false,
-          });
-        }
-        if (!list.some(i => i.session === '2023/2024 Academic Session')) {
-          list.push({
-            session: '2023/2024 Academic Session',
-            className: currentClassName.replace('JSS 3', 'JSS 1'),
-            isCurrent: false,
-          });
-        }
-      } else if (currentClassName.includes('SSS 2')) {
-        if (!list.some(i => i.session === '2024/2025 Academic Session')) {
-          list.push({
-            session: '2024/2025 Academic Session',
-            className: currentClassName.replace('SSS 2', 'SSS 1'),
-            isCurrent: false,
-          });
-        }
-      } else if (currentClassName.includes('SSS 3')) {
-        if (!list.some(i => i.session === '2024/2025 Academic Session')) {
-          list.push({
-            session: '2024/2025 Academic Session',
-            className: currentClassName.replace('SSS 3', 'SSS 2'),
-            isCurrent: false,
-          });
-        }
-        if (!list.some(i => i.session === '2023/2024 Academic Session')) {
-          list.push({
-            session: '2023/2024 Academic Session',
-            className: currentClassName.replace('SSS 3', 'SSS 1'),
-            isCurrent: false,
-          });
-        }
-      }
-    }
-
-    return list;
-  }, [publishedSession, currentClassName, publishedStudent, initialStudent]);
-
-  // Handle student session switching across enrolled history
-  const handleSessionChange = (newSession: string) => {
-    setSelectedSession(newSession);
-    const sessionInfo = enrolledSessions.find(item => item.session === newSession);
-    if (sessionInfo) {
-      setActiveStudent(prev => ({
-        ...prev,
-        academicSession: newSession,
-        className: sessionInfo.className,
-      }));
-    }
-  };
-
-  const currentTermRecord = useMemo(() => {
-    return getMatchingTermRecord(publishedStudent || initialStudent, selectedSession, selectedTerm);
-  }, [publishedStudent, initialStudent, selectedSession, selectedTerm]);
-
-  const hasPublishedResult = useMemo(() => {
-    if (!currentTermRecord) return false;
-    const subs = currentTermRecord.subjects;
-    if (!subs || !Array.isArray(subs) || subs.length === 0) return false;
-    return subs.some((s: any) => {
-      const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
-      const exam = Number(s.examScore ?? s.exam ?? 0);
-      const total = Number(s.total ?? (ca + exam));
-      return total > 0;
-    });
-  }, [currentTermRecord]);
-
-  // Perform search / term-filter handler (locked strictly to logged-in student)
-  const handlePerformSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setSearchError(null);
-    setSearchSuccess(null);
-
-    const cleanId = initialStudent.studentId;
-    setIsSearching(true);
-
-    try {
-      const fetched = await api.getStudentById(cleanId);
-      setIsSearching(false);
-
-      const targetStudent = fetched || initialStudent;
-      if (fetched) {
-        setPublishedStudent(fetched);
-      }
-
-      const matchedRec = getMatchingTermRecord(targetStudent, selectedSession, selectedTerm);
-      const sessionInfo = enrolledSessions.find(s => s.session === selectedSession);
-      const sessionClass = sessionInfo ? sessionInfo.className : targetStudent.className;
-
-      const hasValidScores = matchedRec?.subjects && Array.isArray(matchedRec.subjects) && matchedRec.subjects.some((s: any) => {
-        const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
-        const exam = Number(s.examScore ?? s.exam ?? 0);
-        const total = Number(s.total ?? (ca + exam));
-        return total > 0;
-      });
-
-      if (matchedRec && hasValidScores) {
-        const updatedResult: StudentResult = {
-          ...targetStudent,
-          academicSession: selectedSession,
-          term: selectedTerm,
-          className: matchedRec.className || sessionClass,
-          subjects: matchedRec.subjects || [],
-          overallTotal: matchedRec.overallTotal ?? targetStudent.overallTotal,
-          overallAverage: matchedRec.overallAverage ?? targetStudent.overallAverage,
-          averageScore: matchedRec.overallAverage ?? targetStudent.averageScore,
-          gpa: matchedRec.gpa ?? targetStudent.gpa,
-        };
-        setActiveStudent(updatedResult);
-        setSearchSuccess(`Displaying academic records for ${selectedTerm} (${selectedSession}) — ${updatedResult.className}.`);
-      } else {
-        const emptyResult: StudentResult = {
-          ...targetStudent,
-          academicSession: selectedSession,
-          term: selectedTerm,
-          className: sessionClass,
-          subjects: [],
-          overallTotal: 0,
-          overallAverage: 0,
-          averageScore: 0,
-          gpa: 0,
-        };
-        setActiveStudent(emptyResult);
-        setSearchError(`NO RESULT AVAILABLE FOR THIS TERM (${selectedTerm} - ${selectedSession}). No examination scores have been entered for this term.`);
-      }
-    } catch {
-      setIsSearching(false);
-      const matchedRec = getMatchingTermRecord(initialStudent, selectedSession, selectedTerm);
-      const sessionInfo = enrolledSessions.find(s => s.session === selectedSession);
-      const sessionClass = sessionInfo ? sessionInfo.className : initialStudent.className;
-
-      const hasValidScores = matchedRec?.subjects && Array.isArray(matchedRec.subjects) && matchedRec.subjects.some((s: any) => {
-        const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
-        const exam = Number(s.examScore ?? s.exam ?? 0);
-        const total = Number(s.total ?? (ca + exam));
-        return total > 0;
-      });
-
-      if (matchedRec && hasValidScores) {
-        setActiveStudent({
-          ...initialStudent,
-          academicSession: selectedSession,
-          term: selectedTerm,
-          className: matchedRec.className || sessionClass,
-          subjects: matchedRec.subjects || [],
-          overallTotal: matchedRec.overallTotal ?? initialStudent.overallTotal,
-          overallAverage: matchedRec.overallAverage ?? initialStudent.overallAverage,
-          averageScore: matchedRec.overallAverage ?? initialStudent.averageScore,
-          gpa: matchedRec.gpa ?? initialStudent.gpa,
-        });
-        setSearchSuccess(`Displaying academic records for ${selectedTerm} (${selectedSession}) — ${matchedRec.className || sessionClass}.`);
-      } else {
-        setActiveStudent({
-          ...initialStudent,
-          academicSession: selectedSession,
-          term: selectedTerm,
-          className: sessionClass,
-          subjects: [],
-          overallTotal: 0,
-          overallAverage: 0,
-          averageScore: 0,
-          gpa: 0,
-        });
-        setSearchError(`NO RESULT AVAILABLE FOR THIS TERM (${selectedTerm} - ${selectedSession}). No examination scores have been entered for this term.`);
-      }
-    }
+    api.getBranding()
+      .then((b) => {
+        if (b) setBrandingState(b);
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
-    handlePerformSearch();
+    fetchLiveData();
 
     const handleRealtimeUpdate = () => {
-      handlePerformSearch();
+      fetchLiveData();
     };
 
     window.addEventListener('school_portal_data_updated', handleRealtimeUpdate);
@@ -412,54 +132,214 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
       window.removeEventListener('school_portal_data_updated', handleRealtimeUpdate);
       window.removeEventListener('storage', handleRealtimeUpdate);
     };
-  }, [selectedSession, selectedTerm]);
+  }, [initialStudent.studentId]);
 
-  const handlePrintResult = () => {
-    if (!hasPublishedResult) {
-      alert(`No examination results published for ${selectedTerm} (${selectedSession}). Please switch to ${publishedTerm} (${publishedSession}) to view or print your result slip.`);
-      return;
+  // Current authenticated student object
+  const currentStudent = publishedStudent || initialStudent;
+
+  // Helper to normalize session and term
+  const normSess = (s: string) => (s || '').toLowerCase().replace(/academic|session|\s/g, '');
+  const getTermId = (t: string) => {
+    const l = (t || '').toLowerCase();
+    if (l.includes('first') || l.includes('1st') || l.includes('1')) return '1';
+    if (l.includes('second') || l.includes('2nd') || l.includes('2')) return '2';
+    if (l.includes('third') || l.includes('3rd') || l.includes('3')) return '3';
+    return l.replace(/\s/g, '');
+  };
+  const normTerm = (t: string) => getTermId(t);
+  const normClass = (c: string) => (c || '').toLowerCase().replace(/\s/g, '');
+
+  // Helper to check if subject array has valid score entries
+  const hasScores = (subs?: SubjectGrade[]) => {
+    if (!subs || !Array.isArray(subs) || subs.length === 0) return false;
+    return subs.some((s: any) => {
+      const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
+      const exam = Number(s.examScore ?? s.exam ?? 0);
+      const total = Number(s.total ?? (ca + exam));
+      return total > 0;
+    });
+  };
+
+  // Construct comprehensive list of all historical terminal rows for the student
+  const historicalRows = useMemo(() => {
+    if (!currentStudent) return [];
+
+    const rowMap = new Map<string, UnifiedHistoricalRow>();
+
+    // 1. Process explicit termRecords stored on student
+    if (currentStudent.termRecords && Array.isArray(currentStudent.termRecords)) {
+      currentStudent.termRecords.forEach((rec) => {
+        if (!rec.academicSession || !rec.term) return;
+        const nS = normSess(rec.academicSession);
+        const nT = normTerm(rec.term);
+        const studentClass = rec.className || currentStudent.className || 'General';
+        const nC = normClass(studentClass);
+        const compKey = `${nS}__${nT}__${nC}`;
+
+        const isPub = rec.isPublished !== false && rec.status !== 'Unpublished' && rec.status !== 'Pending';
+        const hasValidScores = hasScores(rec.subjects);
+        const subCount = rec.subjects ? rec.subjects.length : 0;
+        const total = rec.overallTotal || (rec.subjects ? rec.subjects.reduce((a, b: any) => a + (b.total || 0), 0) : 0);
+        const avg = rec.overallAverage || (subCount > 0 ? total / subCount : 0);
+        const gpaVal = rec.gpa || (avg > 0 ? avg / 25 : 0);
+
+        let status: 'Published' | 'Pending' | 'Not Published' = 'Not Published';
+        if (isPub && hasValidScores) {
+          status = 'Published';
+        } else if (rec.status === 'Pending' || hasValidScores) {
+          status = 'Pending';
+        }
+
+        const dateStr = rec.issueDate || rec.updatedAt || (status === 'Published' ? (currentStudent.issueDate || '14/02/2026') : '—');
+
+        rowMap.set(compKey, {
+          rowNumber: 0,
+          compositeKey: compKey,
+          className: studentClass,
+          academicSession: rec.academicSession,
+          term: rec.term,
+          status,
+          datePublished: dateStr,
+          isPublished: status === 'Published',
+          subjectsCount: subCount,
+          totalScore: total,
+          averageScore: avg,
+          gpa: gpaVal,
+          rawRecord: rec,
+        });
+      });
     }
-    setIsResultSlipModalOpen(true);
-    setTimeout(() => {
-      window.print();
-    }, 250);
-  };
 
-  const handleOpenModal = () => {
-    if (!hasPublishedResult) {
-      alert(`No examination results published for ${selectedTerm} (${selectedSession}). Please switch to ${publishedTerm} (${publishedSession}) to view or print your result slip.`);
-      return;
+    // 2. Process top-level student record
+    if (currentStudent.academicSession && currentStudent.term) {
+      const nS = normSess(currentStudent.academicSession);
+      const nT = normTerm(currentStudent.term);
+      const studentClass = currentStudent.className || 'General';
+      const nC = normClass(studentClass);
+      const compKey = `${nS}__${nT}__${nC}`;
+
+      const isPub = currentStudent.status !== 'Unpublished' && (currentStudent as any).isPublished !== false;
+      const hasValidScores = hasScores(currentStudent.subjects);
+      const subCount = currentStudent.subjects ? currentStudent.subjects.length : 0;
+      const total = currentStudent.overallTotal || (currentStudent.subjects ? currentStudent.subjects.reduce((a, b: any) => a + (b.total || 0), 0) : 0);
+      const avg = currentStudent.overallAverage || (currentStudent as any).averageScore || (subCount > 0 ? total / subCount : 0);
+      const gpaVal = currentStudent.gpa || (avg > 0 ? avg / 25 : 0);
+
+      let status: 'Published' | 'Pending' | 'Not Published' = 'Not Published';
+      if (isPub && hasValidScores) {
+        status = 'Published';
+      } else if (currentStudent.status === 'Pending' || hasValidScores) {
+        status = 'Pending';
+      }
+
+      const dateStr = currentStudent.issueDate || (status === 'Published' ? '14/02/2026' : '—');
+
+      if (!rowMap.has(compKey) || rowMap.get(compKey)?.status !== 'Published') {
+        rowMap.set(compKey, {
+          rowNumber: 0,
+          compositeKey: compKey,
+          className: studentClass,
+          academicSession: currentStudent.academicSession,
+          term: currentStudent.term,
+          status,
+          datePublished: dateStr,
+          isPublished: status === 'Published',
+          subjectsCount: subCount,
+          totalScore: total,
+          averageScore: avg,
+          gpa: gpaVal,
+          rawRecord: currentStudent,
+        });
+      }
     }
+
+    // Convert map to array
+    const list = Array.from(rowMap.values());
+
+    // Sort chronologically by session and term
+    list.sort((a, b) => {
+      const sessCompare = a.academicSession.localeCompare(b.academicSession);
+      if (sessCompare !== 0) return sessCompare;
+      const tA = normTerm(a.term);
+      const tB = normTerm(b.term);
+      return tA.localeCompare(tB);
+    });
+
+    // Assign clean 1-based index row numbers
+    return list.map((item, idx) => ({
+      ...item,
+      rowNumber: idx + 1,
+    }));
+  }, [currentStudent]);
+
+  // Published records only
+  const publishedRows = useMemo(() => {
+    return historicalRows.filter(r => r.status === 'Published');
+  }, [historicalRows]);
+
+  // Summary Metrics calculations across all published results
+  const summaryMetrics = useMemo(() => {
+    const pubCount = publishedRows.length;
+    if (pubCount === 0) {
+      return {
+        publishedCount: 0,
+        cumulativeAverage: 0,
+        cumulativeGPA: 0,
+        bestAverage: 0,
+      };
+    }
+
+    const totalAvgSum = publishedRows.reduce((acc, r) => acc + r.averageScore, 0);
+    const cumulativeAvg = Number((totalAvgSum / pubCount).toFixed(1));
+    const totalGpaSum = publishedRows.reduce((acc, r) => acc + r.gpa, 0);
+    const cumulativeGPA = Number((totalGpaSum / pubCount).toFixed(2));
+    const bestAvg = Math.max(...publishedRows.map(r => r.averageScore));
+
+    return {
+      publishedCount: pubCount,
+      cumulativeAverage: cumulativeAvg,
+      cumulativeGPA: cumulativeGPA,
+      bestAverage: Number(bestAvg.toFixed(1)),
+    };
+  }, [publishedRows]);
+
+  // Selected Result for Modal Viewer
+  const handleOpenResultSlip = (row: UnifiedHistoricalRow) => {
+    if (!row.isPublished) return;
+
+    // Formulate the full StudentResult structure for the modal
+    const raw = row.rawRecord;
+    let subjects = (raw as any)?.subjects || currentStudent.subjects || [];
+    const filtered = filterStudentSubjectsByAdmin(subjects, adminSubjects);
+
+    const fullResultForModal: StudentResult = {
+      ...currentStudent,
+      academicSession: row.academicSession,
+      term: row.term,
+      className: row.className,
+      subjects: filtered.length > 0 ? filtered : subjects,
+      overallTotal: row.totalScore,
+      overallAverage: row.averageScore,
+      gpa: row.gpa,
+      position: (raw as any)?.position || currentStudent.position || '1st',
+      totalInClass: (raw as any)?.totalInClass || currentStudent.totalInClass || 35,
+      status: (raw as any)?.status || 'PROMOTED',
+      classTeacherRemark: (raw as any)?.classTeacherRemark || currentStudent.classTeacherRemark || 'An excellent academic performance. Keep up the high standard.',
+      principalRemark: (raw as any)?.principalRemark || currentStudent.principalRemark || 'Remarkable accomplishment and dedication to learning. Congratulations!',
+      issueDate: row.datePublished !== '—' ? row.datePublished : (currentStudent.issueDate || '14/02/2026'),
+    };
+
+    setModalStudentResult(fullResultForModal);
     setIsResultSlipModalOpen(true);
   };
 
-  const studentSubjects = hasPublishedResult 
-    ? filterStudentSubjectsByAdmin(activeStudent?.subjects || publishedStudent?.subjects, adminSubjects)
-    : [];
-
-  const isSubPassed = (s: any) => {
-    const ca = s.caScore !== undefined ? s.caScore : ((s.ca1 || 0) + (s.ca2 || 0) + (s.midterm || 0));
-    const exam = s.examScore !== undefined ? s.examScore : (s.exam || 0);
-    const total = s.total !== undefined ? s.total : (ca + exam);
-    const grade = s.grade || (total >= 80 ? 'A1' : total >= 70 ? 'B2' : total >= 65 ? 'B3' : total >= 60 ? 'C4' : total >= 55 ? 'C5' : total >= 50 ? 'C6' : total >= 45 ? 'D7' : total >= 40 ? 'E8' : 'F9');
-    return total >= 50 && grade !== 'F9' && grade !== 'F';
-  };
-
-  const subjectsPassed = hasPublishedResult ? studentSubjects.filter(s => isSubPassed(s)).length : 0;
-  const subjectsFailed = hasPublishedResult ? studentSubjects.filter(s => !isSubPassed(s)).length : 0;
-  const totalScoreCalculated = hasPublishedResult ? studentSubjects.reduce((acc, s) => acc + (s.total || 0), 0) : 0;
-  
-  const averageScoreCalculated = (hasPublishedResult && studentSubjects.length > 0) 
-    ? Number((totalScoreCalculated / studentSubjects.length).toFixed(1)) 
-    : 0;
-
-  const gpaCalculated = (hasPublishedResult && studentSubjects.length > 0) 
-    ? (activeStudent?.gpa && activeStudent.gpa > 0 ? activeStudent.gpa : Number((averageScoreCalculated / 25).toFixed(2)))
-    : 0;
-
-  const dynamicRank = calculateDynamicStudentPosition(activeStudent, allStudentsList);
-  const positionVal = hasPublishedResult ? dynamicRank.ordinalPosition : 'N/A';
-  const totalInClassVal = hasPublishedResult ? dynamicRank.totalInClass : 'N/A';
+  // Active or latest published result for the subjects tab view
+  const activePublishedRow = publishedRows.length > 0 ? publishedRows[publishedRows.length - 1] : null;
+  const activeStudentSubjects = useMemo(() => {
+    if (!activePublishedRow?.rawRecord) return [];
+    const subs = (activePublishedRow.rawRecord as any)?.subjects || [];
+    return filterStudentSubjectsByAdmin(subs, adminSubjects);
+  }, [activePublishedRow, adminSubjects]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-['Inter',sans-serif] flex flex-col md:flex-row selection:bg-[#1E3A8A]/10 selection:text-[#1E3A8A]">
@@ -481,22 +361,22 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
           className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition-colors cursor-pointer"
           aria-label="Toggle Navigation Menu"
         >
-          {mobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          {mobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5 text-slate-700" />}
         </button>
       </div>
 
       {/* ---------------------------------------------------------------- */}
-      {/* LEFT SIDEBAR NAVIGATION (WHITE & ROYAL BLUE THEME) */}
+      {/* 1. STUDENT INFORMATION CARD (LEFT SIDEBAR) */}
       {/* ---------------------------------------------------------------- */}
       <aside
-        className={`fixed md:sticky top-0 left-0 z-50 md:z-30 h-screen w-64 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 shadow-xs ${
+        className={`fixed md:sticky top-0 left-0 z-50 md:z-30 h-screen w-80 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 shadow-xs ${
           mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
         <div className="flex flex-col h-full overflow-y-auto">
           
-          {/* Sidebar Top Header */}
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+          {/* Top Brand Header */}
+          <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
             <div className="flex items-center gap-2.5">
               <SchoolLogo size="sm" showText={false} />
               <div>
@@ -511,146 +391,200 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
 
             <button
               onClick={onBackToWebsite}
-              className="p-1.5 text-slate-500 hover:text-[#1E3A8A] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-slate-500 hover:text-[#1E3A8A] hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
               title="Back to Home Website"
             >
-              <ArrowLeft className="w-4 h-4 text-[#F59E0B]" />
+              <ArrowLeft className="w-4 h-4 text-amber-500" />
             </button>
           </div>
 
-          {/* Student Badge Card */}
-          <div className="p-3.5 mx-3 my-3 bg-slate-50/90 rounded-2xl border border-slate-200/80 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-[#1E3A8A] shrink-0 bg-white shadow-xs">
-              <img
-                src={activeStudent.passportUrl}
-                alt={activeStudent.fullName}
-                className="w-full h-full object-cover"
-              />
+          {/* Student Profile Identity Card */}
+          <div className="p-5 space-y-4">
+            
+            {/* Passport Photograph & Core Identity */}
+            <div className="flex flex-col items-center text-center space-y-3 pb-4 border-b border-slate-100">
+              <div className="relative">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden border-3 border-[#1E3A8A] bg-slate-100 shadow-md">
+                  <img
+                    src={currentStudent.passportUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
+                    alt={currentStudent.fullName}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250';
+                    }}
+                  />
+                </div>
+                <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white shadow-xs" title="Verified Active Student">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              <div className="space-y-1 w-full">
+                <h3 className="text-base font-black text-slate-900 font-['Plus_Jakarta_Sans'] leading-tight">
+                  {currentStudent.fullName}
+                </h3>
+                
+                {/* Admission Number Prominent Badge */}
+                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-50 border border-blue-200 text-[#1E3A8A] text-xs font-mono font-black tracking-wider uppercase">
+                  <span>ID:</span>
+                  <span>{currentStudent.studentId}</span>
+                </div>
+              </div>
             </div>
-            <div className="overflow-hidden">
-              <h3 className="text-xs font-bold text-slate-900 truncate">{activeStudent.fullName}</h3>
-              <p className="text-[10px] text-amber-600 font-mono font-bold">{activeStudent.studentId}</p>
-              <p className="text-[10px] text-slate-500 truncate">{activeStudent.className}</p>
+
+            {/* Student Metadata Attributes */}
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
+                  <GraduationCap className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                  <span>Current Class</span>
+                </span>
+                <span className="font-bold text-slate-900">{currentStudent.className}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                  <span>Academic Session</span>
+                </span>
+                <span className="font-bold text-slate-900">{currentStudent.academicSession || '2025/2026'}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Gender</span>
+                </span>
+                <span className="font-bold text-slate-900">{currentStudent.gender || 'Female'}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
+                  <School className="w-3.5 h-3.5 text-amber-500" />
+                  <span>House</span>
+                </span>
+                <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                  {currentStudent.house || 'Blue House'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Date of Birth</span>
+                </span>
+                <span className="font-bold text-slate-900">{currentStudent.dateOfBirth || '14 May 2010'}</span>
+              </div>
             </div>
+
+            {/* Performance Summary Stats */}
+            <div className="bg-white rounded-2xl p-4 text-slate-800 border border-slate-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-[11px] uppercase font-bold tracking-wider text-slate-500">Performance Summary</span>
+                <Award className="w-4 h-4 text-[#F59E0B]" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Published Reports</span>
+                  <span className="text-lg font-black font-mono text-[#1E3A8A]">
+                    {summaryMetrics.publishedCount}
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Cumulative Mean</span>
+                  <span className="text-lg font-black font-mono text-emerald-600">
+                    {summaryMetrics.cumulativeAverage > 0 ? `${summaryMetrics.cumulativeAverage}%` : '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-slate-600 font-medium">Cumulative GPA:</span>
+                <span className="font-mono font-black text-[#1E3A8A]">
+                  {summaryMetrics.cumulativeGPA > 0 ? `${summaryMetrics.cumulativeGPA} / 4.0` : '—'}
+                </span>
+              </div>
+            </div>
+
+            {/* Sidebar Navigation Links */}
+            <nav className="space-y-1 pt-1">
+              <button
+                onClick={() => {
+                  setActiveTab('history');
+                  setMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'history'
+                    ? 'bg-[#1E3A8A] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <History className={`w-4 h-4 ${activeTab === 'history' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
+                  <span>Result History</span>
+                </div>
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
+                  activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                }`}>
+                  {historicalRows.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('subjects');
+                  setMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'subjects'
+                    ? 'bg-[#1E3A8A] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className={`w-4 h-4 ${activeTab === 'subjects' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
+                  <span>Subject Performance</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('help');
+                  setMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'help'
+                    ? 'bg-[#1E3A8A] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <HelpCircle className={`w-4 h-4 ${activeTab === 'help' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
+                  <span>Help & Inquiries</span>
+                </div>
+              </button>
+            </nav>
+
           </div>
-
-          {/* Navigation Items */}
-          <nav className="p-3 space-y-1 flex-1">
-            <div className="px-3 pt-1 pb-1 text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-              Student Menu
-            </div>
-
-            {/* 1. Dashboard Overview */}
-            <button
-              onClick={() => {
-                setActiveTab('overview');
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'overview'
-                  ? 'bg-[#1E3A8A] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <LayoutDashboard className={`w-4 h-4 ${activeTab === 'overview' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
-                <span>Overview</span>
-              </div>
-            </button>
-
-            {/* 2. Filter Session & Term */}
-            <button
-              onClick={() => {
-                setActiveTab('check-result');
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'check-result'
-                  ? 'bg-[#1E3A8A] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Search className={`w-4 h-4 ${activeTab === 'check-result' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
-                <span>Filter Session & Term</span>
-              </div>
-            </button>
-
-            {/* 3. Subject Grades */}
-            <button
-              onClick={() => {
-                setActiveTab('subjects');
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'subjects'
-                  ? 'bg-[#1E3A8A] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <BookOpen className={`w-4 h-4 ${activeTab === 'subjects' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
-                <span>Subject Performance</span>
-              </div>
-              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
-                activeTab === 'subjects' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
-              }`}>
-                {studentSubjects.length}
-              </span>
-            </button>
-
-            {/* 4. Print & Download Slip */}
-            <button
-              onClick={() => {
-                setActiveTab('print-slip');
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'print-slip'
-                  ? 'bg-[#1E3A8A] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Printer className={`w-4 h-4 ${activeTab === 'print-slip' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
-                <span>Print Result Slip</span>
-              </div>
-            </button>
-
-            {/* 5. Help & Support */}
-            <button
-              onClick={() => {
-                setActiveTab('help');
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'help'
-                  ? 'bg-[#1E3A8A] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <HelpCircle className={`w-4 h-4 ${activeTab === 'help' ? 'text-[#F59E0B]' : 'text-slate-400'}`} />
-                <span>Help & Support</span>
-              </div>
-            </button>
-          </nav>
 
           {/* Footer Signout */}
-          <div className="p-3.5 border-t border-slate-200 space-y-2">
+          <div className="p-4 border-t border-slate-200 bg-slate-50/50 mt-auto">
             <button
               onClick={onLogout}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-all cursor-pointer shadow-xs"
             >
               <LogOut className="w-4 h-4" />
-              <span>Sign Out</span>
+              <span>Sign Out of Portal</span>
             </button>
           </div>
 
         </div>
       </aside>
 
-      {/* Backdrop for mobile */}
+      {/* Backdrop for mobile sidebar */}
       {mobileSidebarOpen && (
         <div
           onClick={() => setMobileSidebarOpen(false)}
@@ -659,633 +593,374 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
       )}
 
       {/* ---------------------------------------------------------------- */}
-      {/* MAIN CONTENT AREA */}
+      {/* 2. RESULT HISTORY DASHBOARD (MAIN CONTENT AREA) */}
       {/* ---------------------------------------------------------------- */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         
-        {/* Top Header Bar - White Background */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+        {/* Top Header */}
+        <header className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sticky top-0 z-20 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-blue-50 border border-blue-100 text-[#1E3A8A]">
-              {activeTab === 'overview' && <LayoutDashboard className="w-5 h-5 text-[#1E3A8A]" />}
-              {activeTab === 'check-result' && <Search className="w-5 h-5 text-[#1E3A8A]" />}
-              {activeTab === 'subjects' && <BookOpen className="w-[#1E3A8A] w-5 h-5 text-[#1E3A8A]" />}
-              {activeTab === 'print-slip' && <Printer className="w-5 h-5 text-[#1E3A8A]" />}
+            <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-100 text-[#1E3A8A]">
+              {activeTab === 'history' && <History className="w-5 h-5 text-[#1E3A8A]" />}
+              {activeTab === 'subjects' && <BookOpen className="w-5 h-5 text-[#1E3A8A]" />}
               {activeTab === 'help' && <HelpCircle className="w-5 h-5 text-[#1E3A8A]" />}
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 capitalize font-['Plus_Jakarta_Sans']">
-                {activeTab === 'overview' && 'Student Dashboard'}
-                {activeTab === 'check-result' && 'Session & Term Filter'}
-                {activeTab === 'subjects' && 'Subject Performance Analysis'}
-                {activeTab === 'print-slip' && 'Official Print Result Slip'}
+              <h2 className="text-lg font-black text-slate-900 font-['Plus_Jakarta_Sans'] leading-tight">
+                {activeTab === 'history' && 'Academic Result History'}
+                {activeTab === 'subjects' && 'Subject Performance Breakdown'}
                 {activeTab === 'help' && 'Portal Help & Support'}
               </h2>
               <p className="text-xs text-slate-500">
-                Logged in as <strong className="text-slate-800">{activeStudent.fullName}</strong> ({activeStudent.className})
+                Official records for <strong className="text-slate-800">{currentStudent.fullName}</strong> • {currentStudent.className}
               </p>
             </div>
           </div>
 
-          {/* Header Quick Actions */}
-          <div className="hidden sm:flex items-center gap-2">
-            <button
-              onClick={handleOpenModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-950 bg-[#F59E0B] hover:bg-amber-500 rounded-xl shadow-xs transition-all cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Full Result Slip</span>
-            </button>
-
-            <button
-              onClick={handlePrintResult}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition-all cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5 text-[#1E3A8A]" />
-              <span>Print A4</span>
-            </button>
-          </div>
+          {/* Quick Print Latest Action */}
+          {publishedRows.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleOpenResultSlip(publishedRows[publishedRows.length - 1])}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-950 bg-[#F59E0B] hover:bg-amber-500 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>View Latest Result</span>
+              </button>
+            </div>
+          )}
         </header>
 
-        {/* MAIN BODY CONTAINER */}
-        <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1">
-
-          {/* ---------------------------------------------------------------- */}
-          {/* TAB 1: OVERVIEW */}
-          {/* ---------------------------------------------------------------- */}
-          {activeTab === 'overview' && (
+        {/* Main Body */}
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1 max-w-7xl w-full mx-auto">
+          
+          {/* TAB 1: RESULT HISTORY */}
+          {activeTab === 'history' && (
             <div className="space-y-6">
               
-              {/* Profile Banner - Executive Blue Card */}
-              <div className="rounded-2xl bg-gradient-to-r from-[#1E3A8A] via-blue-900 to-indigo-900 text-white border border-blue-900 p-6 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-xl border-2 border-amber-400 overflow-hidden bg-white shrink-0 shadow-md">
-                      <img
-                        src={activeStudent.passportUrl}
-                        alt={activeStudent.fullName}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase mb-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Verified Student
-                      </div>
-                      <h1 className="text-xl sm:text-2xl font-black text-white font-['Plus_Jakarta_Sans']">{activeStudent.fullName}</h1>
-                      <p className="text-xs text-blue-100">
-                        {activeStudent.className} • Reg ID: <span className="font-mono font-bold text-amber-300">{activeStudent.studentId}</span>
-                      </p>
-                      
-                      {/* Enrolled Session Selector & Term Switcher Pills */}
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <select
-                          value={selectedSession || ''}
-                          onChange={(e) => handleSessionChange(e.target.value)}
-                          className="px-2.5 py-1 text-[11px] font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg focus:outline-none focus:bg-blue-900 cursor-pointer"
-                        >
-                          {enrolledSessions.map((item) => (
-                            <option key={`${item.session}-${item.className}`} value={item.session} className="text-slate-900 font-sans font-medium">
-                              {item.className} — {item.session}{item.isCurrent ? ' (Active Class)' : ''}
-                            </option>
-                          ))}
-                        </select>
-
-                        <select
-                          value={selectedTerm || ''}
-                          onChange={(e) => {
-                            const newTerm = e.target.value;
-                            setSelectedTerm(newTerm);
-                            setActiveStudent(prev => ({ ...prev, term: newTerm }));
-                          }}
-                          className="px-2.5 py-1 text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30 rounded-lg focus:outline-none focus:bg-blue-900 cursor-pointer"
-                        >
-                          <option value="First Term" className="text-slate-900 font-sans">First Term</option>
-                          <option value="Second Term" className="text-slate-900 font-sans">Second Term</option>
-                          <option value="Third Term (Final)" className="text-slate-900 font-sans">Third Term</option>
-                        </select>
-                      </div>
-                    </div>
+              {/* Executive Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+                  <div className="p-3 bg-blue-50 text-[#1E3A8A] rounded-xl border border-blue-100 shrink-0">
+                    <Layers className="w-5 h-5" />
                   </div>
-
-                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                    <button
-                      onClick={handleOpenModal}
-                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-950 bg-[#F59E0B] hover:bg-amber-400 rounded-xl transition-all cursor-pointer shadow-xs"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>View Result</span>
-                    </button>
-
-                    <button
-                      onClick={handlePrintResult}
-                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-white/10 hover:bg-white/20 rounded-xl border border-white/20 transition-all cursor-pointer"
-                    >
-                      <Download className="w-4 h-4 text-emerald-300" />
-                      <span>Print PDF</span>
-                    </button>
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Terminal Terms</span>
+                    <div className="text-xl font-black text-slate-900 font-mono">
+                      {historicalRows.length} <span className="text-xs font-semibold text-slate-500 font-sans">Recorded</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* No Results Warning Alert Banner */}
-              {!hasPublishedResult && (
-                <div className="p-5 bg-amber-50 border border-amber-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2.5 bg-amber-100 rounded-xl text-amber-800 shrink-0 mt-0.5">
-                      <AlertTriangle className="w-5 h-5 text-amber-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-amber-950 font-['Plus_Jakarta_Sans'] flex items-center gap-2">
-                        <span>No Results Published for {selectedTerm} ({selectedSession})</span>
-                      </h3>
-                      <p className="text-xs text-amber-800 mt-1">
-                        The school administration has not entered or published examination results for your Registration ID under this selected academic session and term.
-                      </p>
-                      <p className="text-xs font-semibold text-slate-700 mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span>Your published result is available under:</span>
-                        <span className="px-2 py-0.5 bg-blue-100 text-[#1E3A8A] rounded-md font-bold">{publishedTerm} ({publishedSession})</span>
-                      </p>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Published Results</span>
+                    <div className="text-xl font-black text-emerald-700 font-mono">
+                      {summaryMetrics.publishedCount} <span className="text-xs font-semibold text-slate-500 font-sans">Available</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setSelectedSession(publishedSession);
-                      setSelectedTerm(publishedTerm);
-                      setActiveStudent(prev => ({ ...prev, academicSession: publishedSession, term: publishedTerm }));
-                    }}
-                    className="px-4 py-2 bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shrink-0 shadow-xs"
-                  >
-                    Switch to Published Term &rarr;
-                  </button>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+                  <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100 shrink-0">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Cumulative Mean</span>
+                    <div className="text-xl font-black text-indigo-900 font-mono">
+                      {summaryMetrics.cumulativeAverage > 0 ? `${summaryMetrics.cumulativeAverage}%` : '—'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+                  <div className="p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 shrink-0">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Cumulative GPA</span>
+                    <div className="text-xl font-black text-amber-700 font-mono">
+                      {summaryMetrics.cumulativeGPA > 0 ? `${summaryMetrics.cumulativeGPA} / 4.0` : '—'}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Empty State Banner if no results published */}
+              {publishedRows.length === 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3.5 text-amber-900 shadow-xs">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-bold font-['Plus_Jakarta_Sans']">No Published Results Available</h4>
+                    <p className="text-xs text-amber-800 mt-0.5">
+                      No published results are currently available. Please check again later or contact your school administrator.
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {/* Simple Stats Cards - White Card Styling matching Admin Dashboard */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Overall Average</span>
-                  <div className="text-2xl font-black text-slate-900 font-mono">
-                    {hasPublishedResult ? `${averageScoreCalculated.toFixed(1)}%` : 'N/A'}
-                  </div>
-                  <p className="text-[10px] text-emerald-600 font-bold">
-                    {hasPublishedResult ? `GPA: ${gpaCalculated.toFixed(2)} / 4.0` : 'No Published Scores'}
-                  </p>
-                </div>
-
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Class Position</span>
-                  <div className="text-2xl font-black text-amber-600 font-mono">
-                    {hasPublishedResult ? positionVal : 'N/A'} {hasPublishedResult && <span className="text-xs font-normal text-slate-400">/ {totalInClassVal}</span>}
-                  </div>
-                  <p className="text-[10px] text-blue-700 font-semibold">{hasPublishedResult ? 'Class Rank' : 'No Position Assigned'}</p>
-                </div>
-
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-xs">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Passed Subjects</span>
-                  <div className="text-2xl font-black text-emerald-600 font-mono">
-                    {hasPublishedResult ? subjectsPassed : '0'} {hasPublishedResult && <span className="text-xs text-slate-400 font-normal">/ {studentSubjects.length}</span>}
-                  </div>
-                  <p className="text-[10px] text-slate-500 font-medium">{hasPublishedResult ? `Failed: ${subjectsFailed}` : 'No Records'}</p>
-                </div>
-              </div>
-
-              {/* Subject Breakdown Table - White Theme */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-xs">
-                <div className="flex items-center justify-between">
+              {/* Main Result History Table Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/40">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 font-['Plus_Jakarta_Sans']">Subject Grade Breakdown</h3>
-                    <p className="text-xs text-slate-500">{selectedTerm} ({selectedSession}) examination results</p>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab('subjects')}
-                    className="text-xs font-bold text-[#1E3A8A] hover:underline cursor-pointer"
-                  >
-                    View All &rarr;
-                  </button>
-                </div>
-
-                <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-600 uppercase font-extrabold text-[10px] bg-slate-50">
-                        <th className="py-2.5 px-3">Subject</th>
-                        <th className="py-2.5 px-3 text-center">CA (40)</th>
-                        <th className="py-2.5 px-3 text-center">Exam (60)</th>
-                        <th className="py-2.5 px-3 text-center">Total (100)</th>
-                        <th className="py-2.5 px-3 text-center">Grade</th>
-                        <th className="py-2.5 px-3 text-right">Remark</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-800">
-                      {hasPublishedResult && studentSubjects.length > 0 ? (
-                        studentSubjects.map((sub, idx) => (
-                          <tr key={sub.id || idx} className="hover:bg-slate-50/80">
-                            <td className="py-3 px-3 font-bold text-slate-900">{sub.subject}</td>
-                            <td className="py-3 px-3 text-center font-mono text-slate-600">{sub.caScore}</td>
-                            <td className="py-3 px-3 text-center font-mono text-slate-600">{sub.examScore}</td>
-                            <td className="py-3 px-3 text-center font-mono font-black text-slate-900 text-sm">{sub.total}</td>
-                            <td className="py-3 px-3 text-center">
-                              <span className={`px-2 py-0.5 rounded font-black font-mono text-xs ${getGradeColorClass(sub.grade)}`}>
-                                {sub.grade}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-right font-bold text-slate-500 text-[10px] uppercase">{sub.remark}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center bg-slate-50/60">
-                            <div className="max-w-md mx-auto space-y-2">
-                              <FileX className="w-8 h-8 text-slate-400 mx-auto" />
-                              <p className="text-xs font-bold text-slate-800 font-['Plus_Jakarta_Sans']">
-                                No Results Found for {selectedTerm} ({selectedSession})
-                              </p>
-                              <p className="text-[11px] text-slate-500">
-                                Examination scores have not been published by the admin for this term.
-                              </p>
-                              <button
-                                onClick={() => {
-                                  setSelectedSession(publishedSession);
-                                  setSelectedTerm(publishedTerm);
-                                  setActiveStudent(prev => ({ ...prev, academicSession: publishedSession, term: publishedTerm }));
-                                }}
-                                className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1E3A8A] text-white font-bold text-[11px] rounded-lg cursor-pointer hover:bg-blue-900 transition-all"
-                              >
-                                <span>Switch to {publishedTerm} Results</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Remarks Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 shadow-xs">
-                  <h4 className="text-xs font-bold uppercase text-slate-500 flex items-center gap-1.5">
-                    <User className="w-4 h-4 text-[#1E3A8A]" />
-                    Teacher Remark
-                  </h4>
-                  <p className="text-xs text-slate-700 italic bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    "{activeStudent.classTeacherRemark}"
-                  </p>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 shadow-xs">
-                  <h4 className="text-xs font-bold uppercase text-slate-500 flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-amber-600" />
-                    Principal Remark
-                  </h4>
-                  <p className="text-xs text-slate-700 italic bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    "{brandingState?.principalRemark !== undefined && brandingState?.principalRemark !== null
-                      ? (brandingState.principalRemark.trim() || 'N/A (No principal comment set)')
-                      : (activeStudent.principalRemark?.trim() || 'N/A (No principal comment set)')}"
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* ---------------------------------------------------------------- */}
-          {/* TAB 2: CHECK RESULT */}
-          {/* ---------------------------------------------------------------- */}
-          {activeTab === 'check-result' && (
-            <div className="space-y-6">
-              
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-xs">
-                <div className="border-b border-slate-200 pb-3 flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-blue-50 text-[#1E3A8A] border border-blue-100">
-                    <Search className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 font-['Plus_Jakarta_Sans']">Academic Term & Session Selector</h3>
-                    <p className="text-xs text-slate-500">Filter your personal report card records by session and term</p>
-                  </div>
-                </div>
-
-                {searchError && (
-                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2 font-medium">
-                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                    <span>{searchError}</span>
-                  </div>
-                )}
-
-                {searchSuccess && (
-                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 font-medium">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{searchSuccess}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handlePerformSearch} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                        Student Reg ID (Locked)
-                      </label>
-                      <div className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700 flex items-center justify-between">
-                        <span>{initialStudent.studentId}</span>
-                        <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md font-sans font-semibold">🔒 Locked</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                        Academic Session
-                      </label>
-                      <select
-                        value={selectedSession || ''}
-                        onChange={(e) => handleSessionChange(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-[#1E3A8A]"
-                      >
-                        {enrolledSessions.map((item) => (
-                          <option key={`${item.session}-${item.className}`} value={item.session}>
-                            {item.className} — {item.session}{item.isCurrent ? ' (Active Class)' : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                        Term *
-                      </label>
-                      <select
-                        value={selectedTerm || ''}
-                        onChange={(e) => setSelectedTerm(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-[#1E3A8A]"
-                      >
-                        <option value="First Term">First Term</option>
-                        <option value="Second Term">Second Term</option>
-                        <option value="Third Term (Final Session)">Third Term (Final Session)</option>
-                      </select>
-                    </div>
+                    <h3 className="text-base font-black text-slate-900 font-['Plus_Jakarta_Sans'] flex items-center gap-2">
+                      <History className="w-4 h-4 text-[#1E3A8A]" />
+                      <span>Complete Academic Journey Records</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      All terminal examinations, assessment records, and published result slips from your enrolment to present.
+                    </p>
                   </div>
 
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={isSearching}
-                      className="px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all"
-                    >
-                      {isSearching ? <RefreshCw className="w-4 h-4 animate-spin text-[#F59E0B]" /> : <Search className="w-4 h-4 text-[#F59E0B]" />}
-                      <span>Apply Term Filter</span>
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Display Result Panel */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-xs">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-14 rounded-lg overflow-hidden border-2 border-[#1E3A8A] bg-slate-50 shrink-0">
-                      <img src={activeStudent.passportUrl} alt={activeStudent.fullName} className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900 font-['Plus_Jakarta_Sans']">{activeStudent.fullName}</h3>
-                      <p className="text-xs text-slate-500 font-mono">
-                        Reg ID: <strong className="text-amber-600">{activeStudent.studentId}</strong> • {activeStudent.className}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={handleOpenModal}
-                      className="px-3.5 py-2 text-xs font-bold text-slate-950 bg-[#F59E0B] hover:bg-amber-400 rounded-xl shadow-xs cursor-pointer"
-                    >
-                      View Result
-                    </button>
-                    <button
-                      onClick={handlePrintResult}
-                      className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 cursor-pointer"
-                    >
-                      Print A4
-                    </button>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-600 uppercase font-bold text-[10px] bg-slate-50">
-                        <th className="py-2.5 px-3">Subject</th>
-                        <th className="py-2.5 px-3 text-center">CA (40)</th>
-                        <th className="py-2.5 px-3 text-center">Exam (60)</th>
-                        <th className="py-2.5 px-3 text-center">Total (100)</th>
-                        <th className="py-2.5 px-3 text-center">Grade</th>
-                        <th className="py-2.5 px-3 text-right">Remark</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-800">
-                      {hasPublishedResult && studentSubjects.length > 0 ? (
-                        studentSubjects.map((sub, idx) => (
-                          <tr key={sub.id || idx} className="hover:bg-slate-50/80">
-                            <td className="py-2.5 px-3 font-bold text-slate-900">{sub.subject}</td>
-                            <td className="py-2.5 px-3 text-center font-mono text-slate-600">{sub.caScore}</td>
-                            <td className="py-2.5 px-3 text-center font-mono text-slate-600">{sub.examScore}</td>
-                            <td className="py-2.5 px-3 text-center font-mono font-black text-slate-900">{sub.total}</td>
-                            <td className="py-2.5 px-3 text-center">
-                              <span className={`px-2 py-0.5 rounded font-black font-mono text-xs ${getGradeColorClass(sub.grade)}`}>
-                                {sub.grade}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-bold text-slate-500 text-[10px] uppercase">{sub.remark}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={6} className="py-6 text-center text-slate-500 font-medium">
-                            No published examination results found for {selectedTerm} ({selectedSession}).
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* ---------------------------------------------------------------- */}
-          {/* TAB 3: SUBJECT PERFORMANCE */}
-          {/* ---------------------------------------------------------------- */}
-          {activeTab === 'subjects' && (
-            <div className="space-y-6">
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 font-['Plus_Jakarta_Sans']">Full Course Performance</h3>
-                    <p className="text-xs text-slate-500">Enrolled subjects and score details</p>
-                  </div>
-                  <span className="px-3 py-1 bg-blue-50 text-[#1E3A8A] rounded-xl text-xs font-bold border border-blue-200">
-                    {studentSubjects.length} Subjects Total
+                  <span className="text-xs font-bold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto">
+                    Total Records: <strong className="text-slate-900">{historicalRows.length}</strong>
                   </span>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white">
-                  <table className="w-full text-left text-xs">
+                {/* Structured Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[700px]">
                     <thead>
-                      <tr className="border-b border-slate-200 text-slate-600 uppercase font-bold text-[10px] bg-slate-50">
-                        <th className="py-3 px-4">Subject Name</th>
-                        <th className="py-3 px-3 text-center">CA Score (40)</th>
-                        <th className="py-3 px-3 text-center">Exam Score (60)</th>
-                        <th className="py-3 px-3 text-center">Total Score (100)</th>
-                        <th className="py-3 px-3 text-center">Grade</th>
-                        <th className="py-3 px-4 text-right">Remark</th>
+                      <tr className="bg-slate-100/80 border-b border-slate-200 text-[11px] font-black uppercase text-slate-500 tracking-wider">
+                        <th className="py-3.5 px-4 text-center w-12">#</th>
+                        <th className="py-3.5 px-4">Class</th>
+                        <th className="py-3.5 px-4">Academic Session</th>
+                        <th className="py-3.5 px-4">Academic Term</th>
+                        <th className="py-3.5 px-4">Status</th>
+                        <th className="py-3.5 px-4">Date Published</th>
+                        <th className="py-3.5 px-4 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-800">
-                      {hasPublishedResult && studentSubjects.length > 0 ? (
-                        studentSubjects.map((sub, idx) => (
-                          <tr key={sub.id || idx} className="hover:bg-slate-50/80">
-                            <td className="py-3 px-4 font-bold text-slate-900 text-sm">{sub.subject}</td>
-                            <td className="py-3 px-3 text-center font-mono text-slate-600">{sub.caScore}</td>
-                            <td className="py-3 px-3 text-center font-mono text-slate-600">{sub.examScore}</td>
-                            <td className="py-3 px-3 text-center font-mono font-black text-slate-900 text-sm">{sub.total}</td>
-                            <td className="py-3 px-3 text-center">
-                              <span className={`px-2.5 py-1 rounded font-black font-mono text-xs ${getGradeColorClass(sub.grade)}`}>
-                                {sub.grade}
-                              </span>
+                    <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                      {historicalRows.map((row) => {
+                        const isPub = row.status === 'Published';
+                        const isPending = row.status === 'Pending';
+
+                        return (
+                          <tr
+                            key={row.compositeKey}
+                            className={`transition-colors ${
+                              isPub ? 'hover:bg-blue-50/40' : 'hover:bg-slate-50/60 opacity-85'
+                            }`}
+                          >
+                            {/* # Index Column */}
+                            <td className="py-4 px-4 text-center font-mono font-bold text-slate-400">
+                              {row.rowNumber}
                             </td>
-                            <td className="py-3 px-4 text-right font-bold text-slate-600 text-xs uppercase">{sub.remark}</td>
+
+                            {/* Class Column */}
+                            <td className="py-4 px-4 font-bold text-slate-900">
+                              <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-slate-100 text-[#1E3A8A] rounded-lg">
+                                  <GraduationCap className="w-3.5 h-3.5" />
+                                </div>
+                                <span>{row.className}</span>
+                              </div>
+                            </td>
+
+                            {/* Academic Session Column */}
+                            <td className="py-4 px-4 text-slate-700 font-semibold">
+                              {row.academicSession}
+                            </td>
+
+                            {/* Academic Term Column */}
+                            <td className="py-4 px-4 font-bold text-[#1E3A8A]">
+                              {row.term}
+                            </td>
+
+                            {/* Status Column */}
+                            <td className="py-4 px-4">
+                              {isPub ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Published</span>
+                                </span>
+                              ) : isPending ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Pending</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                  <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Not Published</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Date Published Column */}
+                            <td className="py-4 px-4 font-mono text-slate-600 text-xs">
+                              {row.datePublished}
+                            </td>
+
+                            {/* Action Column */}
+                            <td className="py-4 px-4 text-right">
+                              {isPub ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenResultSlip(row)}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#1E3A8A] hover:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-amber-400" />
+                                  <span>View Result</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-400 text-xs font-bold rounded-xl border border-slate-200 cursor-not-allowed"
+                                >
+                                  <span>Not Available</span>
+                                </button>
+                              )}
+                            </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={6} className="py-6 text-center text-slate-500 font-medium">
-                            No published subject scores found for {selectedTerm} ({selectedSession}).
-                          </td>
-                        </tr>
-                      )}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Table Footer Helper Note */}
+                <div className="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Historical records are securely archived and cryptographically verified.</span>
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Showing {historicalRows.length} academic periods
+                  </span>
+                </div>
               </div>
+
             </div>
           )}
 
-          {/* ---------------------------------------------------------------- */}
-          {/* TAB 4: PRINT RESULT SLIP */}
-          {/* ---------------------------------------------------------------- */}
-          {activeTab === 'print-slip' && (
+          {/* TAB 2: SUBJECT PERFORMANCE */}
+          {activeTab === 'subjects' && (
             <div className="space-y-6">
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 font-['Plus_Jakarta_Sans']">
-                    <Printer className="w-5 h-5 text-[#F59E0B]" />
-                    Official A4 Student Result Slip
-                  </h3>
-                  <p className="text-xs text-slate-600">
-                    Official terminal academic report for <strong className="text-slate-900">{activeStudent.fullName}</strong> ({activeStudent.studentId}).
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={handleOpenModal}
-                    className="px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-2"
-                  >
-                    <Eye className="w-4 h-4 text-[#F59E0B]" />
-                    <span>View Official Result Slip</span>
-                  </button>
-                  <button
-                    onClick={handlePrintResult}
-                    className="px-4 py-2.5 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Printer className="w-4 h-4" />
-                    <span>Print Slip</span>
-                  </button>
-                </div>
-              </div>
-
-              {!hasPublishedResult && (
-                <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-                  <p className="text-xs text-amber-900 font-medium">
-                    No result slip available to print for <strong>{selectedTerm} ({selectedSession})</strong>. Please select <strong>{publishedTerm} ({publishedSession})</strong> to print your result.
-                  </p>
-                </div>
-              )}
-
-              {/* Action Banner Card */}
-              <div className="bg-linear-to-r from-[#1E3A8A] to-blue-900 text-white rounded-2xl p-6 shadow-md border border-blue-800 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-white/10 rounded-xl border border-white/20">
-                    <ShieldCheck className="w-6 h-6 text-[#F59E0B]" />
-                  </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
                   <div>
-                    <h4 className="text-base font-bold">Official Document Generation Ready</h4>
-                    <p className="text-xs text-blue-200">
-                      Generate and print your official computer-generated result slip with verified digital authentication, grading scale breakdown, and principal stamp.
+                    <h3 className="text-lg font-black text-slate-900 font-['Plus_Jakarta_Sans']">
+                      Subject Performance Breakdown
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Detailed CA Assessments and Terminal Exam Scores for {activePublishedRow ? `${activePublishedRow.className} — ${activePublishedRow.academicSession} (${activePublishedRow.term})` : currentStudent.className}
                     </p>
                   </div>
+                  {activePublishedRow && (
+                    <button
+                      onClick={() => handleOpenResultSlip(activePublishedRow)}
+                      className="px-4 py-2 bg-[#1E3A8A] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                    >
+                      <Eye className="w-4 h-4 text-amber-400" />
+                      <span>Open Full Slip</span>
+                    </button>
+                  )}
                 </div>
 
-                <div className="pt-2 flex flex-wrap gap-3">
-                  <button
-                    onClick={handleOpenModal}
-                    className="px-5 py-2.5 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2 transition-all"
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>Open Official Printable Result Slip</span>
-                  </button>
-                </div>
+                {activeStudentSubjects.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                      <thead>
+                        <tr className="bg-slate-100/80 border-b border-slate-200 text-[11px] font-black uppercase text-slate-600 tracking-wider">
+                          <th className="py-3 px-4">Subject</th>
+                          <th className="py-3 px-3 text-center">CA (40%)</th>
+                          <th className="py-3 px-3 text-center">Exam (60%)</th>
+                          <th className="py-3 px-3 text-center">Total (100%)</th>
+                          <th className="py-3 px-3 text-center">Grade</th>
+                          <th className="py-3 px-4">Remark</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs">
+                        {activeStudentSubjects.map((sub: any, i: number) => {
+                          const ca = Number(sub.caScore ?? ((sub.ca1 || 0) + (sub.ca2 || 0) + (sub.midterm || 0)));
+                          const exam = Number(sub.examScore ?? sub.exam ?? 0);
+                          const total = Number(sub.total ?? (ca + exam));
+                          const grade = sub.grade || (total >= 80 ? 'A1' : total >= 70 ? 'B2' : total >= 65 ? 'B3' : total >= 60 ? 'C4' : total >= 55 ? 'C5' : total >= 50 ? 'C6' : total >= 45 ? 'D7' : total >= 40 ? 'E8' : 'F9');
+                          const remark = sub.remark || (grade.startsWith('A') ? 'EXCELLENT' : grade.startsWith('B') ? 'VERY GOOD' : grade.startsWith('C') ? 'CREDIT' : grade === 'F9' ? 'FAIL' : 'PASS');
+
+                          return (
+                            <tr key={sub.id || i} className="hover:bg-slate-50/80">
+                              <td className="py-3 px-4 font-bold text-slate-900">{sub.subject}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-slate-700">{ca}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-slate-700">{exam}</td>
+                              <td className="py-3 px-3 text-center font-mono font-black text-slate-900 text-sm">{total}</td>
+                              <td className="py-3 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded-md font-mono font-black text-xs border ${
+                                  grade === 'F9' ? 'bg-red-100 text-red-700 border-red-300' :
+                                  grade.startsWith('A') ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                  grade.startsWith('B') ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                                  'bg-amber-100 text-amber-800 border-amber-300'
+                                }`}>
+                                  {grade}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 font-bold text-slate-600 uppercase text-[11px]">{remark}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-slate-500 text-xs">
+                    No individual subject performance records available for this period.
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* ---------------------------------------------------------------- */}
-          {/* TAB 5: HELP & SUPPORT */}
-          {/* ---------------------------------------------------------------- */}
+          {/* TAB 3: HELP & SUPPORT */}
           {activeTab === 'help' && (
-            <div className="space-y-6">
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
-                <div className="border-b border-slate-200 pb-3 flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-blue-50 text-[#1E3A8A] border border-blue-100">
-                    <HelpCircle className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 font-['Plus_Jakarta_Sans']">Student Portal Support</h3>
-                    <p className="text-xs text-slate-500">Frequently asked questions and support contacts</p>
-                  </div>
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <h3 className="text-lg font-black text-slate-900 font-['Plus_Jakarta_Sans']">
+                Student Result Portal Support
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                If you notice any discrepancies in your published results, missing subject records, or have questions regarding grade computation and promotion criteria, please contact your Class Teacher or the Academic Registry immediately.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-xs font-bold text-slate-900 block">Academic Registry</span>
+                  <span className="text-xs text-slate-600 block">Email: registry@royalacademy.edu.ng</span>
+                  <span className="text-xs text-slate-600 block">Desk Hours: Mon – Fri, 8:00 AM – 4:00 PM</span>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <h4 className="text-xs font-bold text-slate-900">How do I download or print my result?</h4>
-                    <p className="text-xs text-slate-600">
-                      Go to the <strong className="text-slate-900">Print Result Slip</strong> tab or click the <strong className="text-amber-700 font-bold">"Print A4"</strong> button at the top right of the dashboard.
-                    </p>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <h4 className="text-xs font-bold text-slate-900">Need support or grade corrections?</h4>
-                    <p className="text-xs text-slate-600">
-                      Contact the Academic Support Helpdesk at <strong className="text-[#1E3A8A]">support@royalacademy.edu.ng</strong>.
-                    </p>
-                  </div>
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-xs font-bold text-slate-900 block">IT & Portal Helpdesk</span>
+                  <span className="text-xs text-slate-600 block">Support: support@royalacademy.edu.ng</span>
+                  <span className="text-xs text-slate-600 block">Response Time: Within 24 hours</span>
                 </div>
               </div>
             </div>
           )}
 
         </main>
+
       </div>
 
-      {/* Global Modals */}
-      <ResultSlipModal
-        result={activeStudent}
-        isOpen={isResultSlipModalOpen}
-        onClose={() => setIsResultSlipModalOpen(false)}
-        onVerifyQR={() => {}}
-      />
+      {/* ---------------------------------------------------------------- */}
+      {/* RESULT SLIP MODAL (PRESERVES EXISTING RESULT SLIP TEMPLATE) */}
+      {/* ---------------------------------------------------------------- */}
+      {modalStudentResult && (
+        <ResultSlipModal
+          isOpen={isResultSlipModalOpen}
+          onClose={() => {
+            setIsResultSlipModalOpen(false);
+            setModalStudentResult(null);
+          }}
+          result={modalStudentResult}
+          onVerifyQR={() => {}}
+          branding={brandingState}
+        />
+      )}
 
     </div>
   );

@@ -1,5 +1,4 @@
 import { StudentResult } from '../types';
-import { MOCK_STUDENTS, ADMIN_MOCK_STUDENTS } from '../data/mockData';
 
 export interface DynamicRankResult {
   position: number;
@@ -56,18 +55,6 @@ export function calculateDynamicStudentPosition(
     customAllStudentsList.forEach(s => {
       if (s && s.studentId) {
         poolOfStudentsMap.set(s.studentId.toUpperCase(), { ...s });
-      }
-    });
-  } else {
-    // Fallback to base mock students if no API list is provided
-    Object.values(MOCK_STUDENTS).forEach(s => {
-      if (s && s.studentId) poolOfStudentsMap.set(s.studentId.toUpperCase(), s);
-    });
-
-    ADMIN_MOCK_STUDENTS.forEach(s => {
-      if (s && s.studentId) {
-        const existing = poolOfStudentsMap.get(s.studentId.toUpperCase()) || {};
-        poolOfStudentsMap.set(s.studentId.toUpperCase(), { ...existing, ...s });
       }
     });
   }

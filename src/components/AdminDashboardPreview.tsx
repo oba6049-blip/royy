@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ADMIN_MOCK_STUDENTS } from '../data/mockData';
 import { api } from '../services/api';
 import {
   LayoutDashboard,
@@ -52,7 +51,7 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'results' | 'analytics'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
-  const [students, setStudents] = useState(ADMIN_MOCK_STUDENTS);
+  const [students, setStudents] = useState<any[]>([]);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { FloatingStats } from './components/FloatingStats';
@@ -20,12 +20,54 @@ import { StudentLoginPage } from './components/StudentLoginPage';
 import { StudentDashboardPage } from './components/StudentDashboardPage';
 
 import { StudentResult } from './types';
-import { MOCK_STUDENTS } from './data/mockData';
+import { api } from './services/api';
+
+const STUDENT_SESSION_KEY = 'royal_academy_student_session';
+const ADMIN_SESSION_KEY = 'royal_academy_admin_session';
+const ACTIVE_VIEW_KEY = 'royal_academy_active_view';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'student-login' | 'student-dashboard' | 'admin-login' | 'admin-dashboard'>('home');
+  // Persistent Student session
+  const [loggedInStudent, setLoggedInStudent] = useState<StudentResult | null>(() => {
+    try {
+      const saved = localStorage.getItem(STUDENT_SESSION_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
-  const [loggedInStudent, setLoggedInStudent] = useState<StudentResult | null>(null);
+  // Persistent Admin session
+  const [adminUser, setAdminUser] = useState<{ name: string; email: string; role: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem(ADMIN_SESSION_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Persistent View State
+  const [currentView, setCurrentView] = useState<'home' | 'student-login' | 'student-dashboard' | 'admin-login' | 'admin-dashboard'>(() => {
+    try {
+      const savedView = localStorage.getItem(ACTIVE_VIEW_KEY) as any;
+      const savedStudent = localStorage.getItem(STUDENT_SESSION_KEY);
+      const savedAdmin = localStorage.getItem(ADMIN_SESSION_KEY);
+
+      if (savedView === 'admin-dashboard' && savedAdmin) return 'admin-dashboard';
+      if (savedView === 'student-dashboard' && savedStudent) return 'student-dashboard';
+      if (savedView === 'admin-login') return savedAdmin ? 'admin-dashboard' : 'admin-login';
+      if (savedView === 'student-login') return savedStudent ? 'student-dashboard' : 'student-login';
+      if (savedView === 'home') return 'home';
+
+      if (savedStudent) return 'student-dashboard';
+      if (savedAdmin) return 'admin-dashboard';
+
+      return 'home';
+    } catch {
+      return 'home';
+    }
+  });
 
   const [selectedResult, setSelectedResult] = useState<StudentResult | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
@@ -34,13 +76,81 @@ export default function App() {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-
-  // Admin authentication state
-  const [adminUser, setAdminUser] = useState<{ name: string; email: string; role: string } | null>(null);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
 
-  const handleStudentPortalClick = () => {
+  // Sync active view to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_VIEW_KEY, currentView);
+    } catch (e) {
+      console.error('Failed to sync active view to localStorage', e);
+    }
+  }, [currentView]);
+
+  // Sync / refresh student data from backend if student session is present on mount
+  useEffect(() => {
+    if (loggedInStudent?.studentId) {
+      api.getStudentById(loggedInStudent.studentId).then(freshStudent => {
+        if (freshStudent) {
+          setLoggedInStudent(freshStudent);
+          localStorage.setItem(STUDENT_SESSION_KEY, JSON.stringify(freshStudent));
+        }
+      }).catch(err => {
+        console.warn('Could not refresh student session data from server:', err);
+      });
+    }
+  }, []);
+
+  const handleStudentLoginSuccess = (student: StudentResult) => {
+    try {
+      localStorage.setItem(STUDENT_SESSION_KEY, JSON.stringify(student));
+      localStorage.setItem(ACTIVE_VIEW_KEY, 'student-dashboard');
+    } catch (e) {
+      console.error(e);
+    }
+    setLoggedInStudent(student);
+    setCurrentView('student-dashboard');
+  };
+
+  const handleStudentLogout = () => {
+    try {
+      localStorage.removeItem(STUDENT_SESSION_KEY);
+      localStorage.setItem(ACTIVE_VIEW_KEY, 'student-login');
+    } catch (e) {
+      console.error(e);
+    }
+    setLoggedInStudent(null);
     setCurrentView('student-login');
+  };
+
+  const handleAdminLoginSuccess = (user: { name: string; email: string; role: string }) => {
+    try {
+      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(user));
+      localStorage.setItem(ACTIVE_VIEW_KEY, 'admin-dashboard');
+    } catch (e) {
+      console.error(e);
+    }
+    setAdminUser(user);
+    setCurrentView('admin-dashboard');
+  };
+
+  const handleAdminLogout = () => {
+    try {
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      localStorage.setItem(ACTIVE_VIEW_KEY, 'admin-login');
+    } catch (e) {
+      console.error(e);
+    }
+    setAdminUser(null);
+    setCurrentView('admin-login');
+  };
+
+  const handleStudentPortalClick = () => {
+    if (loggedInStudent) {
+      setCurrentView('student-dashboard');
+    } else {
+      setCurrentView('student-login');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -58,7 +168,11 @@ export default function App() {
   };
 
   const handleAdminPortalClick = () => {
-    setCurrentView('admin-login');
+    if (adminUser) {
+      setCurrentView('admin-dashboard');
+    } else {
+      setCurrentView('admin-login');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -90,11 +204,14 @@ export default function App() {
     return (
       <StudentLoginPage
         onBackToHome={() => setCurrentView('home')}
-        onLoginSuccess={(student) => {
-          setLoggedInStudent(student);
-          setCurrentView('student-dashboard');
+        onLoginSuccess={handleStudentLoginSuccess}
+        onOpenAdminPortal={() => {
+          if (adminUser) {
+            setCurrentView('admin-dashboard');
+          } else {
+            setCurrentView('admin-login');
+          }
         }}
-        onOpenAdminPortal={() => setCurrentView('admin-login')}
       />
     );
   }
@@ -104,10 +221,7 @@ export default function App() {
     return (
       <StudentDashboardPage
         student={loggedInStudent}
-        onLogout={() => {
-          setLoggedInStudent(null);
-          setCurrentView('student-login');
-        }}
+        onLogout={handleStudentLogout}
         onBackToWebsite={() => setCurrentView('home')}
       />
     );
@@ -118,10 +232,7 @@ export default function App() {
     return (
       <AdminLoginPage
         onBackToHome={() => setCurrentView('home')}
-        onLoginSuccess={(user) => {
-          setAdminUser(user);
-          setCurrentView('admin-dashboard');
-        }}
+        onLoginSuccess={handleAdminLoginSuccess}
       />
     );
   }
@@ -131,10 +242,7 @@ export default function App() {
     return (
       <AdminDashboardPage
         adminUser={adminUser}
-        onLogout={() => {
-          setAdminUser(null);
-          setCurrentView('admin-login');
-        }}
+        onLogout={handleAdminLogout}
         onBackToWebsite={() => setCurrentView('home')}
       />
     );
@@ -156,8 +264,8 @@ export default function App() {
         <HeroSection
           onCheckResultClick={handleCheckResultClick}
           onLearnMoreClick={handleLearnMoreClick}
-          onQuickVerifyClick={(studentId) => {
-            const student = MOCK_STUDENTS[studentId] || Object.values(MOCK_STUDENTS)[0];
+          onQuickVerifyClick={async (studentId) => {
+            const student = await api.getStudentById(studentId);
             if (student) {
               handleOpenResultSlip(student);
             }
@@ -225,10 +333,7 @@ export default function App() {
       <AdminLoginModal
         isOpen={isAdminLoginModalOpen}
         onClose={() => setIsAdminLoginModalOpen(false)}
-        onLoginSuccess={(user) => {
-          setAdminUser(user);
-          setCurrentView('admin-dashboard');
-        }}
+        onLoginSuccess={handleAdminLoginSuccess}
       />
 
     </div>

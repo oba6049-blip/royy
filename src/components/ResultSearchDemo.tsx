@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MOCK_STUDENTS, SESSIONS_LIST, TERMS_LIST, CLASSES_LIST } from '../data/mockData';
 import { StudentResult } from '../types';
 import { api } from '../services/api';
 import { calculateDynamicStudentPosition } from '../utils/studentRanking';
@@ -30,15 +29,17 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
   onOpenResultSlip,
   onVerifyQR,
 }) => {
-  const [studentIdInput, setStudentIdInput] = useState('2025104');
-  const [selectedSession, setSelectedSession] = useState(SESSIONS_LIST[0]);
-  const [selectedTerm, setSelectedTerm] = useState(TERMS_LIST[0]);
-  const [selectedClass, setSelectedClass] = useState(CLASSES_LIST[0]);
+  const [studentIdInput, setStudentIdInput] = useState('');
+  const [sessionsList, setSessionsList] = useState<string[]>([]);
+  const [termsList, setTermsList] = useState<string[]>([]);
+  const [classesList, setClassesList] = useState<string[]>([]);
+
+  const [selectedSession, setSelectedSession] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
-  const [activeResult, setActiveResult] = useState<StudentResult | null>(
-    MOCK_STUDENTS['2025104']
-  );
+  const [activeResult, setActiveResult] = useState<StudentResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [allStudentsList, setAllStudentsList] = useState<any[]>([]);
   const [adminSubjects, setAdminSubjects] = useState<any[]>([]);
@@ -46,19 +47,177 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
   useEffect(() => {
     let isMounted = true;
     api.getStudents().then((res) => {
-      if (isMounted && res && Array.isArray(res) && res.length > 0) {
+      if (isMounted && res && Array.isArray(res)) {
         setAllStudentsList(res);
+        if (res.length > 0) {
+          setActiveResult(res[0]);
+          setStudentIdInput(res[0].studentId || '');
+        }
       }
     }).catch(() => {});
+
     api.getSubjects().then((subs) => {
       if (isMounted && Array.isArray(subs)) {
         setAdminSubjects(subs);
       }
     }).catch(() => {});
+
+    api.getSessions().then((sess) => {
+      if (isMounted && Array.isArray(sess)) {
+        const normSess = (s: string) => (s || '').toLowerCase().replace(/academic|session|\s/g, '');
+        const seen = new Set<string>();
+        const names: string[] = [];
+        sess.forEach(s => {
+          const yr = s.year || s.name;
+          if (!yr) return;
+          const key = normSess(yr);
+          if (!seen.has(key)) {
+            seen.add(key);
+            names.push(yr.includes('Academic Session') ? yr : `${yr} Academic Session`);
+          }
+        });
+        setSessionsList(names);
+        if (names.length > 0) setSelectedSession(names[0]);
+      }
+    }).catch(() => {});
+
+    api.getTerms().then((tms) => {
+      if (isMounted && Array.isArray(tms)) {
+        const getTermId = (t: string) => {
+          const l = (t || '').toLowerCase();
+          if (l.includes('first') || l.includes('1st') || l.includes('1')) return '1';
+          if (l.includes('second') || l.includes('2nd') || l.includes('2')) return '2';
+          if (l.includes('third') || l.includes('3rd') || l.includes('3')) return '3';
+          return l.replace(/\s/g, '');
+        };
+        const seen = new Set<string>();
+        const names: string[] = [];
+        tms.forEach(t => {
+          if (!t.name) return;
+          const key = getTermId(t.name);
+          if (!seen.has(key)) {
+            seen.add(key);
+            names.push(t.name.replace(/\s*\([^)]*\)/g, '').trim());
+          }
+        });
+        setTermsList(names);
+        if (names.length > 0) setSelectedTerm(names[0]);
+      }
+    }).catch(() => {});
+
+    api.getClasses().then((cls) => {
+      if (isMounted && Array.isArray(cls)) {
+        const names = cls.map(c => c.name).filter(Boolean);
+        setClassesList(names);
+        if (names.length > 0) setSelectedClass(names[0]);
+      }
+    }).catch(() => {});
+
     return () => { isMounted = false; };
   }, []);
 
-  const activeResultRank = calculateDynamicStudentPosition(activeResult, allStudentsList);
+  const displayResult = React.useMemo(() => {
+    if (!activeResult) return null;
+
+    const reqSession = selectedSession || activeResult.academicSession || (activeResult as any).session;
+    const reqTerm = selectedTerm || activeResult.term;
+    const reqClass = selectedClass && selectedClass !== 'All' ? selectedClass : null;
+
+    const isClassMatch = (rClass?: string, reqC?: string) => {
+      if (!reqC || !rClass) return true;
+      const c1 = rClass.toLowerCase().trim();
+      const c2 = reqC.toLowerCase().trim();
+      return c1 === c2 || c1.includes(c2) || c2.includes(c1);
+    };
+
+    if (activeResult.termRecords && Array.isArray(activeResult.termRecords)) {
+      let matched = activeResult.termRecords.find((r: any) =>
+        r.academicSession && reqSession &&
+        r.academicSession.toLowerCase().trim().includes(reqSession.toLowerCase().trim().replace(' academic session', '')) &&
+        r.term && reqTerm &&
+        r.term.toLowerCase().trim() === reqTerm.toLowerCase().trim() &&
+        (!reqClass || isClassMatch(r.className, reqClass))
+      );
+
+      // Fallback: if class match failed, match session and term regardless of class name to preserve historical access
+      if (!matched && reqSession && reqTerm) {
+        matched = activeResult.termRecords.find((r: any) =>
+          r.academicSession && reqSession &&
+          r.academicSession.toLowerCase().trim().includes(reqSession.toLowerCase().trim().replace(' academic session', '')) &&
+          r.term && reqTerm &&
+          r.term.toLowerCase().trim() === reqTerm.toLowerCase().trim()
+        );
+      }
+
+      if (matched) {
+        const isPub = matched.isPublished !== false && matched.status !== 'Unpublished';
+        const validSubs = (matched.subjects || []).filter((s: any) => {
+          const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
+          const exam = Number(s.examScore ?? s.exam ?? 0);
+          const total = Number(s.total ?? (ca + exam));
+          return total > 0;
+        });
+
+        if (isPub && validSubs.length > 0) {
+          return {
+            ...activeResult,
+            academicSession: matched.academicSession || reqSession,
+            term: matched.term || reqTerm,
+            className: matched.className || activeResult.className,
+            subjects: matched.subjects || [],
+            overallTotal: matched.overallTotal ?? 0,
+            overallAverage: matched.overallAverage ?? 0,
+            gpa: matched.gpa ?? 0,
+            isPublished: true,
+            status: 'Published'
+          };
+        } else {
+          return {
+            ...activeResult,
+            academicSession: reqSession,
+            term: reqTerm,
+            className: matched.className || activeResult.className,
+            subjects: [],
+            overallTotal: 0,
+            overallAverage: 0,
+            gpa: 0,
+            isPublished: false,
+            status: 'Unpublished'
+          };
+        }
+      }
+    }
+
+    const sameSession = !reqSession || (activeResult.academicSession || (activeResult as any).session || '').toLowerCase().includes(reqSession.toLowerCase().replace(' academic session', ''));
+    const sameTerm = !reqTerm || (activeResult.term || '').toLowerCase().trim() === reqTerm.toLowerCase().trim();
+    const isPub = activeResult.isPublished !== false && activeResult.status !== 'Unpublished';
+    const validSubs = (activeResult.subjects || []).filter((s: any) => {
+      const ca = Number(s.caScore ?? s.ca1 ?? s.ca ?? 0) + Number(s.ca2 ?? 0) + Number(s.midterm ?? 0);
+      const exam = Number(s.examScore ?? s.exam ?? 0);
+      const total = Number(s.total ?? (ca + exam));
+      return total > 0;
+    });
+
+    if (sameSession && sameTerm && isPub && validSubs.length > 0) {
+      return activeResult;
+    }
+
+    return {
+      ...activeResult,
+      academicSession: reqSession,
+      term: reqTerm,
+      className: reqClass,
+      subjects: [],
+      overallTotal: 0,
+      overallAverage: 0,
+      gpa: 0,
+      isPublished: false,
+      status: 'Unpublished'
+    };
+  }, [activeResult, selectedSession, selectedTerm, selectedClass]);
+
+  const cardResult = displayResult || activeResult;
+  const activeResultRank = calculateDynamicStudentPosition(cardResult, allStudentsList);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -72,19 +231,12 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
 
       if (apiResult) {
         setActiveResult(apiResult);
-      } else if (MOCK_STUDENTS[cleaned]) {
-        setActiveResult(MOCK_STUDENTS[cleaned]);
-      } else {
-        setErrorMsg(`No record found for 7-digit Registration Number "${studentIdInput}". Try sample student IDs like "2025101" or "2025104".`);
-      }
-    } catch {
-      setIsLoading(false);
-      const fallback = MOCK_STUDENTS[cleaned];
-      if (fallback) {
-        setActiveResult(fallback);
       } else {
         setErrorMsg(`No record found for Registration Number "${studentIdInput}".`);
       }
+    } catch {
+      setIsLoading(false);
+      setErrorMsg(`No record found for Registration Number "${studentIdInput}".`);
     }
   };
 
@@ -96,14 +248,10 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
     try {
       const apiResult = await api.getStudentById(id);
       setIsLoading(false);
-      if (apiResult) {
-        setActiveResult(apiResult);
-      } else {
-        setActiveResult(MOCK_STUDENTS[id] || null);
-      }
+      setActiveResult(apiResult || null);
     } catch {
       setIsLoading(false);
-      setActiveResult(MOCK_STUDENTS[id] || null);
+      setActiveResult(null);
     }
   };
 
@@ -152,23 +300,27 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
               {/* Quick Sample Selector Chips */}
               <div>
                 <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  Try Sample Student IDs
+                  Live Student Registration IDs
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {(allStudentsList.length > 0 ? allStudentsList.map(s => s.studentId) : Object.keys(MOCK_STUDENTS)).map((id) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => handleSampleSelect(id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
-                        studentIdInput === id
-                          ? 'bg-[#1E3A8A] text-white shadow-md'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                      }`}
-                    >
-                      {id}
-                    </button>
-                  ))}
+                  {allStudentsList.length > 0 ? (
+                    allStudentsList.map((s) => (
+                      <button
+                        key={s.studentId}
+                        type="button"
+                        onClick={() => handleSampleSelect(s.studentId)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                          studentIdInput === s.studentId
+                            ? 'bg-[#1E3A8A] text-white shadow-md'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                        }`}
+                      >
+                        {s.studentId}
+                      </button>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">No student records in database yet. Add students via Admin Portal.</span>
+                  )}
                 </div>
               </div>
 
@@ -216,9 +368,13 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                       onChange={(e) => setSelectedTerm(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] appearance-none pr-10"
                     >
-                      {TERMS_LIST.map((term) => (
-                        <option key={term} value={term}>{term}</option>
-                      ))}
+                      {termsList.length > 0 ? (
+                        termsList.map((term) => (
+                          <option key={term} value={term}>{term}</option>
+                        ))
+                      ) : (
+                        <option value="Third Term">Third Term (Current Term)</option>
+                      )}
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
@@ -235,9 +391,13 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                       onChange={(e) => setSelectedClass(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] appearance-none pr-10"
                     >
-                      {CLASSES_LIST.map((cls) => (
-                        <option key={cls} value={cls}>{cls}</option>
-                      ))}
+                      {classesList.length > 0 ? (
+                        classesList.map((cls) => (
+                          <option key={cls} value={cls}>{cls}</option>
+                        ))
+                      ) : (
+                        <option value="All Classes">All Classes</option>
+                      )}
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
@@ -328,10 +488,10 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                           Position: {activeResultRank.ordinalPosition} / {activeResultRank.totalInClass}
                         </span>
                         <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px]">
-                          Average: {(activeResult.overallAverage || 0).toFixed(1)}%
+                          Average: {(cardResult?.overallAverage || 0).toFixed(1)}%
                         </span>
                         <span className="px-2 py-0.5 rounded-md bg-blue-50 text-[#1E3A8A] font-bold text-[10px]">
-                          GPA: {(activeResult.gpa || 0).toFixed(2)}
+                          GPA: {(cardResult?.gpa || 0).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -345,7 +505,7 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {(() => {
-                        const rawSubs = Array.isArray(activeResult.subjects) ? activeResult.subjects : [];
+                        const rawSubs = Array.isArray(cardResult?.subjects) ? cardResult.subjects : [];
                         const validSubs = rawSubs.filter((sub: any) => {
                           if (!sub || typeof sub !== 'object') return false;
                           const name = (sub.subject || sub.name || '').trim();
@@ -357,10 +517,10 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                           const remark = (sub.remark || '').trim().toUpperCase();
                           return ca > 0 || exam > 0 || total > 0 || (grade !== '' && grade !== 'PENDING' && grade !== 'UNRECORDED') || (remark !== '' && remark !== 'PENDING' && remark !== 'UNRECORDED');
                         });
-                        if (validSubs.length === 0) {
+                        if (validSubs.length === 0 || cardResult?.isPublished === false || cardResult?.status === 'Unpublished') {
                           return (
-                            <div className="col-span-2 bg-red-50 p-4 rounded-xl border border-red-200 text-center font-black text-xs text-red-700 uppercase tracking-wider">
-                              NO RESULT AVAILABLE FOR THIS TERM
+                            <div className="col-span-2 bg-amber-50 p-4 rounded-xl border border-amber-200 text-center font-bold text-xs text-amber-950">
+                              No result has been published for the selected Academic Session and Academic Term.
                             </div>
                           );
                         }
@@ -395,15 +555,22 @@ export const ResultSearchDemo: React.FC<ResultSearchDemoProps> = ({
                     <div className="flex items-start justify-between">
                       <div>
                         <span className="text-[10px] font-bold uppercase text-slate-400 block">Class Teacher's Remark</span>
-                        <p className="text-slate-700 italic font-medium mt-0.5">"{activeResult.classTeacherRemark}"</p>
+                        <p className="text-slate-700 italic font-medium mt-0.5">"{cardResult?.classTeacherRemark || activeResult.classTeacherRemark}"</p>
                       </div>
                       
                       <div className="text-right shrink-0">
                         <span className="text-[10px] font-bold uppercase text-slate-400 block">Status</span>
                         {(() => {
-                          const avg = activeResult.overallAverage ?? activeResult.averageScore ?? 0;
+                          if (cardResult?.isPublished === false || cardResult?.status === 'Unpublished' || !cardResult?.subjects?.length) {
+                            return (
+                              <span className="inline-block px-2 py-0.5 rounded-md font-bold text-[10px] bg-amber-100 text-amber-900 border border-amber-300">
+                                Unpublished / Pending Release
+                              </span>
+                            );
+                          }
+                          const avg = cardResult?.overallAverage ?? cardResult?.averageScore ?? 0;
                           const isPass = avg >= 50;
-                          const statusLabel = isPass ? (activeResult.status || 'Good Standing (GS)') : 'Not In Good Standing (NGS)';
+                          const statusLabel = isPass ? (cardResult?.status || 'Good Standing (GS)') : 'Not In Good Standing (NGS)';
                           return (
                             <span className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10px] ${isPass ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800 font-extrabold'}`}>
                               {statusLabel}

@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { FEATURES_DATA } from '../data/mockData';
 import {
   Zap,
   UserCheck,
@@ -12,6 +11,67 @@ import {
   History,
   Sparkles
 } from 'lucide-react';
+
+const FEATURES_DATA = [
+  {
+    id: '1',
+    iconName: 'Zap',
+    title: 'Instant Result Checking',
+    description: 'Access complete academic scorecards in seconds from any smartphone, tablet, or desktop.',
+    badge: 'Real-Time',
+    highlight: true
+  },
+  {
+    id: '2',
+    iconName: 'UserCheck',
+    title: 'No Student Login Required',
+    description: 'Zero complex passwords or forgotten credentials. Simple Reg ID validation gets you in instantly.',
+    badge: 'Seamless'
+  },
+  {
+    id: '3',
+    iconName: 'ShieldCheck',
+    title: 'Official Stamp & Verification',
+    description: 'Every printed report card features official school stamp, registrar signatures, and verification seal.',
+    badge: 'Verified',
+    highlight: true
+  },
+  {
+    id: '4',
+    iconName: 'Printer',
+    title: 'Professional Printable Format',
+    description: 'Generate high-resolution, official Royal Academy report slips complete with signatures and school stamp.',
+    badge: 'Official'
+  },
+  {
+    id: '5',
+    iconName: 'Cpu',
+    title: 'Fast Automated Processing',
+    description: 'Enterprise grade infrastructure capable of serving thousands of simultaneous requests during release days.',
+    badge: 'Scalable'
+  },
+  {
+    id: '6',
+    iconName: 'LayoutDashboard',
+    title: 'Admin Result Management',
+    description: 'Comprehensive portal for school administrators to upload bulk CSV results, edit grades, and publish instantly.',
+    badge: 'Enterprise'
+  },
+  {
+    id: '7',
+    iconName: 'Smartphone',
+    title: 'Responsive & Accessible',
+    description: 'Engineered desktop-down and mobile-up for flawless performance on all modern screens.',
+    badge: 'Mobile First'
+  },
+  {
+    id: '8',
+    iconName: 'History',
+    title: 'Academic History Archive',
+    description: 'Seamlessly query past academic sessions, terms, and historical performance trends over time.',
+    badge: 'Archive'
+  }
+];
 
 export const FeaturesSection: React.FC = () => {
   const iconMap: Record<string, React.ReactNode> = {

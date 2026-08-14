@@ -1,7 +1,45 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FAQ_DATA } from '../data/mockData';
 import { ChevronDown, HelpCircle, Sparkles, Search } from 'lucide-react';
+
+const FAQ_DATA = [
+  {
+    id: 'faq-1',
+    question: 'How do students check their examination results?',
+    answer: 'Students simply navigate to the Result Checking demo section on this portal, input their unique 7-digit Registration Number (e.g., 2025104), select their session, term, and class, and click "Check Result". Your result slip will load instantly.',
+    category: 'Results'
+  },
+  {
+    id: 'faq-2',
+    question: 'Do students or parents need a user account or password?',
+    answer: 'No password is required! The portal is designed for maximum convenience while maintaining security. By validating unique 7-digit Student Registration IDs and session details, results are fetched securely without password friction.',
+    category: 'General'
+  },
+  {
+    id: 'faq-3',
+    question: 'Can result slips be printed or downloaded as PDF?',
+    answer: 'Yes! Every result slip includes a dedicated "Print Result Slip" and "Download PDF" button. It renders in a high-resolution, print-ready format with school crest, official signatures, and QR verification stamp.',
+    category: 'Results'
+  },
+  {
+    id: 'faq-4',
+    question: 'How secure is the result verification system?',
+    answer: 'Extremely secure. Every generated report includes a unique cryptographic SHA-256 hash and a dynamic QR code. Anyone scanning the QR code can immediately verify the result against Royal Academy’s master database to confirm authenticity.',
+    category: 'Security'
+  },
+  {
+    id: 'faq-5',
+    question: 'Can we access results from previous academic sessions?',
+    answer: 'Yes, the portal archives all academic records. Simply select the past Academic Session (e.g., 2023/2024) and Term from the search parameters.',
+    category: 'Results'
+  },
+  {
+    id: 'faq-6',
+    question: 'Who uploads and manages the student results?',
+    answer: 'Authorized school administrators and exam officers manage results through the secure Admin Portal. Results undergo double verification before being published to the public portal.',
+    category: 'Technical'
+  }
+];
 
 export const FAQSection: React.FC = () => {
   const [openId, setOpenId] = useState<string | null>('faq-1');

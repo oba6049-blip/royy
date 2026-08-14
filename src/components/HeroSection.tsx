@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Search, ShieldCheck, Award, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { MOCK_STUDENTS } from '../data/mockData';
 
 interface HeroSectionProps {
   onCheckResultClick: () => void;
@@ -13,10 +12,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onCheckResultClick,
   onLearnMoreClick,
 }) => {
-  const sampleStudent = MOCK_STUDENTS['2025104'] || Object.values(MOCK_STUDENTS)[0];
-
-  if (!sampleStudent) return null;
-
   return (
     <section id="home" className="relative pt-28 pb-16 lg:pt-36 lg:pb-24 overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
       {/* Background Decorative Shapes & Subtle Gradients */}

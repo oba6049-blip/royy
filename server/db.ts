@@ -1,5 +1,4 @@
 import { MongoClient, Db } from 'mongodb';
-import { MOCK_STUDENTS, ADMIN_MOCK_STUDENTS } from '../src/data/mockData.js';
 
 let dbInstance: Db | null = null;
 let mongoClient: MongoClient | null = null;
@@ -7,39 +6,18 @@ let isMongoConnected = false;
 
 // Memory storage fallback if MongoDB URI is not provided or offline
 let memoryStore = {
-  students: Object.values(MOCK_STUDENTS).map(s => ({
-    ...s,
-    name: s.fullName,
-    averageScore: s.overallAverage,
-  })),
-  classes: [
-    { id: '1', name: 'JSS 1 Gold', arm: 'Gold', teacher: 'Mrs. O. Adeleke', capacity: 35, enrolled: 32 },
-    { id: '2', name: 'JSS 2 Diamond', arm: 'Diamond', teacher: 'Mr. K. Okafor', capacity: 35, enrolled: 30 },
-    { id: '3', name: 'JSS 3 Silver', arm: 'Silver', teacher: 'Dr. C. Nwosu', capacity: 35, enrolled: 34 },
-    { id: '4', name: 'SSS 1 Science', arm: 'Science A', teacher: 'Engr. T. Balogun', capacity: 30, enrolled: 28 },
-    { id: '5', name: 'SSS 2 Arts', arm: 'Arts', teacher: 'Mrs. A. Ibrahim', capacity: 30, enrolled: 25 },
-    { id: '6', name: 'SSS 3 Commercial', arm: 'Commercial', teacher: 'Mr. B. Danjuma', capacity: 30, enrolled: 29 },
-  ],
-  subjects: [
-    { id: '1', code: 'MTH', name: 'Mathematics', category: 'General Core', teacher: 'Dr. A. Ojo' },
-    { id: '2', code: 'ENG', name: 'English Language', category: 'General Core', teacher: 'Mrs. B. Adeleke' },
-    { id: '3', code: 'PHY', name: 'Physics', category: 'Sciences', teacher: 'Engr. C. Nwosu' },
-    { id: '4', code: 'CHM', name: 'Chemistry', category: 'Sciences', teacher: 'Dr. D. Okon' },
-    { id: '5', code: 'BIO', name: 'Biology', category: 'Sciences', teacher: 'Mrs. E. Ibrahim' },
-    { id: '6', code: 'FMTH', name: 'Further Mathematics', category: 'Sciences', teacher: 'Mr. G. Alabi' },
-    { id: '7', code: 'AGRIC', name: 'Agricultural Science', category: 'Vocational', teacher: 'Mr. K. Okafor' },
-    { id: '8', code: 'CIVIC', name: 'Civic Education', category: 'General Core', teacher: 'Mrs. A. Ibrahim' },
-    { id: '9', code: 'COMP', name: 'Computer Studies', category: 'Vocational', teacher: 'Mr. F. Danjuma' },
-  ],
+  students: [] as any[],
+  classes: [] as any[],
+  subjects: [] as any[],
   sessions: [
     { id: '1', year: '2023/2024', status: 'Completed', startDate: 'Sept 2023', endDate: 'July 2024' },
     { id: '2', year: '2024/2025', status: 'Active Current Session', startDate: 'Sept 2024', endDate: 'July 2025' },
     { id: '3', year: '2025/2026', status: 'Upcoming', startDate: 'Sept 2025', endDate: 'July 2026' },
   ],
   terms: [
-    { id: 't1', name: 'First Term (Fall)', status: 'Concluded', resumption: 'Sept 9, 2024' },
-    { id: 't2', name: 'Second Term (Winter/Spring)', status: 'Concluded', resumption: 'Jan 8, 2025' },
-    { id: 't3', name: 'Third Term (Summer)', status: 'Active Current Term', resumption: 'Apr 28, 2025' },
+    { id: 't1', name: 'First Term', status: 'Concluded', resumption: 'Sept 9, 2024' },
+    { id: 't2', name: 'Second Term', status: 'Concluded', resumption: 'Jan 8, 2025' },
+    { id: 't3', name: 'Third Term', status: 'Active Current Term', resumption: 'Apr 28, 2025' },
   ],
   branding: {
     logoUrl: null as string | null,
@@ -100,34 +78,45 @@ async function seedMongoDatabase() {
   try {
     const studentsColl = dbInstance.collection('students');
     const studentCount = await studentsColl.countDocuments();
-    if (studentCount === 0) {
+    if (studentCount === 0 && memoryStore.students.length > 0) {
       console.log('[MongoDB] Seeding initial student records into MongoDB collection...');
-      await studentsColl.insertMany(memoryStore.students);
+      const cleanStudents = memoryStore.students.map(({ _id, ...s }: any) => ({ ...s }));
+      await studentsColl.insertMany(cleanStudents);
     }
 
     const classesColl = dbInstance.collection('classes');
-    if (await classesColl.countDocuments() === 0) {
-      await classesColl.insertMany(memoryStore.classes);
+    if (await classesColl.countDocuments() === 0 && memoryStore.classes.length > 0) {
+      const cleanClasses = memoryStore.classes.map(({ _id, ...c }: any) => ({ ...c }));
+      await classesColl.insertMany(cleanClasses);
     }
 
     const subjectsColl = dbInstance.collection('subjects');
-    if (await subjectsColl.countDocuments() === 0) {
-      await subjectsColl.insertMany(memoryStore.subjects);
+    if (await subjectsColl.countDocuments() === 0 && memoryStore.subjects.length > 0) {
+      const cleanSubjects = memoryStore.subjects.map(({ _id, ...s }: any) => ({ ...s }));
+      await subjectsColl.insertMany(cleanSubjects);
     }
 
     const sessionsColl = dbInstance.collection('sessions');
-    if (await sessionsColl.countDocuments() === 0) {
-      await sessionsColl.insertMany(memoryStore.sessions);
+    if (await sessionsColl.countDocuments() === 0 && memoryStore.sessions.length > 0) {
+      const cleanSessions = memoryStore.sessions.map(({ _id, ...s }: any) => ({ ...s }));
+      await sessionsColl.insertMany(cleanSessions);
     }
 
     const termsColl = dbInstance.collection('terms');
-    if (await termsColl.countDocuments() === 0) {
-      await termsColl.insertMany(memoryStore.terms);
+    if (await termsColl.countDocuments() === 0 && memoryStore.terms.length > 0) {
+      const cleanTerms = memoryStore.terms.map(({ _id, ...t }: any) => ({ ...t }));
+      await termsColl.insertMany(cleanTerms);
     }
 
     const adminsColl = dbInstance.collection('admins');
-    await adminsColl.deleteMany({});
-    await adminsColl.insertMany(memoryStore.admins);
+    for (const admin of memoryStore.admins) {
+      const { _id, ...cleanAdmin } = admin as any;
+      await adminsColl.updateOne(
+        { email: cleanAdmin.email },
+        { $set: cleanAdmin },
+        { upsert: true }
+      );
+    }
 
     console.log('[MongoDB] Data seeding complete!');
   } catch (error) {
@@ -209,18 +198,33 @@ export async function deleteStudent(studentId: string) {
 
 // Classes
 export async function getAllClasses() {
+  let list: any[] = [];
   if (isMongoConnected && dbInstance) {
-    return await dbInstance.collection('classes').find({}, { projection: { _id: 0 } }).toArray();
+    list = await dbInstance.collection('classes').find({}, { projection: { _id: 0 } }).toArray();
+  } else {
+    list = memoryStore.classes;
   }
-  return memoryStore.classes;
+  const allStus = await getAllStudents();
+  return list.map(c => {
+    const realEnrolled = allStus.filter(s => {
+      const sCls = String(s.className || '').trim().toLowerCase();
+      const cCls = String(c.name || '').trim().toLowerCase();
+      return sCls === cCls || (sCls && sCls.includes(cCls)) || (cCls && cCls.includes(sCls));
+    }).length;
+    return {
+      ...c,
+      enrolled: realEnrolled,
+    };
+  });
 }
 
 export async function createClass(classData: any) {
+  const { _id, ...cleanData } = classData || {};
   if (isMongoConnected && dbInstance) {
-    await dbInstance.collection('classes').insertOne(classData);
+    await dbInstance.collection('classes').insertOne({ ...cleanData });
   }
-  memoryStore.classes.push(classData);
-  return classData;
+  memoryStore.classes.push({ ...cleanData });
+  return cleanData;
 }
 
 export async function deleteClass(classId: string) {
@@ -240,11 +244,12 @@ export async function getAllSubjects() {
 }
 
 export async function createSubject(subjectData: any) {
+  const { _id, ...cleanData } = subjectData || {};
   if (isMongoConnected && dbInstance) {
-    await dbInstance.collection('subjects').insertOne(subjectData);
+    await dbInstance.collection('subjects').insertOne({ ...cleanData });
   }
-  memoryStore.subjects.push(subjectData);
-  return subjectData;
+  memoryStore.subjects.push({ ...cleanData });
+  return cleanData;
 }
 
 export async function deleteSubject(code: string) {
@@ -257,18 +262,105 @@ export async function deleteSubject(code: string) {
 
 // Sessions
 export async function getAllSessions() {
+  let list: any[] = [];
   if (isMongoConnected && dbInstance) {
-    return await dbInstance.collection('sessions').find({}, { projection: { _id: 0 } }).toArray();
+    list = await dbInstance.collection('sessions').find({}, { projection: { _id: 0 } }).toArray();
+  } else {
+    list = memoryStore.sessions;
   }
-  return memoryStore.sessions;
+  const normSess = (s: string) => (s || '').toLowerCase().replace(/academic|session|\s/g, '');
+  const seen = new Set<string>();
+  return list.filter(s => {
+    const yr = s.year || s.name || '';
+    const key = normSess(yr);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export async function initializeResultRecordsForSession(sessionData: any) {
+  try {
+    const sessionYear = sessionData.year.includes('Academic Session') ? sessionData.year : `${sessionData.year} Academic Session`;
+    const students = await getAllStudents();
+    const terms = await getAllTerms();
+    const subjects = await getAllSubjects();
+
+    const normSess = (s: string) => (s || '').toLowerCase().replace(/academic|session|\s/g, '');
+    const getTermId = (t: string) => {
+      const l = (t || '').toLowerCase();
+      if (l.includes('first') || l.includes('1st') || l.includes('1')) return '1';
+      if (l.includes('second') || l.includes('2nd') || l.includes('2')) return '2';
+      if (l.includes('third') || l.includes('3rd') || l.includes('3')) return '3';
+      return l.replace(/\s/g, '');
+    };
+
+    const defaultSubjects = subjects.map((sub: any, idx: number) => ({
+      id: `sub-init-${idx + 1}`,
+      subject: sub.name || sub.subject || 'General Subject',
+      ca1: 0,
+      ca2: 0,
+      midterm: 0,
+      caScore: 0,
+      examScore: 0,
+      total: 0,
+      grade: 'F9',
+      remark: 'UNPUBLISHED',
+    }));
+
+    const termsToUse = terms.length > 0 ? terms : [
+      { name: 'First Term' },
+      { name: 'Second Term' },
+      { name: 'Third Term' },
+    ];
+
+    for (const st of students) {
+      const existingTermRecords = [...(st.termRecords || [])];
+      let hasChange = false;
+
+      for (const t of termsToUse) {
+        const termName = t.name;
+        const exists = existingTermRecords.some(r => 
+          normSess(r.academicSession) === normSess(sessionYear) && 
+          getTermId(r.term) === getTermId(termName)
+        );
+        if (!exists) {
+          existingTermRecords.push({
+            academicSession: sessionYear,
+            term: termName,
+            className: st.className || 'JSS 1 Gold',
+            subjects: [],
+            overallTotal: 0,
+            overallAverage: 0,
+            gpa: 0,
+            position: 'N/A',
+            totalInClass: 0,
+            status: 'Unpublished',
+            isPublished: false,
+            issueDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            updatedAt: new Date().toISOString(),
+          });
+          hasChange = true;
+        }
+      }
+
+      if (hasChange) {
+        await updateStudent(st.studentId, { termRecords: existingTermRecords });
+      }
+    }
+  } catch (err) {
+    console.error('[Session Initialization Error]:', err);
+  }
 }
 
 export async function createSession(sessionData: any) {
+  const { _id, ...cleanData } = sessionData || {};
   if (isMongoConnected && dbInstance) {
-    await dbInstance.collection('sessions').insertOne(sessionData);
+    await dbInstance.collection('sessions').insertOne({ ...cleanData });
   }
-  memoryStore.sessions.push(sessionData);
-  return sessionData;
+  memoryStore.sessions.push({ ...cleanData });
+  await initializeResultRecordsForSession(cleanData);
+  return cleanData;
 }
 
 export async function updateSession(id: string, updates: any) {
@@ -289,18 +381,110 @@ export async function deleteSession(id: string) {
 
 // Terms
 export async function getAllTerms() {
+  let list: any[] = [];
   if (isMongoConnected && dbInstance) {
-    return await dbInstance.collection('terms').find({}, { projection: { _id: 0 } }).toArray();
+    list = await dbInstance.collection('terms').find({}, { projection: { _id: 0 } }).toArray();
+  } else {
+    list = memoryStore.terms;
   }
-  return memoryStore.terms;
+  const getTermId = (t: string) => {
+    const l = (t || '').toLowerCase();
+    if (l.includes('first') || l.includes('1st') || l.includes('1')) return '1';
+    if (l.includes('second') || l.includes('2nd') || l.includes('2')) return '2';
+    if (l.includes('third') || l.includes('3rd') || l.includes('3')) return '3';
+    return l.replace(/\s/g, '');
+  };
+  const seen = new Set<string>();
+  return list.filter(t => {
+    const name = t.name || '';
+    const key = getTermId(name);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export async function initializeResultRecordsForTerm(termData: any) {
+  try {
+    const termName = termData.name;
+    const students = await getAllStudents();
+    const sessions = await getAllSessions();
+    const subjects = await getAllSubjects();
+
+    const normSess = (s: string) => (s || '').toLowerCase().replace(/academic|session|\s/g, '');
+    const getTermId = (t: string) => {
+      const l = (t || '').toLowerCase();
+      if (l.includes('first') || l.includes('1st') || l.includes('1')) return '1';
+      if (l.includes('second') || l.includes('2nd') || l.includes('2')) return '2';
+      if (l.includes('third') || l.includes('3rd') || l.includes('3')) return '3';
+      return l.replace(/\s/g, '');
+    };
+
+    const defaultSubjects = subjects.map((sub: any, idx: number) => ({
+      id: `sub-init-${idx + 1}`,
+      subject: sub.name || sub.subject || 'General Subject',
+      ca1: 0,
+      ca2: 0,
+      midterm: 0,
+      caScore: 0,
+      examScore: 0,
+      total: 0,
+      grade: 'F9',
+      remark: 'UNPUBLISHED',
+    }));
+
+    const sessionsToUse = sessions.length > 0 ? sessions : [
+      { year: '2024/2025' },
+      { year: '2025/2026' },
+    ];
+
+    for (const st of students) {
+      const existingTermRecords = [...(st.termRecords || [])];
+      let hasChange = false;
+
+      for (const s of sessionsToUse) {
+        const sessionYear = s.year.includes('Academic Session') ? s.year : `${s.year} Academic Session`;
+        const exists = existingTermRecords.some(r => 
+          normSess(r.academicSession) === normSess(sessionYear) && 
+          getTermId(r.term) === getTermId(termName)
+        );
+        if (!exists) {
+          existingTermRecords.push({
+            academicSession: sessionYear,
+            term: termName,
+            className: st.className || 'JSS 1 Gold',
+            subjects: [],
+            overallTotal: 0,
+            overallAverage: 0,
+            gpa: 0,
+            position: 'N/A',
+            totalInClass: 0,
+            status: 'Unpublished',
+            isPublished: false,
+            issueDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            updatedAt: new Date().toISOString(),
+          });
+          hasChange = true;
+        }
+      }
+
+      if (hasChange) {
+        await updateStudent(st.studentId, { termRecords: existingTermRecords });
+      }
+    }
+  } catch (err) {
+    console.error('[Term Initialization Error]:', err);
+  }
 }
 
 export async function createTerm(termData: any) {
+  const { _id, ...cleanData } = termData || {};
   if (isMongoConnected && dbInstance) {
-    await dbInstance.collection('terms').insertOne(termData);
+    await dbInstance.collection('terms').insertOne({ ...cleanData });
   }
-  memoryStore.terms.push(termData);
-  return termData;
+  memoryStore.terms.push({ ...cleanData });
+  await initializeResultRecordsForTerm(cleanData);
+  return cleanData;
 }
 
 export async function updateTerm(id: string, updates: any) {

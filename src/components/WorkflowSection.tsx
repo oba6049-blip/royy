@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { WORKFLOW_STEPS } from '../data/mockData';
 import {
   UploadCloud,
   CheckCircle2,
@@ -10,6 +9,39 @@ import {
   Sparkles,
   ArrowRight
 } from 'lucide-react';
+
+const WORKFLOW_STEPS = [
+  {
+    step: '01',
+    title: 'Administrator Uploads Results',
+    description: 'Teachers and exam officers upload verified grade spreadsheets into the encrypted admin portal.',
+    iconName: 'UploadCloud'
+  },
+  {
+    step: '02',
+    title: 'Automated Cryptographic Hash',
+    description: 'System automatically verifies grade weightings, computes GPAs, and generates unique QR security hashes.',
+    iconName: 'CheckCircle2'
+  },
+  {
+    step: '03',
+    title: 'Portal Release Notification',
+    description: 'Official results are published instantly. Parents and students receive notification alerts.',
+    iconName: 'Bell'
+  },
+  {
+    step: '04',
+    title: 'Enter Student ID & Term',
+    description: 'Users enter their official registration number and select session/term parameters.',
+    iconName: 'Search'
+  },
+  {
+    step: '05',
+    title: 'View & Print Authentic Slip',
+    description: 'Instantly view, download, or print official academic result slips with digital seals.',
+    iconName: 'FileCheck2'
+  }
+];
 
 export const WorkflowSection: React.FC = () => {
   const iconMap: Record<string, React.ReactNode> = {
