@@ -62,26 +62,44 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Filter and map students by selected class, session, and term
+  // Filter and map students by selected class, session, and term strictly from database records
   const mappedStudents = students.map(s => {
+    let rec: any = null;
     if (sessionSelected && termSelected && s.termRecords && Array.isArray(s.termRecords)) {
-      const rec = s.termRecords.find(
+      rec = s.termRecords.find(
         (r: any) => (r.academicSession === sessionSelected || r.academicSession?.includes(sessionSelected.split(' ')[0])) &&
              (r.term === termSelected || r.term?.includes(termSelected)) &&
              (classNameSelected === 'All' || !r.className || r.className === classNameSelected || r.className.includes(classNameSelected) || classNameSelected.includes(r.className))
       );
-      if (rec) {
-        const isPub = rec.isPublished !== false && rec.status !== 'Unpublished';
-        return {
-          ...s,
-          className: rec.className || s.className,
-          subjects: isPub ? (rec.subjects || []) : [],
-          overallTotal: isPub ? (rec.overallTotal ?? 0) : 0,
-          overallAverage: isPub ? (rec.overallAverage ?? 0) : 0,
-          averageScore: isPub ? (rec.overallAverage ?? 0) : 0,
-          gpa: isPub ? (rec.gpa ?? 0) : 0,
-        };
+    }
+
+    if (rec) {
+      const isPub = rec.isPublished !== false && rec.status !== 'Unpublished';
+      let actualAvg = 0;
+      let actualTot = 0;
+      if (Array.isArray(rec.subjects) && rec.subjects.length > 0) {
+        const scores = rec.subjects.map((sub: any) => Number(sub.score || sub.total || 0));
+        actualTot = scores.reduce((a: number, b: number) => a + b, 0);
+        actualAvg = Number((actualTot / scores.length).toFixed(1));
+      } else if (rec.overallAverage !== undefined && rec.overallAverage !== null) {
+        actualAvg = Number(rec.overallAverage);
+        actualTot = Number(rec.overallTotal || 0);
+      } else if (rec.averageScore !== undefined && rec.averageScore !== null) {
+        actualAvg = Number(rec.averageScore);
+      } else if (rec.gpa !== undefined && rec.gpa !== null) {
+        actualAvg = Number((rec.gpa * 25).toFixed(1));
       }
+
+      return {
+        ...s,
+        className: rec.className || s.className,
+        subjects: isPub ? (rec.subjects || []) : [],
+        overallTotal: isPub ? actualTot : 0,
+        overallAverage: isPub ? actualAvg : 0,
+        averageScore: isPub ? actualAvg : 0,
+        gpa: isPub ? (rec.gpa ?? (actualAvg > 0 ? Number((actualAvg / 25).toFixed(2)) : 0)) : 0,
+        hasScoreRecord: isPub && actualAvg > 0,
+      };
     }
 
     const matchesTopLevel = (!sessionSelected || s.academicSession === sessionSelected || s.session === sessionSelected) &&
@@ -90,13 +108,29 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
 
     if (matchesTopLevel) {
       const isPub = s.isPublished !== false && s.status !== 'Unpublished';
+      let actualAvg = 0;
+      let actualTot = 0;
+      if (Array.isArray(s.subjects) && s.subjects.length > 0) {
+        const scores = s.subjects.map((sub: any) => Number(sub.score || sub.total || 0));
+        actualTot = scores.reduce((a: number, b: number) => a + b, 0);
+        actualAvg = Number((actualTot / scores.length).toFixed(1));
+      } else if (s.overallAverage !== undefined && s.overallAverage !== null) {
+        actualAvg = Number(s.overallAverage);
+        actualTot = Number(s.overallTotal || 0);
+      } else if (s.averageScore !== undefined && s.averageScore !== null) {
+        actualAvg = Number(s.averageScore);
+      } else if (s.gpa !== undefined && s.gpa !== null) {
+        actualAvg = Number((s.gpa * 25).toFixed(1));
+      }
+
       return {
         ...s,
         subjects: isPub ? (s.subjects || []) : [],
-        overallTotal: isPub ? (s.overallTotal ?? 0) : 0,
-        overallAverage: isPub ? (s.overallAverage ?? 0) : 0,
-        averageScore: isPub ? (s.overallAverage ?? 0) : 0,
-        gpa: isPub ? (s.gpa ?? 0) : 0,
+        overallTotal: isPub ? actualTot : 0,
+        overallAverage: isPub ? actualAvg : 0,
+        averageScore: isPub ? actualAvg : 0,
+        gpa: isPub ? (s.gpa ?? (actualAvg > 0 ? Number((actualAvg / 25).toFixed(2)) : 0)) : 0,
+        hasScoreRecord: isPub && actualAvg > 0,
       };
     }
 
@@ -107,6 +141,7 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
       overallAverage: 0,
       averageScore: 0,
       gpa: 0,
+      hasScoreRecord: false,
     };
   });
 
@@ -114,10 +149,10 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
     return classNameSelected === 'All' || s.className === classNameSelected || s.className?.includes(classNameSelected);
   });
 
-  // Sort by score/average descending to derive rank
+  // Sort by score/average descending to derive rank (scored students first)
   const rankedStudents = [...classStudents].sort((a, b) => {
-    const scoreA = Number(a.averageScore || a.overallAverage || (a.gpa ? a.gpa * 25 : 0)) || 0;
-    const scoreB = Number(b.averageScore || b.overallAverage || (b.gpa ? b.gpa * 25 : 0)) || 0;
+    const scoreA = Number(a.averageScore || a.overallAverage || 0);
+    const scoreB = Number(b.averageScore || b.overallAverage || 0);
     return scoreB - scoreA;
   });
 
@@ -126,14 +161,14 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
     new Set(subjectList.map(s => s.teacher).filter(Boolean))
   );
 
-  // Class statistics
+  // Class statistics calculated strictly from database
   const totalStudents = rankedStudents.length;
-  const avgScoresList = rankedStudents.map(s => Number(s.averageScore || s.overallAverage || (s.gpa ? s.gpa * 25 : 75)) || 75);
-  const classAverageScore = totalStudents > 0 
-    ? (avgScoresList.reduce((acc, curr) => acc + curr, 0) / totalStudents).toFixed(1)
+  const scoredStudents = rankedStudents.filter(s => Number(s.averageScore || s.overallAverage || 0) > 0);
+  const classAverageScore = scoredStudents.length > 0 
+    ? (scoredStudents.reduce((acc, curr) => acc + Number(curr.averageScore || curr.overallAverage || 0), 0) / scoredStudents.length).toFixed(1)
     : '0.0';
-  const gsCount = rankedStudents.filter(s => (Number(s.averageScore || s.overallAverage || 75) >= 50)).length;
-  const passRate = totalStudents > 0 ? ((gsCount / totalStudents) * 100).toFixed(1) : '100.0';
+  const gsCount = scoredStudents.filter(s => Number(s.averageScore || s.overallAverage || 0) >= 50).length;
+  const passRate = scoredStudents.length > 0 ? ((gsCount / scoredStudents.length) * 100).toFixed(1) : '0.0';
 
   const handlePrint = () => {
     window.print();
@@ -142,9 +177,10 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
   const handleExportCSV = () => {
     const headers = ['Rank,Student ID,Full Name,Class,Gender,Average Score (%),Standing,Class Teacher'];
     const rows = rankedStudents.map((st, idx) => {
-      const avg = Number(st.averageScore || st.overallAverage || (st.gpa ? st.gpa * 25 : 75)).toFixed(1);
-      const isGS = Number(avg) >= 50;
-      return `"${idx + 1}","${st.studentId || ''}","${st.name || st.fullName || ''}","${st.className || classNameSelected}","${st.gender || 'N/A'}","${avg}%","${isGS ? 'GS (Good Standing)' : 'NGS'}","${classTeacherName}"`;
+      const avgNum = Number(st.averageScore || st.overallAverage || 0);
+      const avgText = avgNum > 0 ? `${avgNum.toFixed(1)}%` : '0.0%';
+      const isGS = avgNum >= 50;
+      return `"${idx + 1}","${st.studentId || ''}","${st.fullName || (st as any).name || ''}","${st.className || classNameSelected}","${st.gender || 'N/A'}","${avgText}","${avgNum > 0 ? (isGS ? 'GS (Good Standing)' : 'NGS') : 'Pending'}","${classTeacherName || 'Unassigned'}"`;
     });
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join('\n'), ...rows].join('\n');
@@ -303,40 +339,47 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
               <tbody className="divide-y divide-black font-normal">
                 {rankedStudents.length > 0 ? (
                   rankedStudents.map((st, idx) => {
-                    const avgVal = Number(st.averageScore || st.overallAverage || (st.gpa ? st.gpa * 25 : 75));
+                    const avgVal = Number(st.averageScore || st.overallAverage || 0);
+                    const hasScore = avgVal > 0;
                     const isGS = avgVal >= 50;
 
-                    let remark = 'Pass / Good Standing';
-                    if (avgVal >= 85) remark = 'Distinction / Excellent';
-                    else if (avgVal >= 70) remark = 'Very Good Performance';
-                    else if (avgVal >= 50) remark = 'Credit Pass';
-                    else remark = 'Needs Academic Support';
+                    let remark = 'Pending Assessment';
+                    if (hasScore) {
+                      if (avgVal >= 85) remark = 'Distinction / Excellent';
+                      else if (avgVal >= 70) remark = 'Very Good Performance';
+                      else if (avgVal >= 50) remark = 'Credit Pass';
+                      else remark = 'Needs Academic Support';
+                    }
 
                     return (
                       <tr key={st.studentId || idx}>
                         <td className="border border-black text-center font-bold font-mono align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
-                          {idx === 0 ? '1st' : idx === 1 ? '2nd' : idx === 2 ? '3rd' : `${idx + 1}th`}
+                          {hasScore ? (idx === 0 ? '1st' : idx === 1 ? '2nd' : idx === 2 ? '3rd' : `${idx + 1}th`) : '—'}
                         </td>
                         <td className="border border-black text-center font-mono font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
-                          {st.studentId || `STU00${idx + 1}`}
+                          {st.studentId || '—'}
                         </td>
                         <td className="border border-black text-left uppercase font-bold align-middle" style={{ padding: '6px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>
-                          {st.name || st.fullName || 'Student Record'}
+                          {st.fullName || (st as any).name || 'Unnamed Student'}
                         </td>
                         <td className="border border-black text-center uppercase align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
-                          {st.gender || 'M/F'}
+                          {st.gender || 'N/A'}
                         </td>
                         <td className="border border-black text-center font-bold uppercase align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
                           {st.className || classNameSelected}
                         </td>
                         <td className="border border-black text-center font-mono font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
-                          {avgVal.toFixed(1)}%
+                          {hasScore ? `${avgVal.toFixed(1)}%` : '0.0%'}
                         </td>
                         <td className="border border-black text-center font-bold align-middle" style={{ padding: '6px 4px', lineHeight: 'normal', verticalAlign: 'middle' }}>
-                          {isGS ? (
-                            <span className="text-black font-extrabold">GS</span>
+                          {hasScore ? (
+                            isGS ? (
+                              <span className="text-black font-extrabold">GS</span>
+                            ) : (
+                              <span className="text-black font-bold">NGS</span>
+                            )
                           ) : (
-                            <span className="text-black font-bold">NGS</span>
+                            <span className="text-slate-500 font-normal">Pending</span>
                           )}
                         </td>
                         <td className="border border-black text-left text-[10px] align-middle" style={{ padding: '6px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>
@@ -348,7 +391,7 @@ export const ClassBroadsheetModal: React.FC<ClassBroadsheetModalProps> = ({
                 ) : (
                   <tr>
                     <td colSpan={8} className="p-4 text-center font-bold text-slate-500 uppercase tracking-wider border border-black align-middle" style={{ padding: '12px 8px', lineHeight: 'normal', verticalAlign: 'middle' }}>
-                      No registered students found for class stream: {classNameSelected}.
+                      No registered students found in database for class stream: {classNameSelected}.
                     </td>
                   </tr>
                 )}

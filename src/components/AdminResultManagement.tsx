@@ -1053,11 +1053,11 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
       {/* STUDENT INFORMATION CARD */}
       {/* ========================================================================= */}
       {selectedStudent ? (
-        <div className="bg-gradient-to-br from-[#1E3A8A] via-[#1E3A8A] to-[#172554] p-6 sm:p-7 rounded-3xl text-white shadow-xl border border-blue-700/60 space-y-6">
+        <div className="bg-white p-6 sm:p-7 rounded-3xl text-slate-800 shadow-sm border border-slate-200 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-center gap-4 sm:gap-5">
               {/* Passport Photograph Container */}
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-white/40 bg-blue-950/60 shrink-0 shadow-lg relative">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 shrink-0 shadow-sm relative">
                 <img
                   src={selectedStudent.passportUrl || getAvatarFallback(selectedStudent.fullName || (selectedStudent as any).name)}
                   alt={selectedStudent.fullName || (selectedStudent as any).name}
@@ -1071,49 +1071,49 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
               {/* Name & Academic Details */}
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h3 className="text-xl sm:text-2xl font-black font-['Plus_Jakarta_Sans'] tracking-tight text-white capitalize">
+                  <h3 className="text-xl sm:text-2xl font-black font-['Plus_Jakarta_Sans'] tracking-tight text-[#0F172A] capitalize">
                     {selectedStudent.fullName || (selectedStudent as any).name}
                   </h3>
-                  <span className="px-3 py-1 rounded-full text-xs font-mono font-black bg-[#F59E0B] text-slate-950 shadow-xs">
+                  <span className="px-3 py-1 rounded-full text-xs font-mono font-black bg-blue-50 text-[#1E3A8A] border border-blue-200 shadow-2xs">
                     {selectedStudent.studentId}
                   </span>
                   {selectedStudent.status && selectedStudent.status !== 'Draft' && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/25 text-emerald-200 border border-emerald-400/40">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {selectedStudent.status}
                     </span>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-blue-100">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-600">
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="text-blue-200">Current Class:</span>
-                    <strong className="text-white font-bold bg-white/15 px-2 py-0.5 rounded-md">{selectedStudent.className}</strong>
+                    <span className="text-slate-500 font-medium">Current Class:</span>
+                    <strong className="text-[#0F172A] font-bold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">{selectedStudent.className}</strong>
                   </span>
-                  <span className="text-blue-300">•</span>
+                  <span className="text-slate-300">•</span>
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="text-blue-200">Session:</span>
-                    <strong className="text-white font-bold">{selectedStudent.academicSession || '2024/2025 Academic Session'}</strong>
+                    <span className="text-slate-500 font-medium">Session:</span>
+                    <strong className="text-[#0F172A] font-bold">{selectedStudent.academicSession || '2024/2025 Academic Session'}</strong>
                   </span>
-                  <span className="text-blue-300">•</span>
+                  <span className="text-slate-300">•</span>
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="text-blue-200">Gender:</span>
-                    <strong className="text-white font-bold">{selectedStudent.gender || 'Male'}</strong>
+                    <span className="text-slate-500 font-medium">Gender:</span>
+                    <strong className="text-[#0F172A] font-bold">{selectedStudent.gender || 'Male'}</strong>
                   </span>
                   {selectedStudent.house && (
                     <>
-                      <span className="text-blue-300">•</span>
+                      <span className="text-slate-300">•</span>
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="text-blue-200">House:</span>
-                        <strong className="text-white font-bold">{selectedStudent.house}</strong>
+                        <span className="text-slate-500 font-medium">House:</span>
+                        <strong className="text-[#0F172A] font-bold">{selectedStudent.house}</strong>
                       </span>
                     </>
                   )}
                   {selectedStudent.dateOfBirth && (
                     <>
-                      <span className="text-blue-300">•</span>
+                      <span className="text-slate-300">•</span>
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="text-blue-200">DOB:</span>
-                        <strong className="text-white font-bold">{selectedStudent.dateOfBirth}</strong>
+                        <span className="text-slate-500 font-medium">DOB:</span>
+                        <strong className="text-[#0F172A] font-bold">{selectedStudent.dateOfBirth}</strong>
                       </span>
                     </>
                   )}
@@ -1124,26 +1124,26 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
             {/* KPI Summary Indicators & Actions */}
             <div className="flex items-center gap-3 flex-wrap">
               {/* Published Terms Count */}
-              <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20 text-center min-w-[110px] shadow-xs">
-                <span className="text-[10px] uppercase text-blue-100 font-bold block tracking-wider">
+              <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-200 text-center min-w-[110px] shadow-2xs">
+                <span className="text-[10px] uppercase text-slate-500 font-bold block tracking-wider">
                   Published Terms
                 </span>
                 <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                  <span className="text-xl font-black font-mono text-white">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xl font-black font-mono text-[#1E3A8A]">
                     {summaryMetrics.totalPublishedTerms}
                   </span>
                 </div>
               </div>
 
               {/* Cumulative Grade Mean */}
-              <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20 text-center min-w-[130px] shadow-xs">
-                <span className="text-[10px] uppercase text-blue-100 font-bold block tracking-wider">
+              <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-200 text-center min-w-[130px] shadow-2xs">
+                <span className="text-[10px] uppercase text-slate-500 font-bold block tracking-wider">
                   Cumulative Mean
                 </span>
                 <div className="flex items-center justify-center gap-1.5 mt-1">
                   <Award className="w-4 h-4 text-[#F59E0B]" />
-                  <span className="text-xl font-black font-mono text-[#F59E0B]">
+                  <span className="text-xl font-black font-mono text-emerald-600">
                     {summaryMetrics.cumulativeAverage > 0 ? `${summaryMetrics.cumulativeAverage}%` : '—'}
                   </span>
                 </div>
@@ -1153,7 +1153,7 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
               <button
                 type="button"
                 onClick={() => setIsPromoteModalOpen(true)}
-                className="px-4 py-3 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-black text-xs rounded-2xl cursor-pointer flex items-center gap-2 shadow-md hover:shadow-lg transition-all self-stretch md:self-auto justify-center"
+                className="px-4 py-3 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-black text-xs rounded-2xl cursor-pointer flex items-center gap-2 shadow-sm hover:shadow-md transition-all self-stretch md:self-auto justify-center"
               >
                 <GraduationCap className="w-4 h-4 text-slate-950" />
                 <span>Promote Student</span>
@@ -1164,9 +1164,9 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => onEditStudentProfile(selectedStudent)}
-                  className="px-3.5 py-3 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-2xl cursor-pointer flex items-center gap-2 border border-white/30 transition-all self-stretch md:self-auto justify-center shadow-xs hover:border-white/50"
+                  className="px-3.5 py-3 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-2xl cursor-pointer flex items-center gap-2 border border-slate-200 hover:border-slate-300 transition-all self-stretch md:self-auto justify-center shadow-2xs"
                 >
-                  <FileEdit className="w-4 h-4 text-white" />
+                  <FileEdit className="w-4 h-4 text-slate-600" />
                   <span>Edit Profile</span>
                 </button>
               )}
@@ -1492,22 +1492,22 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
       {/* ========================================================================= */}
       {selectedStudent && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-4">
-          <div className="bg-gradient-to-r from-[#1E3A8A] to-[#172554] text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-900/40">
+          <div className="bg-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/10 text-[#F59E0B] flex items-center justify-center font-bold border border-white/15">
-                <GraduationCap className="w-5 h-5 text-[#F59E0B]" />
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center font-bold border border-blue-100">
+                <GraduationCap className="w-5 h-5 text-[#1E3A8A]" />
               </div>
               <div>
-                <h3 className="text-sm font-black font-['Plus_Jakarta_Sans'] uppercase tracking-wider text-white">
+                <h3 className="text-sm font-black font-['Plus_Jakarta_Sans'] uppercase tracking-wider text-[#0F172A]">
                   Academic Journey & Terminal Records
                 </h3>
-                <p className="text-xs text-blue-100">
-                  Sequential 3-term records for <strong className="text-white">{selectedStudent.fullName || (selectedStudent as any).name}</strong> (First, Second, and Third Term for each enrolled class level)
+                <p className="text-xs text-slate-500">
+                  Sequential 3-term records for <strong className="text-[#0F172A]">{selectedStudent.fullName || (selectedStudent as any).name}</strong> (First, Second, and Third Term for each enrolled class level)
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
               <button
                 type="button"
                 onClick={() => {
@@ -1519,22 +1519,22 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
                   setNewStageSession(selectedStudent.academicSession || activeAdminSessionYear);
                   setIsAddStageModalOpen(true);
                 }}
-                className="px-3.5 py-1.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1.5 border border-white/20 transition-all shadow-xs"
+                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1.5 border border-slate-200 transition-all shadow-2xs"
                 title="Add a new class level (e.g. JSS 2, SSS 1) to this student's journey"
               >
-                <PlusCircle className="w-3.5 h-3.5 text-blue-300" />
+                <PlusCircle className="w-3.5 h-3.5 text-slate-600" />
                 <span>+ Add Class Level</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsPromoteModalOpen(true)}
-                className="px-3.5 py-1.5 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs transition-all"
+                className="px-3.5 py-1.5 bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs transition-all"
               >
-                <GraduationCap className="w-3.5 h-3.5" />
+                <GraduationCap className="w-3.5 h-3.5 text-slate-950" />
                 <span>Promote Student</span>
               </button>
-              <span className="text-[11px] font-mono font-bold bg-white/10 px-3 py-1.5 rounded-xl text-slate-200">
+              <span className="text-[11px] font-mono font-bold bg-blue-50 px-3 py-1.5 rounded-xl text-[#1E3A8A] border border-blue-100">
                 {academicJourneyRows.length} Term Records
               </span>
             </div>

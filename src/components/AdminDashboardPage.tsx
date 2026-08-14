@@ -4118,15 +4118,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           {/* TAB 13: GENERATE REPORTS & CLASS BROADSHEETS */}
           {activeTab === 'reports' && (() => {
             const currentClassInfo = classList.find(c => c.name === selectedReportClass);
-            const currentClassTeacher = currentClassInfo?.teacher || 'Form Master';
+            const currentClassTeacher = currentClassInfo?.teacher || 'Unassigned';
             
             const classFilteredStudents = students.filter(s => {
+              // Find matching term record from database
               const matchingRecord = s.termRecords?.find(
                 r => (r.academicSession === selectedReportSession || r.academicSession?.includes(selectedReportSession.split(' ')[0])) &&
                      (r.term === selectedReportTerm || r.term?.includes(selectedReportTerm))
               );
 
-              const activeClass = matchingRecord ? matchingRecord.className : s.className;
+              const activeClass = matchingRecord?.className || s.className;
               const matchesClass = selectedReportClass === 'All' || activeClass === selectedReportClass || activeClass?.includes(selectedReportClass);
               const matchesSearch = !reportSearchQuery || (s.fullName || (s as any).name || '').toLowerCase().includes(reportSearchQuery.toLowerCase()) || (s.studentId || '').toLowerCase().includes(reportSearchQuery.toLowerCase());
 
@@ -4138,48 +4139,92 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               return matchesClass && matchesSearch && hasResultForTerm;
             });
 
-            // Map each student to their exact term record for selected session and term
+            // Map each student to their exact term record for selected session and term from database
             const mappedClassStudents = classFilteredStudents.map(s => {
               const rec = s.termRecords?.find(
                 r => (r.academicSession === selectedReportSession || r.academicSession?.includes(selectedReportSession.split(' ')[0])) &&
                      (r.term === selectedReportTerm || r.term?.includes(selectedReportTerm))
               );
+              
               if (rec) {
+                let actualAverage = 0;
+                let actualTotal = 0;
+                if (Array.isArray(rec.subjects) && rec.subjects.length > 0) {
+                  const scores = rec.subjects.map((sub: any) => Number(sub.score || sub.total || 0));
+                  actualTotal = scores.reduce((a: number, b: number) => a + b, 0);
+                  actualAverage = Number((actualTotal / scores.length).toFixed(1));
+                } else if (rec.overallAverage !== undefined && rec.overallAverage !== null) {
+                  actualAverage = Number(rec.overallAverage);
+                  actualTotal = Number(rec.overallTotal || 0);
+                } else if (rec.averageScore !== undefined && rec.averageScore !== null) {
+                  actualAverage = Number(rec.averageScore);
+                } else if (rec.gpa !== undefined && rec.gpa !== null) {
+                  actualAverage = Number((rec.gpa * 25).toFixed(1));
+                }
+
                 return {
                   ...s,
                   className: rec.className || s.className,
-                  subjects: rec.subjects || s.subjects,
-                  overallTotal: rec.overallTotal ?? s.overallTotal,
-                  overallAverage: rec.overallAverage ?? s.overallAverage,
-                  averageScore: rec.overallAverage ?? s.averageScore,
-                  gpa: rec.gpa ?? s.gpa,
+                  subjects: rec.subjects || [],
+                  overallTotal: actualTotal,
+                  overallAverage: actualAverage,
+                  averageScore: actualAverage,
+                  gpa: rec.gpa ?? (actualAverage > 0 ? Number((actualAverage / 25).toFixed(2)) : 0),
+                  status: rec.status || s.status,
+                  isPublished: rec.isPublished ?? s.isPublished,
                 };
               }
-              return s;
+
+              // Top level database record
+              let actualAverage = 0;
+              let actualTotal = 0;
+              if (Array.isArray(s.subjects) && s.subjects.length > 0) {
+                const scores = s.subjects.map((sub: any) => Number(sub.score || sub.total || 0));
+                actualTotal = scores.reduce((a: number, b: number) => a + b, 0);
+                actualAverage = Number((actualTotal / scores.length).toFixed(1));
+              } else if (s.overallAverage !== undefined && s.overallAverage !== null) {
+                actualAverage = Number(s.overallAverage);
+                actualTotal = Number(s.overallTotal || 0);
+              } else if (s.averageScore !== undefined && s.averageScore !== null) {
+                actualAverage = Number(s.averageScore);
+              } else if (s.gpa !== undefined && s.gpa !== null) {
+                actualAverage = Number((s.gpa * 25).toFixed(1));
+              }
+
+              return {
+                ...s,
+                subjects: s.subjects || [],
+                overallTotal: actualTotal,
+                overallAverage: actualAverage,
+                averageScore: actualAverage,
+                gpa: s.gpa ?? (actualAverage > 0 ? Number((actualAverage / 25).toFixed(2)) : 0),
+              };
             });
 
-            // Sort by score for ranking
+            // Sort by score for ranking (highest scores first)
             const rankedClassStudents = [...mappedClassStudents].sort((a, b) => {
-              const scoreA = Number(a.averageScore || a.overallAverage || (a.gpa ? a.gpa * 25 : 0)) || 0;
-              const scoreB = Number(b.averageScore || b.overallAverage || (b.gpa ? b.gpa * 25 : 0)) || 0;
+              const scoreA = Number(a.averageScore || a.overallAverage || 0);
+              const scoreB = Number(b.averageScore || b.overallAverage || 0);
               return scoreB - scoreA;
             });
 
             const uniqueTeachers = Array.from(new Set(subjectList.map(s => s.teacher).filter(Boolean)));
-            const totalTeachersCount = uniqueTeachers.length > 0 ? uniqueTeachers.length : subjectList.length;
+            const totalTeachersCount = uniqueTeachers.length;
 
             const totalClassCount = classFilteredStudents.length;
-            const avgSum = classFilteredStudents.reduce((acc, s) => acc + (Number(s.averageScore || s.overallAverage || (s.gpa ? s.gpa * 25 : 0)) || 0), 0);
-            const classAvg = totalClassCount > 0 ? (avgSum / totalClassCount).toFixed(1) : '0.0';
-            const passCount = classFilteredStudents.filter(s => Number(s.averageScore || s.overallAverage || 0) >= 50).length;
-            const passRatePct = totalClassCount > 0 ? ((passCount / totalClassCount) * 100).toFixed(1) : '0.0';
+            const studentsWithScores = rankedClassStudents.filter(s => Number(s.averageScore || s.overallAverage || 0) > 0);
+            const avgSum = studentsWithScores.reduce((acc, s) => acc + Number(s.averageScore || s.overallAverage || 0), 0);
+            const classAvg = studentsWithScores.length > 0 ? (avgSum / studentsWithScores.length).toFixed(1) : '0.0';
+            const passCount = studentsWithScores.filter(s => Number(s.averageScore || s.overallAverage || 0) >= 50).length;
+            const passRatePct = studentsWithScores.length > 0 ? ((passCount / studentsWithScores.length) * 100).toFixed(1) : '0.0';
 
             const handleExportCSVReport = () => {
               const headers = ['Rank,Student ID,Full Name,Class,Gender,Average Score (%),Standing,Form Teacher'];
               const rows = rankedClassStudents.map((st, idx) => {
-                const avg = Number(st.averageScore || st.overallAverage || (st.gpa ? st.gpa * 25 : 0)).toFixed(1);
-                const isGS = Number(avg) >= 50;
-                return `"${idx + 1}","${st.studentId || ''}","${st.name || st.fullName || ''}","${st.className || selectedReportClass}","${st.gender || 'N/A'}","${avg}%","${isGS ? 'GS (Good Standing)' : 'NGS'}","${currentClassTeacher}"`;
+                const avgNum = Number(st.averageScore || st.overallAverage || 0);
+                const avgText = avgNum > 0 ? `${avgNum.toFixed(1)}%` : '0.0%';
+                const isGS = avgNum >= 50;
+                return `"${idx + 1}","${st.studentId || ''}","${st.fullName || (st as any).name || ''}","${st.className || selectedReportClass}","${st.gender || 'N/A'}","${avgText}","${avgNum > 0 ? (isGS ? 'GS (Good Standing)' : 'NGS') : 'Pending'}","${currentClassTeacher}"`;
               });
 
               const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join('\n'), ...rows].join('\n');
@@ -4204,7 +4249,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         Class Academic Reports & Master Broadsheets
                       </h2>
                       <p className="text-xs text-slate-500 mt-1">
-                        Select a class (e.g. JSS 1, JSS 2, SSS 1) to generate student score lists, teacher allocations, and printable master broadsheets.
+                        Select a class (e.g. JSS 1, JSS 2, SSS 1) to generate student score lists, teacher allocations, and printable master broadsheets strictly from database records.
                       </p>
                     </div>
 
@@ -4240,10 +4285,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         onChange={(e) => setSelectedReportClass(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                       >
-                        <option value="All">All Classes Stream ({students.length} Total Students)</option>
+                        <option value="All">All Classes Stream ({students.length} Total Students in Database)</option>
                         {allClassNames.map((cls) => (
                           <option key={cls} value={cls}>
-                            {cls} ({students.filter(s => s.className === cls || s.className?.includes(cls)).length} Students)
+                            {cls} ({students.filter(s => s.className === cls || s.className?.includes(cls)).length} Enrolled in DB)
                           </option>
                         ))}
                       </select>
@@ -4325,11 +4370,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-extrabold uppercase text-slate-400">Class Enrolled Students</span>
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400">Database Enrolled Students</span>
                       <Users className="w-4 h-4 text-blue-600" />
                     </div>
                     <p className="text-lg font-black text-[#0F172A]">{totalClassCount} Students</p>
-                    <p className="text-[11px] font-bold text-emerald-600">{passRatePct}% Good Standing (GS)</p>
+                    <p className="text-[11px] font-bold text-emerald-600">
+                      {studentsWithScores.length > 0 ? `${passRatePct}% Good Standing (GS)` : 'Pending Assessment'}
+                    </p>
                   </div>
 
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
@@ -4337,8 +4384,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       <span className="text-[10px] font-extrabold uppercase text-slate-400">Assigned Faculty Teachers</span>
                       <PenTool className="w-4 h-4 text-purple-600" />
                     </div>
-                    <p className="text-lg font-black text-[#0F172A]">{totalTeachersCount} Subject Instructors</p>
-                    <p className="text-[11px] font-bold text-slate-500">+ 1 Form Master Teacher</p>
+                    <p className="text-lg font-black text-[#0F172A]">{totalTeachersCount} Instructors</p>
+                    <p className="text-[11px] font-bold text-slate-500">Curriculum Faculty</p>
                   </div>
 
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
@@ -4346,7 +4393,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       <span className="text-[10px] font-extrabold uppercase text-slate-400">Class Average Score</span>
                       <Award className="w-4 h-4 text-[#F59E0B]" />
                     </div>
-                    <p className="text-lg font-black text-[#0F172A]">{classAvg}%</p>
+                    <p className="text-lg font-black text-[#0F172A]">
+                      {studentsWithScores.length > 0 ? `${classAvg}%` : '0.0%'}
+                    </p>
                     <p className="text-[11px] font-bold text-slate-500">{selectedReportTerm}</p>
                   </div>
                 </div>
@@ -4359,7 +4408,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       Assigned Subject Teachers for {selectedReportClass}
                     </h3>
                     <span className="text-[10px] font-extrabold bg-blue-50 text-[#1E3A8A] px-2.5 py-1 rounded-full border border-blue-100">
-                      {subjectList.length} Core Curriculum Subjects
+                      {subjectList.length} Core Curriculum Subjects in Database
                     </span>
                   </div>
 
@@ -4372,13 +4421,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                             <span className="text-[10px] text-slate-500 font-mono">{sub.code} ({sub.category || 'Core'})</span>
                           </div>
                           <span className="text-[11px] font-bold text-[#1E3A8A] bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
-                            {sub.teacher || 'Assigned Instructor'}
+                            {sub.teacher || 'Unassigned'}
                           </span>
                         </div>
                       ))
                     ) : (
                       <div className="col-span-3 p-4 text-center text-xs text-slate-500 italic bg-slate-50 rounded-xl">
-                        No subject teachers configured yet. Add subjects in the "Manage Subjects" tab to assign teachers.
+                        No subject teachers configured in database yet. Add subjects in the "Manage Subjects" tab.
                       </div>
                     )}
                   </div>
@@ -4393,7 +4442,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         Student Scores & Academic Positions — {selectedReportClass}
                       </h3>
                       <p className="text-[11px] text-slate-500">
-                        Ranked automatically by total average score for {selectedReportTerm}.
+                        Computed strictly from database assessment records for {selectedReportTerm} ({selectedReportSession}).
                       </p>
                     </div>
 
@@ -4421,27 +4470,36 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                         {rankedClassStudents.length > 0 ? (
                           rankedClassStudents.map((st, idx) => {
-                            const avg = Number(st.averageScore || st.overallAverage || (st.gpa ? st.gpa * 25 : 75)).toFixed(1);
-                            const isGS = Number(avg) >= 50;
+                            const avg = Number(st.averageScore || st.overallAverage || 0);
+                            const hasScore = avg > 0;
+                            const isGS = avg >= 50;
 
                             return (
                               <tr key={st.studentId || idx} className="hover:bg-blue-50/40 transition-colors">
                                 <td className="p-3.5 text-center font-black text-[#1E3A8A]">
-                                  {idx === 0 ? '1st 🥇' : idx === 1 ? '2nd 🥈' : idx === 2 ? '3rd 🥉' : `${idx + 1}th`}
+                                  {hasScore ? (idx === 0 ? '1st 🥇' : idx === 1 ? '2nd 🥈' : idx === 2 ? '3rd 🥉' : `${idx + 1}th`) : '—'}
                                 </td>
-                                <td className="p-3.5 font-mono text-[#1E3A8A] font-bold">{st.studentId || `STU00${idx + 1}`}</td>
-                                <td className="p-3.5 font-bold text-[#0F172A]">{st.name || st.fullName}</td>
+                                <td className="p-3.5 font-mono text-[#1E3A8A] font-bold">{st.studentId || '—'}</td>
+                                <td className="p-3.5 font-bold text-[#0F172A]">{st.fullName || (st as any).name || 'Unnamed Student'}</td>
                                 <td className="p-3.5">{st.className || selectedReportClass}</td>
-                                <td className="p-3.5 text-center uppercase font-bold text-slate-500">{st.gender || 'M/F'}</td>
-                                <td className="p-3.5 text-center font-black font-mono text-emerald-700">{avg}%</td>
+                                <td className="p-3.5 text-center uppercase font-bold text-slate-500">{st.gender || 'N/A'}</td>
+                                <td className="p-3.5 text-center font-black font-mono text-emerald-700">
+                                  {hasScore ? `${avg.toFixed(1)}%` : '0.0%'}
+                                </td>
                                 <td className="p-3.5 text-center">
-                                  {isGS ? (
-                                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" /> GS
-                                    </span>
+                                  {hasScore ? (
+                                    isGS ? (
+                                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> GS
+                                      </span>
+                                    ) : (
+                                      <span className="bg-amber-50 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200">
+                                        NGS
+                                      </span>
+                                    )
                                   ) : (
-                                    <span className="bg-amber-50 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200">
-                                      NGS
+                                    <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-slate-200">
+                                      Pending
                                     </span>
                                   )}
                                 </td>
@@ -4459,7 +4517,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         ) : (
                           <tr>
                             <td colSpan={8} className="p-8 text-center text-slate-500">
-                              No student records found matching "{selectedReportClass}". Register students in the "Manage Students" tab to populate this class.
+                              No student records found in database for "{selectedReportClass}". Register students in the "Manage Students" tab to populate this class.
                             </td>
                           </tr>
                         )}
