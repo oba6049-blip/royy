@@ -8,6 +8,92 @@ export interface DynamicRankResult {
 }
 
 /**
+ * Robust helper to determine if a student is enrolled in a specific class or stream.
+ */
+export function isStudentInClass(
+  studentClassName?: string | null,
+  classTarget?: string | { name: string; arm?: string } | null
+): boolean {
+  if (!studentClassName || !classTarget) return false;
+
+  const targetName = typeof classTarget === 'string' ? classTarget : (classTarget.name || '');
+  const targetArm = typeof classTarget === 'string' ? '' : (classTarget.arm || '');
+
+  const rawStudent = String(studentClassName).trim();
+  const rawTarget = String(targetName).trim();
+
+  // 1. Direct match (case-insensitive)
+  if (rawStudent.toLowerCase() === rawTarget.toLowerCase()) {
+    return true;
+  }
+
+  // 2. Direct match with combined name + arm (e.g. "JSS 1" + "Gold" -> "JSS 1 Gold")
+  if (targetArm) {
+    const combined = `${rawTarget} ${targetArm}`.trim();
+    if (rawStudent.toLowerCase() === combined.toLowerCase()) {
+      return true;
+    }
+  }
+
+  // 3. Normalized string match
+  const normalize = (str: string) =>
+    str
+      .toLowerCase()
+      .replace(/senior secondary school\s*/g, 'sss ')
+      .replace(/junior secondary school\s*/g, 'jss ')
+      .replace(/[^a-z0-9]/g, '');
+
+  const normStudent = normalize(rawStudent);
+  const normTarget = normalize(rawTarget);
+  const normCombined = targetArm ? normalize(`${rawTarget}${targetArm}`) : '';
+
+  if (normStudent === normTarget || (normCombined && normStudent === normCombined)) {
+    return true;
+  }
+
+  // 4. Check level prefix separation: e.g. "jss1" vs "jss2", "sss1" vs "sss2"
+  const extractLevel = (norm: string) => {
+    const match = norm.match(/(jss|sss)[123]/);
+    return match ? match[0] : null;
+  };
+
+  const studentLevel = extractLevel(normStudent);
+  const targetLevel = extractLevel(normTarget) || (normCombined ? extractLevel(normCombined) : null);
+
+  // If different academic levels (e.g. JSS 1 vs JSS 2), they CANNOT match!
+  if (studentLevel && targetLevel && studentLevel !== targetLevel) {
+    return false;
+  }
+
+  // 5. If same level, ensure arm/stream match
+  const extractArm = (norm: string, level: string | null) => {
+    if (!level) return '';
+    return norm.replace(level, '');
+  };
+
+  const studentArm = extractArm(normStudent, studentLevel);
+  const targetArmNorm = targetArm ? normalize(targetArm) : extractArm(normTarget, targetLevel);
+
+  if (studentLevel && targetLevel && studentLevel === targetLevel) {
+    if (studentArm && targetArmNorm) {
+      return studentArm === targetArmNorm;
+    }
+    if (!studentArm && !targetArmNorm) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Helper to determine if two class names represent the exact same class/stream
+ */
+export const isSameClass = (classA: string, classB: string): boolean => {
+  return isStudentInClass(classA, classB);
+};
+
+/**
  * Calculates a student's class position dynamically relative to all students in the same class.
  * Ensures that the student with the highest average score gets 1st position (e.g., Adeyemi Faridah),
  * and other students get their exact position relative to all peers in the class.
@@ -74,84 +160,7 @@ export function calculateDynamicStudentPosition(
 
   const allPool = Array.from(poolOfStudentsMap.values());
 
-  // 3. Helper to determine if two class names represent the same class/stream
-  const isSameClass = (classA: string, classB: string): boolean => {
-    if (!classA || !classB) return true;
-
-    const rawA = classA.trim().toLowerCase();
-    const rawB = classB.trim().toLowerCase();
-
-    if (rawA === rawB) return true;
-
-    const normA = rawA
-      .replace(/senior secondary school\s*/g, 'sss ')
-      .replace(/junior secondary school\s*/g, 'jss ')
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    const normB = rawB
-      .replace(/senior secondary school\s*/g, 'sss ')
-      .replace(/junior secondary school\s*/g, 'jss ')
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    if (normA === normB) return true;
-
-    // 1. Grade level check
-    const levels = ['sss 3', 'sss 2', 'sss 1', 'jss 3', 'jss 2', 'jss 1'];
-    let levelA = '';
-    let levelB = '';
-
-    for (const lvl of levels) {
-      if (normA.includes(lvl)) levelA = lvl;
-      if (normB.includes(lvl)) levelB = lvl;
-    }
-
-    if (levelA && levelB && levelA !== levelB) {
-      return false;
-    }
-
-    // 2. Track / Stream check
-    const tracks = ['science', 'arts', 'commercial', 'vocational'];
-    let trackA = '';
-    let trackB = '';
-
-    for (const trk of tracks) {
-      if (normA.includes(trk)) trackA = trk;
-      if (normB.includes(trk)) trackB = trk;
-    }
-
-    if (trackA && trackB && trackA !== trackB) {
-      return false;
-    }
-
-    // 3. Arm / Letter check (Arm A vs Arm B)
-    const isArmA_A = /\b(a|arm a|science a|arts a)\b/.test(normA);
-    const isArmB_A = /\b(b|arm b|science b|arts b)\b/.test(normA);
-
-    const isArmA_B = /\b(a|arm a|science a|arts a)\b/.test(normB);
-    const isArmB_B = /\b(b|arm b|science b|arts b)\b/.test(normB);
-
-    if ((isArmA_A && isArmB_B) || (isArmB_A && isArmA_B)) {
-      return false;
-    }
-
-    if ((isArmB_A && !isArmB_B) || (isArmB_B && !isArmB_A)) {
-      return false;
-    }
-
-    if (levelA && levelB && levelA === levelB) {
-      if (!trackA || !trackB || trackA === trackB) {
-        return true;
-      }
-    }
-
-    return normA.includes(normB) || normB.includes(normA);
-  };
-
-  // 4. Filter pool for students in the same class / stream
+  // 3. Filter pool for students in the same class / stream
   const currentClassRaw = (currentStudent.className || '').trim();
   const classPeers = allPool.filter(st => {
     if (!st) return false;
@@ -159,7 +168,7 @@ export function calculateDynamicStudentPosition(
     return isSameClass(currentClassRaw, stClassRaw);
   });
 
-  // 5. Calculate computed average score for each peer using ONLY valid scored subjects
+  // 4. Calculate computed average score for each peer using ONLY valid scored subjects
   const classPeersWithScores = classPeers.map(st => {
     if (st.studentId && st.studentId.toUpperCase() === currentKey) {
       return {
@@ -197,10 +206,10 @@ export function calculateDynamicStudentPosition(
     };
   });
 
-  // 6. Sort class peers by average score descending (highest score = 1st rank)
+  // 5. Sort class peers by average score descending (highest score = 1st rank)
   classPeersWithScores.sort((a, b) => b.averageScore - a.averageScore);
 
-  // 7. Find rank index of current student
+  // 6. Find rank index of current student
   const rankIdx = classPeersWithScores.findIndex(
     s => s.studentId && s.studentId.toUpperCase() === currentKey
   );

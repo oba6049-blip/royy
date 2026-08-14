@@ -40,6 +40,7 @@ import {
 } from '../types';
 import { api } from '../services/api';
 import { StudentPromotionModal } from './StudentPromotionModal';
+import { calculateAgeFromDob, formatDateDisplay } from '../utils/studentDateUtils';
 
 // Helper for avatar fallback
 const getAvatarFallback = (name: string) => {
@@ -1113,7 +1114,14 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
                       <span className="text-slate-300">•</span>
                       <span className="inline-flex items-center gap-1.5">
                         <span className="text-slate-500 font-medium">DOB:</span>
-                        <strong className="text-[#0F172A] font-bold">{selectedStudent.dateOfBirth}</strong>
+                        <strong className="text-[#0F172A] font-bold">{formatDateDisplay(selectedStudent.dateOfBirth)}</strong>
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="text-slate-500 font-medium">Age:</span>
+                        <strong className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          {selectedStudent.age || calculateAgeFromDob(selectedStudent.dateOfBirth)?.ageText || '—'}
+                        </strong>
                       </span>
                     </>
                   )}

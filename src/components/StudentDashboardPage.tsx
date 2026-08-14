@@ -5,6 +5,7 @@ import { SchoolLogo } from './SchoolLogo';
 import { api } from '../services/api';
 import { filterStudentSubjectsByAdmin } from '../utils/subjectUtils';
 import { calculateDynamicStudentPosition } from '../utils/studentRanking';
+import { calculateAgeFromDob, formatDateDisplay } from '../utils/studentDateUtils';
 import {
   History,
   BookOpen,
@@ -474,7 +475,17 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                   <span>Date of Birth</span>
                 </span>
-                <span className="font-bold text-slate-900">{currentStudent.dateOfBirth || '14 May 2010'}</span>
+                <span className="font-bold text-slate-900">{formatDateDisplay(currentStudent.dateOfBirth)}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Student Age</span>
+                </span>
+                <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  {currentStudent.age || calculateAgeFromDob(currentStudent.dateOfBirth)?.ageText || '—'}
+                </span>
               </div>
             </div>
 

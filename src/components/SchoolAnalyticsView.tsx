@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { StudentResult, SchoolHeaderInfo } from '../types';
+import { isStudentInClass } from '../utils/studentRanking';
 import {
   TrendingUp,
   Users,
@@ -144,8 +145,9 @@ export const SchoolAnalyticsView: React.FC<SchoolAnalyticsViewProps> = ({
   // Per-Class Breakdown Stats
   const classBreakdown = useMemo(() => {
     return allClassNames.map((className) => {
+      const classInfo = classList.find((c) => c.name === className);
       const classStus = students.filter(
-        (s) => s.className === className || (s.className && s.className.includes(className))
+        (s) => isStudentInClass(s.className, classInfo || className)
       );
       const count = classStus.length;
       const scores = classStus.map((s) => getStudentAvg(s));
@@ -154,8 +156,6 @@ export const SchoolAnalyticsView: React.FC<SchoolAnalyticsViewProps> = ({
       const lowest = count > 0 ? Math.min(...scores) : 0;
       const passed = scores.filter((s) => s >= 50).length;
       const passRate = count > 0 ? (passed / count) * 100 : 0;
-
-      const classInfo = classList.find((c) => c.name === className);
 
       return {
         className,

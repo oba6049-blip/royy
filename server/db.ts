@@ -196,6 +196,81 @@ export async function deleteStudent(studentId: string) {
   return true;
 }
 
+export function isStudentInClassServer(
+  studentClassName?: string | null,
+  classTarget?: string | { name: string; arm?: string } | null
+): boolean {
+  if (!studentClassName || !classTarget) return false;
+
+  const targetName = typeof classTarget === 'string' ? classTarget : (classTarget.name || '');
+  const targetArm = typeof classTarget === 'string' ? '' : (classTarget.arm || '');
+
+  const rawStudent = String(studentClassName).trim();
+  const rawTarget = String(targetName).trim();
+
+  // 1. Direct match
+  if (rawStudent.toLowerCase() === rawTarget.toLowerCase()) {
+    return true;
+  }
+
+  // 2. Combined name + arm
+  if (targetArm) {
+    const combined = `${rawTarget} ${targetArm}`.trim();
+    if (rawStudent.toLowerCase() === combined.toLowerCase()) {
+      return true;
+    }
+  }
+
+  // 3. Normalized string match
+  const normalize = (str: string) =>
+    str
+      .toLowerCase()
+      .replace(/senior secondary school\s*/g, 'sss ')
+      .replace(/junior secondary school\s*/g, 'jss ')
+      .replace(/[^a-z0-9]/g, '');
+
+  const normStudent = normalize(rawStudent);
+  const normTarget = normalize(rawTarget);
+  const normCombined = targetArm ? normalize(`${rawTarget}${targetArm}`) : '';
+
+  if (normStudent === normTarget || (normCombined && normStudent === normCombined)) {
+    return true;
+  }
+
+  // 4. Level prefix separation
+  const extractLevel = (norm: string) => {
+    const match = norm.match(/(jss|sss)[123]/);
+    return match ? match[0] : null;
+  };
+
+  const studentLevel = extractLevel(normStudent);
+  const targetLevel = extractLevel(normTarget) || (normCombined ? extractLevel(normCombined) : null);
+
+  if (studentLevel && targetLevel && studentLevel !== targetLevel) {
+    return false;
+  }
+
+  // 5. Arm/stream match
+  const extractArm = (norm: string, level: string | null) => {
+    if (!level) return '';
+    return norm.replace(level, '');
+  };
+
+  const studentArm = extractArm(normStudent, studentLevel);
+  const targetArmNorm = targetArm ? normalize(targetArm) : extractArm(normTarget, targetLevel);
+
+  if (studentLevel && targetLevel && studentLevel === targetLevel) {
+    if (studentArm && targetArmNorm) {
+      return studentArm === targetArmNorm;
+    }
+    if (!studentArm && !targetArmNorm) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // Classes
 export async function getAllClasses() {
   let list: any[] = [];
@@ -206,11 +281,7 @@ export async function getAllClasses() {
   }
   const allStus = await getAllStudents();
   return list.map(c => {
-    const realEnrolled = allStus.filter(s => {
-      const sCls = String(s.className || '').trim().toLowerCase();
-      const cCls = String(c.name || '').trim().toLowerCase();
-      return sCls === cCls || (sCls && sCls.includes(cCls)) || (cCls && cCls.includes(sCls));
-    }).length;
+    const realEnrolled = allStus.filter(s => isStudentInClassServer(s.className, c)).length;
     return {
       ...c,
       enrolled: realEnrolled,

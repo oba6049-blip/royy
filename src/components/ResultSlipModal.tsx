@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER } from '../types';
 import { api } from '../services/api';
 import { filterStudentSubjectsByAdmin } from '../utils/subjectUtils';
+import { calculateAgeFromDob, formatDateDisplay } from '../utils/studentDateUtils';
 import { 
   ShieldCheck as ShieldIcon, 
   Printer as PrintIcon, 
@@ -474,9 +475,9 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
             <div className="w-[65px] h-[70px] shrink-0" />
           </div>
 
-          {/* 2. STUDENT INFORMATION BOX (2-column clean grid) */}
+          {/* 2. STUDENT INFORMATION BOX (clean grid) */}
           <div className="border border-black p-2.5 bg-white font-sans mb-3">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[11px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-[11px]">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-black">NAME:</span>
                 <span className="font-bold text-black uppercase">{currentResult.fullName}</span>
@@ -492,6 +493,14 @@ export const ResultSlipModal: React.FC<ResultSlipModalProps> = ({
               <div className="flex items-center gap-2">
                 <span className="font-bold text-black">GENDER:</span>
                 <span className="font-bold text-black uppercase">{currentResult.gender || 'MALE'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-black">DOB:</span>
+                <span className="font-bold text-black uppercase">{formatDateDisplay(currentResult.dateOfBirth)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-black">AGE:</span>
+                <span className="font-bold text-black uppercase">{currentResult.age || calculateAgeFromDob(currentResult.dateOfBirth)?.ageText || '—'}</span>
               </div>
             </div>
           </div>

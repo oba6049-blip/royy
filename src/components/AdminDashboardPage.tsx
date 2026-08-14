@@ -6,8 +6,10 @@ import { ClassBroadsheetModal } from './ClassBroadsheetModal';
 import { SchoolAnalyticsView } from './SchoolAnalyticsView';
 import { AdminResultManagement } from './AdminResultManagement';
 import { StudentPromotionModal } from './StudentPromotionModal';
+import { DateOfBirthPicker } from './DateOfBirthPicker';
 import { api, DbStatus } from '../services/api';
-import { calculateDynamicStudentPosition } from '../utils/studentRanking';
+import { calculateDynamicStudentPosition, isStudentInClass } from '../utils/studentRanking';
+import { calculateAgeFromDob, formatDateForInput, formatDateDisplay } from '../utils/studentDateUtils';
 import { StudentResult, SchoolHeaderInfo, DEFAULT_SCHOOL_HEADER, StudentTermRecord, SubjectGrade } from '../types';
 
 const upsertTermRecord = (
@@ -193,7 +195,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     className: '',
     gender: 'Male' as 'Male' | 'Female',
     house: 'Blue House',
-    age: '',
+    dateOfBirth: '2011-05-15',
+    age: '15 Yrs',
     passportUrl: '',
     parentContact: '',
     academicSession: '2024/2025 Academic Session',
@@ -1663,13 +1666,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
   const handleOpenAddStudentModal = () => {
     const autoId = generateUnique7DigitRegId();
+    const defaultDob = '2011-05-15';
+    const calculatedAge = calculateAgeFromDob(defaultDob)?.ageText || '15 Yrs';
     setNewStudent({
       name: '',
       studentId: autoId,
       className: classList[0]?.name || allClassNames[0] || '',
       gender: 'Male',
       house: 'Blue House',
-      age: '',
+      dateOfBirth: defaultDob,
+      age: calculatedAge,
       passportUrl: '',
       parentContact: '',
       academicSession: activeSessionYear,
@@ -1712,9 +1718,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         }))
       : [];
 
-    const finalAge = newStudent.age 
-      ? (newStudent.age.toLowerCase().includes('yr') ? newStudent.age : `${newStudent.age} Yrs`) 
-      : '15 Yrs';
+    const calculatedAgeObj = calculateAgeFromDob(newStudent.dateOfBirth);
+    const finalAge = calculatedAgeObj 
+      ? calculatedAgeObj.ageText 
+      : (newStudent.age 
+          ? (newStudent.age.toLowerCase().includes('yr') ? newStudent.age : `${newStudent.age} Yrs`) 
+          : '15 Yrs');
+    const finalDob = newStudent.dateOfBirth || '2011-05-15';
 
     const defaultAvatar = newStudent.gender === 'Female' 
       ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'
@@ -1742,9 +1752,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       isPublished: false,
       gender: newStudent.gender as 'Male' | 'Female',
       house: newStudent.house || 'Blue House',
+      dateOfBirth: finalDob,
       age: finalAge,
       passportUrl: newStudent.passportUrl.trim() || defaultAvatar,
-      dateOfBirth: '2008-01-01',
       attendance: { timesOpened: 120, timesPresent: 118, timesAbsent: 2 },
       behavioralTraits: { punctuality: 5, neatness: 5, leadership: 5, honesty: 5 },
       verificationHash: `RA-SEC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
@@ -1777,7 +1787,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         className: classList[0]?.name || allClassNames[0] || '',
         gender: 'Male',
         house: 'Blue House',
-        age: '',
+        dateOfBirth: '2011-05-15',
+        age: '15 Yrs',
         passportUrl: '',
         parentContact: '',
         academicSession: activeSessionYear,
@@ -1794,9 +1805,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     if (!editingStudent) return;
 
     try {
-      const finalAge = editingStudent.age 
-        ? (editingStudent.age.toLowerCase().includes('yr') ? editingStudent.age : `${editingStudent.age} Yrs`) 
-        : '15 Yrs';
+      const calculatedAgeObj = calculateAgeFromDob(editingStudent.dateOfBirth);
+      const finalAge = calculatedAgeObj 
+        ? calculatedAgeObj.ageText 
+        : (editingStudent.age 
+            ? (editingStudent.age.toLowerCase().includes('yr') ? editingStudent.age : `${editingStudent.age} Yrs`) 
+            : '15 Yrs');
+      const finalDob = editingStudent.dateOfBirth || (editingStudent as any).dob || '2011-05-15';
 
       const defaultAvatar = editingStudent.gender === 'Female' 
         ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'
@@ -1929,6 +1944,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         term: targetTerm,
         academicSession: targetSession,
         session: targetSession,
+        dateOfBirth: finalDob,
         age: finalAge,
         house: editingStudent.house || 'Blue House',
         passportUrl: editingStudent.passportUrl?.trim() || defaultAvatar,
@@ -2542,7 +2558,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           return (
                             <tr key={st.studentId} className="hover:bg-blue-50/40 transition-colors">
                               <td className="p-4 font-mono text-[#1E3A8A] font-bold">{st.studentId}</td>
-                              <td className="p-4 font-bold text-[#0F172A]">{st.fullName || st.name}</td>
+                              <td className="p-4">
+                                <div className="font-bold text-[#0F172A]">{st.fullName || st.name}</div>
+                                <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
+                                  <span>DOB: {formatDateDisplay(st.dateOfBirth)}</span>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                    {st.age || calculateAgeFromDob(st.dateOfBirth)?.ageText || '—'}
+                                  </span>
+                                </div>
+                              </td>
                               <td className="p-4">{st.className}</td>
                               <td className="p-4 text-slate-500">{st.term} ({st.session || st.academicSession})</td>
                               <td className="p-4">
@@ -2644,7 +2669,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {classList.map((c) => {
-                  const enrolledCount = students.filter(s => s.className === c.name || s.className?.includes(c.arm)).length || c.enrolled || 0;
+                  const enrolledCount = students.filter(s => isStudentInClass(s.className, c)).length;
                   return (
                     <div key={c.id || c.name} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3.5 hover:border-blue-300 transition-all">
                       <div className="flex items-center justify-between">
@@ -2663,7 +2688,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           className="px-2.5 py-1 text-xs font-bold text-[#1E3A8A] bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer flex items-center gap-1"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>View Roster</span>
+                          <span>View Roster ({enrolledCount})</span>
                         </button>
                         
                         <button
@@ -4652,8 +4677,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </div>
               </div>
 
-              {/* Gender and Age Grid */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Gender, Date of Birth & Automated Age Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Gender *</label>
                   <select
@@ -4667,15 +4692,37 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Age (Years) *</label>
-                  <input
-                    type="text"
+                  <DateOfBirthPicker
+                    id="new-student-dob"
+                    label="Date of Birth *"
                     required
-                    placeholder="e.g. 15 or 15 Yrs"
-                    value={newStudent.age}
-                    onChange={(e) => setNewStudent({ ...newStudent, age: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                    value={newStudent.dateOfBirth}
+                    onChange={(formattedDateIso, computedAgeText) => {
+                      setNewStudent({
+                        ...newStudent,
+                        dateOfBirth: formattedDateIso,
+                        age: computedAgeText || newStudent.age,
+                      });
+                    }}
                   />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1">
+                    <span>Calculated Age</span>
+                    <span className="text-[9px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300 uppercase">
+                      Auto
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      readOnly
+                      placeholder="Auto-calculated"
+                      value={newStudent.age || (calculateAgeFromDob(newStudent.dateOfBirth)?.ageText ?? '—')}
+                      className="w-full bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 text-xs font-bold text-emerald-900 focus:outline-none cursor-default"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -4887,8 +4934,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </div>
               </div>
 
-              {/* Gender and Age Grid */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Gender, Date of Birth & Automated Age Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Gender *</label>
                   <select
@@ -4902,15 +4949,37 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Age *</label>
-                  <input
-                    type="text"
+                  <DateOfBirthPicker
+                    id="edit-student-dob"
+                    label="Date of Birth *"
                     required
-                    placeholder="e.g. 15 or 15 Yrs"
-                    value={editingStudent.age || ''}
-                    onChange={(e) => setEditingStudent({ ...editingStudent, age: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                    value={editingStudent.dateOfBirth}
+                    onChange={(formattedDateIso, computedAgeText) => {
+                      setEditingStudent({
+                        ...editingStudent,
+                        dateOfBirth: formattedDateIso,
+                        age: computedAgeText || (editingStudent.age || ''),
+                      });
+                    }}
                   />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1">
+                    <span>Calculated Age</span>
+                    <span className="text-[9px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300 uppercase">
+                      Auto
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      readOnly
+                      placeholder="Auto-calculated"
+                      value={editingStudent.age || (calculateAgeFromDob(editingStudent.dateOfBirth)?.ageText ?? '—')}
+                      className="w-full bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 text-xs font-bold text-emerald-900 focus:outline-none cursor-default"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -5368,18 +5437,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             </div>
 
             <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
-              {students.filter(s => s.className === viewClassStudents.name || s.className?.includes(viewClassStudents.arm)).length === 0 ? (
+              {students.filter(s => isStudentInClass(s.className, viewClassStudents)).length === 0 ? (
                 <div className="p-8 text-center text-xs text-slate-500 font-medium">
                   No students currently enrolled in this class stream.
                 </div>
               ) : (
                 students
-                  .filter(s => s.className === viewClassStudents.name || s.className?.includes(viewClassStudents.arm))
+                  .filter(s => isStudentInClass(s.className, viewClassStudents))
                   .map(st => (
                     <div key={st.studentId} className="py-3 flex items-center justify-between text-xs">
                       <div>
                         <p className="font-bold text-[#0F172A]">{st.fullName || st.name}</p>
-                        <p className="font-mono text-[10px] text-[#1E3A8A] font-semibold">{st.studentId}</p>
+                        <p className="font-mono text-[10px] text-[#1E3A8A] font-semibold">{st.studentId} • {st.className || 'Enrolled'}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-slate-500 font-mono">
