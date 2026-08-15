@@ -316,11 +316,8 @@ export const AdminStaffManagement: React.FC<AdminStaffManagementProps> = ({
   const handleDeleteAdmin = async () => {
     if (!selectedAdmin) return;
 
-    if (
-      selectedAdmin.id === 'admin-super-1' ||
-      selectedAdmin.role.toLowerCase().includes('super')
-    ) {
-      onTriggerToast('The root Super Administrator account cannot be deleted.');
+    if (selectedAdmin.email.toLowerCase() === currentAdmin.email.toLowerCase()) {
+      onTriggerToast('You cannot delete your own currently active logged-in administrator account.');
       setIsDeleteModalOpen(false);
       return;
     }
@@ -454,27 +451,27 @@ export const AdminStaffManagement: React.FC<AdminStaffManagementProps> = ({
       </div>
 
       {/* Security Info Card */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-950 text-white p-5 rounded-2xl shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
-            <Lock className="w-5 h-5 text-[#F59E0B]" />
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100">
+            <Lock className="w-5 h-5 text-[#1E3A8A]" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <span>Granular Role-Based Access Control & Mandatory Password Setup</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono border border-emerald-500/30">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-mono font-bold border border-emerald-200">
                 ENFORCED
               </span>
             </h4>
-            <p className="text-xs text-blue-200/90 mt-0.5 max-w-2xl leading-relaxed">
+            <p className="text-xs text-slate-600 mt-0.5 max-w-2xl leading-relaxed">
               Every staff member only sees and accesses the specific dashboard modules you authorize. Plus, temporary passwords automatically trigger a mandatory password setup on first login.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-mono bg-white/10 px-3.5 py-2 rounded-xl border border-white/10 shrink-0">
-          <Shield className="w-4 h-4 text-emerald-400" />
-          <span>Logged in as: <strong className="text-[#F59E0B]">{currentAdmin.role}</strong></span>
+        <div className="flex items-center gap-2 text-xs font-mono bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl border border-slate-200 shrink-0">
+          <Shield className="w-4 h-4 text-[#1E3A8A]" />
+          <span>Logged in as: <strong className="text-[#1E3A8A]">{currentAdmin.role}</strong></span>
         </div>
       </div>
 
@@ -805,7 +802,7 @@ export const AdminStaffManagement: React.FC<AdminStaffManagementProps> = ({
                               </button>
 
                               {/* Delete Admin */}
-                              {admin.id !== 'admin-super-1' && !admin.role?.toLowerCase().includes('super') && (
+                              {admin.email.toLowerCase() !== currentAdmin.email.toLowerCase() && (
                                 <button
                                   type="button"
                                   onClick={() => handleOpenDeleteModal(admin)}
@@ -866,7 +863,7 @@ export const AdminStaffManagement: React.FC<AdminStaffManagementProps> = ({
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Mr. David Okon / Mrs. Grace Adeleke"
+                  placeholder="e.g. Staff Full Name (e.g. Mr. John Doe)"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                 />
               </div>
@@ -882,7 +879,7 @@ export const AdminStaffManagement: React.FC<AdminStaffManagementProps> = ({
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="e.g. david.okon@royalacademy.edu.ng"
+                    placeholder="e.g. staff.name@faithacademy.edu.ng"
                     className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
                   />
                 </div>

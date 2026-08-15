@@ -369,19 +369,7 @@ export const api = {
       if (!res.ok) throw new Error('Failed to fetch admins');
       return await res.json();
     } catch {
-      return [
-        {
-          id: 'admin-super-1',
-          email: 'admin@royalacademy.edu.ng',
-          name: 'Portal Administrator',
-          role: 'System Super Administrator',
-          assignedClass: 'All Classes',
-          assignedSubject: 'All Subjects',
-          mustChangePassword: false,
-          isFirstLogin: false,
-          createdAt: new Date().toISOString(),
-        }
-      ];
+      return [];
     }
   },
 

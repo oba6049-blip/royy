@@ -5512,7 +5512,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Form Teacher Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Mrs. O. Adeleke"
+                  placeholder="e.g. Form Teacher Name"
                   value={newClass.teacher}
                   onChange={(e) => setNewClass({ ...newClass, teacher: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold"

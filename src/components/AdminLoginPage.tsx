@@ -209,7 +209,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g. grace.adeleke@royalacademy.edu.ng"
+                      placeholder="e.g. yourname@faithacademy.edu.ng"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/10 shadow-xs"
                     />
                   </div>
@@ -251,7 +251,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   </label>
                   <button
                     type="button"
-                    onClick={() => setErrorMessage('Please contact Faith Academy IT Help Desk at support@royalacademy.edu.ng to reset password.')}
+                    onClick={() => setErrorMessage('Please contact Faith Academy IT Help Desk at support@faithacademy.edu.ng to reset password.')}
                     className="text-[#1E3A8A] hover:underline font-bold"
                   >
                     Forgot password?

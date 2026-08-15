@@ -45,13 +45,14 @@ let memoryStore = {
   ] as any[],
   admins: [
     {
-      id: 'admin-super-1',
-      email: 'admin@royalacademy.edu.ng',
-      password: process.env.ADMIN_PASSWORD || 'Admin@Secure2025',
-      name: 'System Super Administrator',
+      id: 'admin-super-fariat',
+      email: 'fariat@gmail.com',
+      password: process.env.ADMIN_PASSWORD || 'Adewale_@09',
+      name: 'Fariat Adewale',
       role: 'System Super Administrator',
       assignedClass: 'All Classes',
       assignedSubject: 'All Subjects',
+      phone: '+234 800 000 0000',
       permissions: [
         'academic_structure',
         'examination_scores',
@@ -65,23 +66,6 @@ let memoryStore = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: 'System Root'
-    },
-    {
-      id: 'admin-teacher-1',
-      email: 'grace.adeleke@royalacademy.edu.ng',
-      password: 'RoyalTeacher@2025',
-      name: 'Mrs. Grace Adeleke',
-      role: 'Teacher / Exam Officer',
-      assignedClass: 'JSS 1 Gold',
-      assignedSubject: 'Mathematics',
-      phone: '+234 803 123 4567',
-      permissions: ['examination_scores', 'analytics_reports'],
-      mustChangePassword: true,
-      isFirstLogin: true,
-      temporaryPassword: 'RoyalTeacher@2025',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: 'System Super Administrator'
     }
   ] as any[]
 };
@@ -197,6 +181,18 @@ async function seedMongoDatabase() {
     }
 
     const adminsColl = dbInstance.collection('admins');
+    // Remove legacy mock admin and mock staff accounts if present in DB
+    await adminsColl.deleteMany({
+      $or: [
+        { email: 'admin@royalacademy.edu.ng' },
+        { email: 'admin@faithacademy.edu.ng' },
+        { email: 'grace.adeleke@faithacademy.edu.ng' },
+        { email: 'grace.adeleke@royalacademy.edu.ng' },
+        { id: 'admin-super-1' },
+        { id: 'admin-root-faith' },
+        { id: 'admin-teacher-1' }
+      ]
+    });
     for (const admin of memoryStore.admins) {
       const { _id, ...cleanAdmin } = admin as any;
       await adminsColl.updateOne(
@@ -706,17 +702,50 @@ export async function batchUpdateStudentsPrincipalRemark(remark: string) {
 export async function getAllAdmins() {
   if (isMongoConnected && dbInstance) {
     try {
+      await dbInstance.collection('admins').deleteMany({
+        $or: [
+          { email: 'admin@royalacademy.edu.ng' },
+          { email: 'admin@faithacademy.edu.ng' },
+          { email: 'grace.adeleke@faithacademy.edu.ng' },
+          { email: 'grace.adeleke@royalacademy.edu.ng' },
+          { id: 'admin-super-1' },
+          { id: 'admin-root-faith' },
+          { id: 'admin-teacher-1' }
+        ]
+      });
       const list = await dbInstance
         .collection('admins')
-        .find({}, { projection: { _id: 0 } })
+        .find(
+          {
+            email: {
+              $nin: [
+                'admin@royalacademy.edu.ng',
+                'admin@faithacademy.edu.ng',
+                'grace.adeleke@faithacademy.edu.ng',
+                'grace.adeleke@royalacademy.edu.ng'
+              ]
+            },
+            id: { $nin: ['admin-super-1', 'admin-root-faith', 'admin-teacher-1'] }
+          },
+          { projection: { _id: 0 } }
+        )
         .sort({ createdAt: -1 })
         .toArray();
-      if (list && list.length > 0) return list;
+      if (list) return list;
     } catch (e) {
       console.warn('[MongoDB] Failed fetching admins from DB:', e);
     }
   }
-  return memoryStore.admins;
+  return memoryStore.admins.filter(
+    a =>
+      a.email.toLowerCase() !== 'admin@royalacademy.edu.ng' &&
+      a.email.toLowerCase() !== 'admin@faithacademy.edu.ng' &&
+      a.email.toLowerCase() !== 'grace.adeleke@faithacademy.edu.ng' &&
+      a.email.toLowerCase() !== 'grace.adeleke@royalacademy.edu.ng' &&
+      a.id !== 'admin-super-1' &&
+      a.id !== 'admin-root-faith' &&
+      a.id !== 'admin-teacher-1'
+  );
 }
 
 export async function getAdminByEmail(email: string) {
@@ -858,14 +887,14 @@ export async function changeAdminPassword(email: string, currentPass: string, ne
   }
 
   // Also check environment root admin
-  const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng').trim().toLowerCase();
-  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Admin@Secure2025';
+  const envAdminEmail = (process.env.ADMIN_EMAIL || 'fariat@gmail.com').trim().toLowerCase();
+  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Adewale_@09';
 
   if (!admin && normalizedEmail === envAdminEmail && currentPass === envAdminPassword) {
     admin = {
-      id: 'admin-super-1',
+      id: 'admin-super-fariat',
       email: normalizedEmail,
-      name: 'System Super Administrator',
+      name: 'Fariat Adewale',
       role: 'System Super Administrator',
       password: envAdminPassword,
       mustChangePassword: false,
@@ -931,12 +960,6 @@ export async function changeAdminPassword(email: string, currentPass: string, ne
 
 export async function deleteAdmin(idOrEmail: string) {
   const key = String(idOrEmail || '').trim().toLowerCase();
-  const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng').trim().toLowerCase();
-  
-  // Protect super admin root
-  if (key === envAdminEmail || key === 'admin-super-1') {
-    throw new Error('Root Super Administrator account cannot be deleted.');
-  }
 
   if (isMongoConnected && dbInstance) {
     try {
@@ -956,16 +979,16 @@ export async function deleteAdmin(idOrEmail: string) {
 
 export async function verifyAdmin(email: string, pass: string) {
   const normalizedEmail = (email || '').trim().toLowerCase();
-  const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng').trim().toLowerCase();
-  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Admin@Secure2025';
+  const envAdminEmail = (process.env.ADMIN_EMAIL || 'fariat@gmail.com').trim().toLowerCase();
+  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Adewale_@09';
 
   if (!pass) return null;
 
   // 1. Check environment variable configured admin
   if (normalizedEmail === envAdminEmail && pass === envAdminPassword) {
     return {
-      id: 'admin-super-1',
-      name: 'System Super Administrator',
+      id: 'admin-super-fariat',
+      name: 'Fariat Adewale',
       email: normalizedEmail,
       role: 'System Super Administrator',
       assignedClass: 'All Classes',

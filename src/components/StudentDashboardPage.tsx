@@ -932,12 +932,12 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                   <span className="text-xs font-bold text-slate-900 block">Academic Registry</span>
-                  <span className="text-xs text-slate-600 block">Email: registry@royalacademy.edu.ng</span>
+                  <span className="text-xs text-slate-600 block">Email: registry@faithacademy.edu.ng</span>
                   <span className="text-xs text-slate-600 block">Desk Hours: Mon – Fri, 8:00 AM – 4:00 PM</span>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                   <span className="text-xs font-bold text-slate-900 block">IT & Portal Helpdesk</span>
-                  <span className="text-xs text-slate-600 block">Support: support@royalacademy.edu.ng</span>
+                  <span className="text-xs text-slate-600 block">Support: support@faithacademy.edu.ng</span>
                   <span className="text-xs text-slate-600 block">Response Time: Within 24 hours</span>
                 </div>
               </div>
