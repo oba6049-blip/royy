@@ -57,7 +57,7 @@ export const SecuritySection: React.FC = () => {
             </h2>
 
             <p className="text-base sm:text-lg text-[#64748B] leading-relaxed">
-              Academic integrity is paramount. Royal Academy Result Portal enforces rigorous cryptographic verification to eliminate result counterfeiting, unauthorized grade changes, and data loss.
+              Academic integrity is paramount. Faith Academy Result Portal enforces rigorous cryptographic verification to eliminate result counterfeiting, unauthorized grade changes, and data loss.
             </p>
 
             <div className="space-y-3 pt-2 text-xs font-semibold text-slate-700">

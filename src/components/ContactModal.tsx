@@ -41,7 +41,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#1E3A8A] text-[10px] font-bold uppercase tracking-wider">
             <Mail className="w-3.5 h-3.5 text-[#F59E0B]" />
-            <span>Royal Academy IT & Help Desk</span>
+            <span>Faith Academy IT & Help Desk</span>
           </div>
           <h3 className="text-xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
             Contact Portal Support

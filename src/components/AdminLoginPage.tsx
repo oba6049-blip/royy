@@ -147,7 +147,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
           
           <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-600">
             <Building2 className="w-4 h-4 text-[#1E3A8A]" />
-            <span>Royal Academy Portal Services</span>
+            <span>Faith Academy Portal Services</span>
           </div>
         </div>
 
@@ -251,7 +251,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   </label>
                   <button
                     type="button"
-                    onClick={() => setErrorMessage('Please contact Royal Academy IT Help Desk at support@royalacademy.edu.ng to reset password.')}
+                    onClick={() => setErrorMessage('Please contact Faith Academy IT Help Desk at support@royalacademy.edu.ng to reset password.')}
                     className="text-[#1E3A8A] hover:underline font-bold"
                   >
                     Forgot password?
@@ -282,7 +282,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
               <div className="pt-2 border-t border-slate-200 text-center">
                 <p className="text-[10px] text-slate-500 font-mono flex items-center justify-center gap-1.5">
                   <Lock className="w-3 h-3 text-emerald-600" />
-                  Official Royal Academy Security Protocol • IP Logged
+                  Official Faith Academy Security Protocol • IP Logged
                 </p>
               </div>
             </>
@@ -432,7 +432,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
 
       {/* Page Bottom Footer */}
       <footer className="w-full px-6 py-4 border-t border-slate-200 bg-white/50 text-center text-xs text-slate-500 z-20">
-        <p>© 2025 Royal Academy Examination & Results System. All rights reserved.</p>
+        <p>© 2025 Faith Academy Examination & Results System. All rights reserved.</p>
       </footer>
     </div>
   );

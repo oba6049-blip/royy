@@ -31,7 +31,7 @@ export const Footer: React.FC<FooterProps> = ({
             <SchoolLogo size="lg" lightMode={false} />
 
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              Royal Academy Student Result Portal is a high-security examination management system providing instant, verified result slips for students, parents, and academic authorities.
+              Faith Academy Student Result Portal is a high-security examination management system providing instant, verified result slips for students, parents, and academic authorities.
             </p>
 
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-emerald-400">
@@ -95,11 +95,11 @@ export const Footer: React.FC<FooterProps> = ({
 
           {/* Contact Details */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Royal Academy Contact</h4>
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Faith Academy Contact</h4>
             <ul className="space-y-2.5 text-xs text-slate-400">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-[#F59E0B] shrink-0 mt-0.5" />
-                <span>100 Royal Academy Drive, Victoria Island, Lagos State</span>
+                <span>Faith Academy Campus, Victoria Island, Lagos State</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-[#60A5FA] shrink-0" />
@@ -116,7 +116,7 @@ export const Footer: React.FC<FooterProps> = ({
 
         {/* Bottom Copyright Row */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} Royal Academy. All Rights Reserved. Powered by Royal Academy IT Directorate.</p>
+          <p>© {new Date().getFullYear()} Faith Academy. All Rights Reserved. Powered by Faith Academy IT Directorate.</p>
         </div>
 
       </div>

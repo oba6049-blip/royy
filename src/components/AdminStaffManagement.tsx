@@ -357,7 +357,7 @@ export const AdminStaffManagement: React.FC<AdminStaffManagementProps> = ({
     role: string;
     temporaryPassword?: string;
   }) => {
-    const formatted = `🌟 ROYAL ACADEMY STAFF PORTAL LOGIN CREDENTIALS
+    const formatted = `🌟 FAITH ACADEMY STAFF PORTAL LOGIN CREDENTIALS
 👤 Staff Name: ${creds.name}
 💼 Role: ${creds.role}
 📧 Login Email: ${creds.email}

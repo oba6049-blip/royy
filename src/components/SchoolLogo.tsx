@@ -3,6 +3,8 @@ import React from 'react';
 interface SchoolLogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  title?: string;
+  subtitle?: string;
   showSubtext?: boolean;
   showText?: boolean;
   lightMode?: boolean;
@@ -11,6 +13,8 @@ interface SchoolLogoProps {
 export const SchoolLogo: React.FC<SchoolLogoProps> = ({
   className = '',
   size = 'md',
+  title = 'Faith Academy',
+  subtitle = 'Excellence & Integrity',
   showSubtext = true,
   showText = true,
   lightMode = true,
@@ -19,21 +23,28 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
     sm: 'h-8 w-8 text-xs',
     md: 'h-10 w-10 text-sm',
     lg: 'h-12 w-12 text-base',
-    xl: 'h-16 w-16 text-xl',
+    xl: 'h-14 w-14 text-xl',
   };
 
-  const textSizes = {
-    sm: 'text-base',
-    md: 'text-lg',
-    lg: 'text-xl',
-    xl: 'text-2xl',
+  const titleSizes = {
+    sm: 'text-xs sm:text-sm',
+    md: 'text-sm sm:text-base',
+    lg: 'text-base sm:text-lg',
+    xl: 'text-xl sm:text-2xl',
+  };
+
+  const subtitleSizes = {
+    sm: 'text-[9px] sm:text-[10px]',
+    md: 'text-[10px] sm:text-[11px]',
+    lg: 'text-[11px] sm:text-xs',
+    xl: 'text-xs sm:text-sm',
   };
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex items-center gap-2.5 sm:gap-3 ${className}`}>
       {/* School Crest Logo */}
       <div
-        className={`relative flex items-center justify-center rounded-xl bg-gradient-to-br from-[#1E3A8A] via-[#1e40af] to-[#0F172A] p-2 text-white shadow-md border border-[#F59E0B]/30 ${sizeClasses[size]}`}
+        className={`relative flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1E3A8A] via-[#1e40af] to-[#0F172A] p-2 text-white shadow-md border border-[#F59E0B]/30 ${sizeClasses[size]}`}
       >
         {/* Crown & Shield SVG */}
         <svg
@@ -58,21 +69,21 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
       </div>
 
       {showText && (
-        <div className="flex flex-col">
+        <div className="flex flex-col justify-center min-w-0">
           <span
-            className={`font-extrabold tracking-tight font-['Plus_Jakarta_Sans'] ${textSizes[size]} ${
+            className={`font-black tracking-tight font-['Plus_Jakarta_Sans'] leading-tight whitespace-nowrap ${titleSizes[size]} ${
               lightMode ? 'text-[#0F172A]' : 'text-white'
             }`}
           >
-            FAITH ACADEMY
+            {title}
           </span>
           {showSubtext && (
             <span
-              className={`text-[11px] font-semibold tracking-wider uppercase ${
-                lightMode ? 'text-[#64748B]' : 'text-[#94A3B8]'
+              className={`font-bold tracking-wider uppercase leading-none mt-0.5 whitespace-nowrap ${subtitleSizes[size]} ${
+                lightMode ? 'text-amber-600' : 'text-amber-400'
               }`}
             >
-              RESULT PORTAL
+              {subtitle}
             </span>
           )}
         </div>
@@ -80,3 +91,4 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
     </div>
   );
 };
+

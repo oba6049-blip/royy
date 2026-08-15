@@ -241,7 +241,7 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
 
       {/* Footer */}
       <footer className="w-full py-4 text-center text-slate-500 text-xs border-t border-slate-200 bg-white/50 z-10">
-        <p>&copy; {new Date().getFullYear()} Royal Academy Official Portal. All Rights Reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Faith Academy Official Portal. All Rights Reserved.</p>
       </footer>
 
     </div>

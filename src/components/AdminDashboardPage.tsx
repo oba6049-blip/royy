@@ -86,7 +86,6 @@ import {
   CheckCircle2,
   TrendingUp,
   ShieldCheck,
-  ArrowLeft,
   Building2,
   Plus,
   Save,
@@ -137,7 +136,7 @@ interface AdminUser {
 interface AdminDashboardPageProps {
   adminUser: AdminUser;
   onLogout: () => void;
-  onBackToWebsite: () => void;
+  onBackToWebsite?: () => void;
 }
 
 type TabType =
@@ -2160,23 +2159,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       {/* Top Header Navigation - White & Royal Blue */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-4">
-          <button
-            onClick={onBackToWebsite}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:text-[#1E3A8A] bg-slate-100 hover:bg-blue-50 rounded-xl border border-slate-200 transition-all cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4 text-[#F59E0B]" />
-            <span>Public Website</span>
-          </button>
-
-          <div className="hidden sm:block h-6 w-px bg-slate-200" />
-
           <div className="flex items-center gap-3">
             <SchoolLogo size="sm" showText={false} />
-            <div>
-              <h1 className="text-sm font-bold text-[#1E3A8A] tracking-tight font-['Plus_Jakarta_Sans']">
-                {schoolHeader.schoolName || 'ROYAL ACADEMY'}
+            <div className="flex flex-col justify-center">
+              <h1 className="text-sm font-black text-[#1E3A8A] tracking-tight font-['Plus_Jakarta_Sans'] leading-tight">
+                {schoolHeader.schoolName || 'Faith Academy'}
               </h1>
-              <p className="text-xs text-slate-500 font-medium leading-tight">
+              <p className="text-[11px] text-amber-600 font-bold tracking-wide uppercase leading-none mt-0.5">
                 Excellence & Integrity
               </p>
             </div>
@@ -2390,7 +2379,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <div>
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-[#1E3A8A] text-xs font-bold mb-2">
                     <Building2 className="w-3.5 h-3.5 text-[#F59E0B]" />
-                    <span>Royal Academy Executive Dashboard</span>
+                    <span>Faith Academy Executive Dashboard</span>
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-black text-[#0F172A] font-['Plus_Jakarta_Sans']">
                     Welcome back, {adminUser.name}

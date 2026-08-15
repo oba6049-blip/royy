@@ -178,7 +178,7 @@ export interface AdminAccount {
 }
 
 export const DEFAULT_SCHOOL_HEADER: SchoolHeaderInfo = {
-  schoolName: 'ROYAL ACADEMY',
+  schoolName: 'Faith Academy',
   reportTitle: 'Student Mid-Term Report',
   addressSubtitle: 'Victoria Island, Lagos, Nigeria • Official Academic Record',
 };

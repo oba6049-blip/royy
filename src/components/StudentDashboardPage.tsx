@@ -350,9 +350,9 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
       <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-2.5">
           <SchoolLogo size="sm" showText={false} />
-          <div>
-            <h1 className="text-sm font-bold text-[#1E3A8A] leading-tight font-['Plus_Jakarta_Sans']">ROYAL ACADEMY</h1>
-            <p className="text-[10px] text-amber-600 font-bold uppercase">Student Portal</p>
+          <div className="flex flex-col justify-center">
+            <h1 className="text-sm font-black text-[#1E3A8A] leading-tight font-['Plus_Jakarta_Sans']">Faith Academy</h1>
+            <p className="text-[10px] text-amber-600 font-bold tracking-wide uppercase leading-none mt-0.5">Excellence & Integrity</p>
           </div>
         </div>
 
@@ -379,12 +379,12 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
           <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
             <div className="flex items-center gap-2.5">
               <SchoolLogo size="sm" showText={false} />
-              <div>
-                <h2 className="text-xs font-black text-[#1E3A8A] tracking-tight leading-tight uppercase font-['Plus_Jakarta_Sans']">
-                  ROYAL ACADEMY
+              <div className="flex flex-col justify-center">
+                <h2 className="text-xs font-black text-[#1E3A8A] tracking-tight leading-tight font-['Plus_Jakarta_Sans']">
+                  Faith Academy
                 </h2>
-                <p className="text-[10px] text-amber-600 font-bold uppercase">
-                  Student Portal
+                <p className="text-[10px] text-amber-600 font-bold tracking-wide uppercase leading-none mt-0.5">
+                  Excellence & Integrity
                 </p>
               </div>
             </div>

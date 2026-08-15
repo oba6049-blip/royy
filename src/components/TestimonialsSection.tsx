@@ -58,7 +58,7 @@ export const TestimonialsSection: React.FC = () => {
           </h2>
 
           <p className="text-base sm:text-lg text-[#64748B]">
-            Hear from our school community members about their experience with Royal Academy's modern academic result portal.
+            Hear from our school community members about their experience with Faith Academy's modern academic result portal.
           </p>
 
           {/* Tag Filter Pills */}

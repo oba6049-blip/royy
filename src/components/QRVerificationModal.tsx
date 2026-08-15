@@ -92,7 +92,7 @@ export const QRVerificationModal: React.FC<QRVerificationModalProps> = ({
             Cryptographic QR Verification
           </h3>
           <p className="text-xs text-slate-500">
-            This result slip was authenticated against Royal Academy official database.
+            This result slip was authenticated against Faith Academy official database.
           </p>
         </div>
 

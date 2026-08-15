@@ -24,7 +24,7 @@ const FAQ_DATA = [
   {
     id: 'faq-4',
     question: 'How secure is the result verification system?',
-    answer: 'Extremely secure. Every generated report includes a unique cryptographic SHA-256 hash and a dynamic QR code. Anyone scanning the QR code can immediately verify the result against Royal Academy’s master database to confirm authenticity.',
+    answer: 'Extremely secure. Every generated report includes a unique cryptographic SHA-256 hash and a dynamic QR code. Anyone scanning the QR code can immediately verify the result against Faith Academy’s master database to confirm authenticity.',
     category: 'Security'
   },
   {

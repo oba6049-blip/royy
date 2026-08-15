@@ -40,7 +40,7 @@ const FEATURES_DATA = [
     id: '4',
     iconName: 'Printer',
     title: 'Professional Printable Format',
-    description: 'Generate high-resolution, official Royal Academy report slips complete with signatures and school stamp.',
+    description: 'Generate high-resolution, official Faith Academy report slips complete with signatures and school stamp.',
     badge: 'Official'
   },
   {
@@ -97,7 +97,7 @@ export const FeaturesSection: React.FC = () => {
           </div>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] tracking-tight font-['Plus_Jakarta_Sans']">
-            Why Choose Royal Academy <br className="hidden sm:inline" />
+            Why Choose Faith Academy <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-[#1E3A8A] via-[#1e40af] to-[#60A5FA] bg-clip-text text-transparent">
               Result Portal?
             </span>

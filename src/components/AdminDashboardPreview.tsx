@@ -198,7 +198,7 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
                   Admin Portal Protected
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-400">
-                  Please authenticate with your official Royal Academy admin email and password to access the administrative dashboard.
+                  Please authenticate with your official Faith Academy admin email and password to access the administrative dashboard.
                 </p>
               </div>
 
@@ -499,7 +499,7 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
               <span>Batch Result Upload (CSV / Excel)</span>
             </h3>
             <p className="text-xs text-slate-400">
-              Drag and drop examination score sheets in standard Royal Academy CSV template format.
+              Drag and drop examination score sheets in standard Faith Academy CSV template format.
             </p>
 
             <div className="border-2 border-dashed border-slate-700 rounded-2xl p-8 text-center bg-slate-950/50 hover:border-blue-500 transition-colors cursor-pointer space-y-2">
