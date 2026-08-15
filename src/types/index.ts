@@ -136,6 +136,47 @@ export interface SchoolHeaderInfo {
   addressSubtitle: string;
 }
 
+export interface SchoolNotification {
+  id: string;
+  headline: string;
+  message?: string;
+  tag?: string;
+  category?: 'results' | 'general' | 'admission' | 'urgent';
+  urgency?: 'normal' | 'high' | 'urgent';
+  academicSession?: string;
+  term?: string;
+  linkText?: string;
+  targetAction?: 'check_result' | 'student_portal' | 'none';
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type AdminModulePermission =
+  | 'academic_structure'
+  | 'examination_scores'
+  | 'school_branding'
+  | 'analytics_reports'
+  | 'notices_announcements'
+  | 'staff_management';
+
+export interface AdminAccount {
+  id: string;
+  email: string;
+  name: string;
+  role: 'System Super Administrator' | 'Teacher / Exam Officer' | 'Class Teacher' | 'Academic Administrator' | 'Subject Teacher' | string;
+  assignedClass?: string;
+  assignedSubject?: string;
+  phone?: string;
+  permissions?: AdminModulePermission[];
+  mustChangePassword?: boolean;
+  isFirstLogin?: boolean;
+  temporaryPassword?: string;
+  createdAt: string;
+  updatedAt?: string;
+  createdBy?: string;
+}
+
 export const DEFAULT_SCHOOL_HEADER: SchoolHeaderInfo = {
   schoolName: 'ROYAL ACADEMY',
   reportTitle: 'Student Mid-Term Report',

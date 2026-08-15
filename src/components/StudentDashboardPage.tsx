@@ -12,7 +12,6 @@ import {
   Printer,
   GraduationCap,
   LogOut,
-  ArrowLeft,
   User,
   CheckCircle2,
   AlertCircle,
@@ -33,7 +32,7 @@ import {
 interface StudentDashboardPageProps {
   student: StudentResult;
   onLogout: () => void;
-  onBackToWebsite: () => void;
+  onBackToWebsite?: () => void;
 }
 
 type StudentTabType =
@@ -389,14 +388,6 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({
                 </p>
               </div>
             </div>
-
-            <button
-              onClick={onBackToWebsite}
-              className="p-1.5 text-slate-500 hover:text-[#1E3A8A] hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
-              title="Back to Home Website"
-            >
-              <ArrowLeft className="w-4 h-4 text-amber-500" />
-            </button>
           </div>
 
           {/* Student Profile Identity Card */}

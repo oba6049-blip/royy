@@ -7,6 +7,8 @@ import { SchoolAnalyticsView } from './SchoolAnalyticsView';
 import { AdminResultManagement } from './AdminResultManagement';
 import { StudentPromotionModal } from './StudentPromotionModal';
 import { DateOfBirthPicker } from './DateOfBirthPicker';
+import { AdminNotificationManagement } from './AdminNotificationManagement';
+import { AdminStaffManagement } from './AdminStaffManagement';
 import { api, DbStatus } from '../services/api';
 import { calculateDynamicStudentPosition, isStudentInClass } from '../utils/studentRanking';
 import { calculateAgeFromDob, formatDateForInput, formatDateDisplay } from '../utils/studentDateUtils';
@@ -105,13 +107,31 @@ import {
   Cloud,
   Sliders,
   MessageSquare,
-  History
+  History,
+  Megaphone,
+  Bell,
+  UserPlus,
+  Lock,
+  Shield,
+  KeyRound
 } from 'lucide-react';
+import {
+  isTabAuthorized,
+  isUserSuperAdmin,
+  resolveAdminPermissions,
+  MODULE_PERMISSIONS_LIST,
+} from '../utils/adminPermissions';
+import { AdminModulePermission } from '../types';
 
 interface AdminUser {
   name: string;
   email: string;
   role: string;
+  permissions?: AdminModulePermission[];
+  assignedClass?: string;
+  assignedSubject?: string;
+  mustChangePassword?: boolean;
+  isFirstLogin?: boolean;
 }
 
 interface AdminDashboardPageProps {
@@ -137,7 +157,9 @@ type TabType =
   | 'upload-stamp'
   | 'upload-signature'
   | 'reports'
-  | 'analytics';
+  | 'analytics'
+  | 'notifications'
+  | 'staff-management';
 
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   adminUser,
@@ -1602,6 +1624,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setTimeout(() => setSuccessToast(null), 3200);
   };
 
+  const isSuperAdminUser = isUserSuperAdmin(adminUser);
+  const userPermissions = resolveAdminPermissions(adminUser.role, adminUser.permissions);
+
   const navGroups = [
     {
       title: 'Main Overview',
@@ -1643,12 +1668,41 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       ],
     },
     {
+      title: 'Notices & Announcements',
+      items: [
+        { id: 'notifications', label: 'Portal Notifications', icon: Megaphone },
+      ],
+    },
+    {
+      title: 'Staff & Administration',
+      items: [
+        { id: 'staff-management', label: 'Staff & Admin Accounts', icon: UserPlus },
+      ],
+    },
+    {
       title: 'System & Account',
       items: [
         { id: 'login', label: 'Admin Login Status', icon: LogIn },
       ],
     },
   ];
+
+  // RBAC: Filter sidebar items according to adminUser module authorization
+  const authorizedNavGroups = React.useMemo(() => {
+    return navGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => isTabAuthorized(item.id, adminUser)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [navGroups, adminUser]);
+
+  // Ensure activeTab is authorized or fallback to dashboard
+  useEffect(() => {
+    if (!isTabAuthorized(activeTab, adminUser)) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, adminUser]);
 
   const generateUnique7DigitRegId = () => {
     let candidate = '';
@@ -2244,15 +2298,34 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         {/* Left Pane Sidebar Navigation */}
         <aside className="w-full md:w-72 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 p-4 space-y-6">
           <div className="space-y-5">
-            <div className="px-2 pb-3 border-b border-slate-100">
-              <span className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider block font-['Plus_Jakarta_Sans']">
-                Admin Control Panel
-              </span>
-              <p className="text-[11px] text-slate-500 font-medium">System Management</p>
+            <div className="px-2 pb-3 border-b border-slate-100 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-[#1E3A8A] uppercase tracking-wider block font-['Plus_Jakarta_Sans']">
+                  Admin Control Panel
+                </span>
+                {isSuperAdminUser ? (
+                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-extrabold font-mono">
+                    SUPER
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded bg-blue-100 text-[#1E3A8A] border border-blue-200 text-[9px] font-extrabold font-mono">
+                    STAFF
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium">
+                <Shield className="w-3 h-3 text-[#1E3A8A] shrink-0" />
+                <span className="truncate">{adminUser.role}</span>
+              </div>
+              {!isSuperAdminUser && (
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[10px] font-bold text-slate-500">
+                  <span>{userPermissions.length} Module{userPermissions.length === 1 ? '' : 's'} Authorized</span>
+                </div>
+              )}
             </div>
 
             <nav className="space-y-4">
-              {navGroups.map((group) => (
+              {authorizedNavGroups.map((group) => (
                 <div key={group.title} className="space-y-1">
                   <p className="px-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                     {group.title}
@@ -2428,46 +2501,122 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
               {/* Quick Actions Shortcuts */}
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <h3 className="text-sm font-black text-[#0F172A] uppercase tracking-wider">
-                  Quick Portal Admin Actions
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <button
-                    onClick={() => setActiveTab('students')}
-                    className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-2xl text-left transition-all cursor-pointer group"
-                  >
-                    <Users className="w-6 h-6 text-[#1E3A8A] mb-2 group-hover:scale-110 transition-transform" />
-                    <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#1E3A8A]">Manage Students</p>
-                    <p className="text-[10px] text-slate-500">Roster & enrollment</p>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('enter-results')}
-                    className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-2xl text-left transition-all cursor-pointer group"
-                  >
-                    <FilePlus className="w-6 h-6 text-emerald-600 mb-2 group-hover:scale-110 transition-transform" />
-                    <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#1E3A8A]">Enter Results</p>
-                    <p className="text-[10px] text-slate-500">Subject score sheets</p>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('reports')}
-                    className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-2xl text-left transition-all cursor-pointer group"
-                  >
-                    <FileSpreadsheet className="w-6 h-6 text-[#F59E0B] mb-2 group-hover:scale-110 transition-transform" />
-                    <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#1E3A8A]">Generate Reports</p>
-                    <p className="text-[10px] text-slate-500">Broadsheet & ranking</p>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('upload-stamp')}
-                    className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-2xl text-left transition-all cursor-pointer group"
-                  >
-                    <Award className="w-6 h-6 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
-                    <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#1E3A8A]">School Stamp</p>
-                    <p className="text-[10px] text-slate-500">Digital transcript seal</p>
-                  </button>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-[#0F172A] uppercase tracking-wider">
+                    Quick Portal Admin Actions
+                  </h3>
+                  <span className="text-[11px] font-medium text-slate-500">
+                    {isSuperAdminUser ? 'All Management Modules Available' : 'Filtered to Authorized Modules'}
+                  </span>
                 </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {isTabAuthorized('students', adminUser) && (
+                    <button
+                      onClick={() => setActiveTab('students')}
+                      className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-2xl text-left transition-all cursor-pointer group"
+                    >
+                      <Users className="w-6 h-6 text-[#1E3A8A] mb-2 group-hover:scale-110 transition-transform" />
+                      <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#1E3A8A]">Manage Students</p>
+                      <p className="text-[10px] text-slate-500">Roster & enrollment</p>
+                    </button>
+                  )}
+
+                  {isTabAuthorized('enter-results', adminUser) && (
+                    <button
+                      onClick={() => setActiveTab('enter-results')}
+                      className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-2xl text-left transition-all cursor-pointer group"
+                    >
+                      <FilePlus className="w-6 h-6 text-emerald-600 mb-2 group-hover:scale-110 transition-transform" />
+                      <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#1E3A8A]">Enter Results</p>
+                      <p className="text-[10px] text-slate-500">Subject score sheets</p>
+                    </button>
+                  )}
+
+                  {isTabAuthorized('reports', adminUser) && (
+                    <button
+                      onClick={() => setActiveTab('reports')}
+                      className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-2xl text-left transition-all cursor-pointer group"
+                    >
+                      <FileSpreadsheet className="w-6 h-6 text-[#F59E0B] mb-2 group-hover:scale-110 transition-transform" />
+                      <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#1E3A8A]">Generate Reports</p>
+                      <p className="text-[10px] text-slate-500">Broadsheet & ranking</p>
+                    </button>
+                  )}
+
+                  {isTabAuthorized('notifications', adminUser) && (
+                    <button
+                      onClick={() => setActiveTab('notifications')}
+                      className="p-4 bg-amber-50/60 hover:bg-amber-100/70 border border-amber-200 rounded-2xl text-left transition-all cursor-pointer group"
+                    >
+                      <Megaphone className="w-6 h-6 text-[#F59E0B] mb-2 group-hover:scale-110 transition-transform" />
+                      <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#1E3A8A]">Announcements</p>
+                      <p className="text-[10px] text-slate-500">Landing headline alert</p>
+                    </button>
+                  )}
+
+                  {isTabAuthorized('upload-stamp', adminUser) && (
+                    <button
+                      onClick={() => setActiveTab('upload-stamp')}
+                      className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-2xl text-left transition-all cursor-pointer group"
+                    >
+                      <Award className="w-6 h-6 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
+                      <p className="text-xs font-bold text-[#0F172A] group-hover:text-[#1E3A8A]">School Stamp</p>
+                      <p className="text-[10px] text-slate-500">Digital transcript seal</p>
+                    </button>
+                  )}
+
+                  {isTabAuthorized('staff-management', adminUser) && (
+                    <button
+                      onClick={() => setActiveTab('staff-management')}
+                      className="p-4 bg-indigo-50/60 hover:bg-indigo-100/70 border border-indigo-200 rounded-2xl text-left transition-all cursor-pointer group"
+                    >
+                      <UserPlus className="w-6 h-6 text-indigo-700 mb-2 group-hover:scale-110 transition-transform" />
+                      <p className="text-xs font-bold text-[#0F172A] group-hover:text-indigo-800">Staff Accounts</p>
+                      <p className="text-[10px] text-slate-500">Manage portal roles</p>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Access Restricted Unauthorized View */}
+          {activeTab !== 'dashboard' && activeTab !== 'login' && !isTabAuthorized(activeTab, adminUser) && (
+            <div className="bg-white p-8 sm:p-12 rounded-3xl border border-red-200 shadow-sm text-center max-w-2xl mx-auto space-y-5 my-8">
+              <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-600 border border-red-200 flex items-center justify-center mx-auto shadow-xs">
+                <Lock className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-extrabold uppercase tracking-wider">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Access Restricted</span>
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 font-['Plus_Jakarta_Sans']">
+                  Unauthorized Section
+                </h2>
+                <p className="text-sm text-slate-600 max-w-md mx-auto">
+                  Your staff role (<strong className="text-[#1E3A8A]">{adminUser.role}</strong>) does not have authorization to view or edit this section.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left max-w-md mx-auto space-y-2">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Your Authorized Modules:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {userPermissions.map((p) => (
+                    <span key={p} className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#1E3A8A] border border-blue-200 text-xs font-bold">
+                      {MODULE_PERMISSIONS_LIST.find((m) => m.id === p)?.name || p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className="px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center gap-2"
+                >
+                  <span>Return to Dashboard</span>
+                </button>
               </div>
             </div>
           )}
@@ -4064,19 +4213,19 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
                 {/* Principal Official Remark & Comment Section */}
                 <div className="border-t-2 border-slate-200 pt-8 mt-8 space-y-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-6 rounded-3xl text-white shadow-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-amber-400 font-bold border border-white/10">
-                        <MessageSquare className="w-6 h-6" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 font-bold border border-amber-200/80 shadow-xs shrink-0">
+                        <MessageSquare className="w-6 h-6 text-[#F59E0B]" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-black font-['Plus_Jakarta_Sans'] flex items-center gap-2">
+                        <h3 className="text-base font-bold text-[#0F172A] tracking-tight font-['Plus_Jakarta_Sans'] flex items-center gap-2 flex-wrap">
                           <span>Principal's Official Remark & Comment</span>
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-50 text-amber-800 border border-amber-200">
                             Global Default
                           </span>
                         </h3>
-                        <p className="text-xs text-slate-300 max-w-xl">
+                        <p className="text-xs text-slate-500 font-medium max-w-xl mt-0.5">
                           This comment remains constant across all student results on the online result portal. When students print or download their official result slip, the system dynamically generates a Principal's Remark tailored to their academic performance.
                         </p>
                       </div>
@@ -4086,12 +4235,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         type="button"
                         onClick={handleSaveGlobalPrincipalRemark}
                         disabled={isSavingPrincipalRemark}
-                        className="px-5 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                        className="px-5 py-2.5 bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                       >
                         {isSavingPrincipalRemark ? (
                           <RefreshCw className="w-4 h-4 animate-spin" />
                         ) : (
-                          <CheckCircle2 className="w-4 h-4" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                         )}
                         <span>{isSavingPrincipalRemark ? 'Saving & Applying...' : 'Save & Apply to All Results'}</span>
                       </button>
@@ -4100,17 +4249,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           type="button"
                           onClick={handleDeleteGlobalPrincipalRemark}
                           disabled={isSavingPrincipalRemark}
-                          className="px-4 py-3 bg-rose-500/20 hover:bg-rose-600 text-rose-200 hover:text-white border border-rose-500/30 font-extrabold text-xs rounded-2xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                           title="Delete and remove comment from all results"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 text-rose-600" />
                           <span>Delete Comment</span>
                         </button>
                       ) : null}
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
+                  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
                         Official Principal Comment Text:
@@ -4563,6 +4712,25 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               schoolHeader={schoolHeader}
               onViewStudent={(st) => handleViewStudent(st)}
               onNavigateToTab={(tab) => setActiveTab(tab as any)}
+            />
+          )}
+
+          {/* TAB 15: PORTAL NOTIFICATIONS & ANNOUNCEMENTS */}
+          {activeTab === 'notifications' && (
+            <AdminNotificationManagement
+              systemSessions={sessions}
+              systemTerms={terms}
+              onTriggerToast={triggerToast}
+            />
+          )}
+
+          {/* TAB 16: STAFF & ADMIN ACCOUNTS MANAGEMENT */}
+          {activeTab === 'staff-management' && (
+            <AdminStaffManagement
+              currentAdmin={adminUser}
+              classList={classList}
+              subjectList={subjectList.map(s => ({ id: s.code || s.name, name: s.name }))}
+              onTriggerToast={triggerToast}
             />
           )}
 

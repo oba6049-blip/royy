@@ -13,7 +13,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onLearnMoreClick,
 }) => {
   return (
-    <section id="home" className="relative pt-28 pb-16 lg:pt-36 lg:pb-24 overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
+    <section id="home" className="relative pt-36 pb-16 sm:pt-40 lg:pt-44 lg:pb-24 overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
       {/* Background Decorative Shapes & Subtle Gradients */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 pointer-events-none overflow-hidden">
         <div className="absolute -top-24 left-1/4 w-96 h-96 bg-[#60A5FA]/15 rounded-full blur-3xl" />

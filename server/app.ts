@@ -25,6 +25,17 @@ import {
   updateBranding,
   batchUpdateStudentsPrincipalRemark,
   verifyAdmin,
+  getAllAdmins,
+  createAdmin,
+  updateAdmin,
+  deleteAdmin,
+  resetAdminPassword,
+  changeAdminPassword,
+  getAllNotifications,
+  createNotification,
+  updateNotification,
+  deleteNotification,
+  resolvePermissions,
 } from './db.js';
 import { uploadToCloudinary, isCloudinaryConfigured } from './cloudinary.js';
 
@@ -315,6 +326,43 @@ app.post('/api/branding', async (req, res) => {
   }
 });
 
+// Notifications & Announcements API
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const list = await getAllNotifications();
+    res.json(list);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/notifications', async (req, res) => {
+  try {
+    const notif = await createNotification(req.body);
+    res.status(201).json({ success: true, notification: notif });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/notifications/:id', async (req, res) => {
+  try {
+    const updated = await updateNotification(req.params.id, req.body);
+    res.json({ success: true, notification: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/notifications/:id', async (req, res) => {
+  try {
+    await deleteNotification(req.params.id);
+    res.json({ success: true, message: `Notification ${req.params.id} deleted.` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Auth Login
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -328,3 +376,130 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// First-Time Login / Change Password Endpoint
+app.post('/api/auth/change-password', async (req, res) => {
+  try {
+    const { email, currentPassword, newPassword } = req.body;
+    if (!email || !currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Email, current password, and new password are required.' });
+    }
+
+    const updatedAdmin = await changeAdminPassword(email, currentPassword, newPassword);
+    res.json({
+      success: true,
+      message: 'Password successfully updated! You can now access your staff portal dashboard.',
+      admin: updatedAdmin
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Staff & Admins Management API (Super Admin)
+app.get('/api/admins', async (req, res) => {
+  try {
+    const admins = await getAllAdmins();
+    // Sanitize sensitive fields if needed, but include temporary password for easy super-admin reference
+    const sanitized = admins.map((a: any) => ({
+      id: a.id || `admin-${a.email}`,
+      name: a.name || 'Staff Administrator',
+      email: a.email,
+      role: a.role || 'Teacher / Exam Officer',
+      assignedClass: a.assignedClass || 'All Classes',
+      assignedSubject: a.assignedSubject || 'All Subjects',
+      phone: a.phone || '',
+      permissions: resolvePermissions(a.role, a.permissions),
+      mustChangePassword: Boolean(a.mustChangePassword),
+      isFirstLogin: Boolean(a.isFirstLogin),
+      temporaryPassword: a.temporaryPassword || '',
+      createdAt: a.createdAt || new Date().toISOString(),
+      updatedAt: a.updatedAt || new Date().toISOString(),
+      createdBy: a.createdBy || 'Super Admin'
+    }));
+    res.json(sanitized);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admins', async (req, res) => {
+  try {
+    const { email, name, role, permissions, password, temporaryPassword, assignedClass, assignedSubject, phone, createdBy } = req.body;
+    
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'A valid email address is required.' });
+    }
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Staff member name is required.' });
+    }
+
+    const initialPassword = (password || temporaryPassword || 'RoyalTeacher@2025').trim();
+    if (initialPassword.length < 6) {
+      return res.status(400).json({ error: 'Initial password must be at least 6 characters.' });
+    }
+
+    const newAdmin = await createAdmin({
+      email,
+      name,
+      role: role || 'Teacher / Exam Officer',
+      permissions: permissions || undefined,
+      password: initialPassword,
+      temporaryPassword: initialPassword,
+      assignedClass: assignedClass || 'All Classes',
+      assignedSubject: assignedSubject || 'All Subjects',
+      phone: phone || '',
+      mustChangePassword: true, // Forces first-time password reset
+      isFirstLogin: true,
+      createdBy: createdBy || 'Adewale (System Admin)'
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Staff account for "${name}" created. They will be prompted to set a new password on first login.`,
+      admin: newAdmin
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admins/:id', async (req, res) => {
+  try {
+    const updated = await updateAdmin(req.params.id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Admin / Staff account not found.' });
+    }
+    res.json({ success: true, admin: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admins/:id/reset-password', async (req, res) => {
+  try {
+    const { temporaryPassword } = req.body;
+    const tempPass = (temporaryPassword || 'RoyalTeacher@2025').trim();
+    const updated = await resetAdminPassword(req.params.id, tempPass);
+    if (!updated) {
+      return res.status(404).json({ error: 'Admin / Staff account not found.' });
+    }
+    res.json({
+      success: true,
+      message: `Password reset to temporary password: "${tempPass}". The user will be required to change it on next login.`,
+      admin: updated
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admins/:id', async (req, res) => {
+  try {
+    await deleteAdmin(req.params.id);
+    res.json({ success: true, message: `Staff account deleted successfully.` });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+

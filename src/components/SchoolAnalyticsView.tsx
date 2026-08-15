@@ -473,27 +473,31 @@ export const SchoolAnalyticsView: React.FC<SchoolAnalyticsViewProps> = ({
       </div>
 
       {/* 3. AI / AUTOMATED ACADEMIC INSIGHTS BANNER */}
-      <div className="bg-gradient-to-r from-[#1E3A8A] via-[#0F172A] to-[#1E3A8A] p-6 rounded-3xl text-white shadow-md space-y-3">
-        <div className="flex items-center justify-between border-b border-blue-400/20 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-yellow-400/10 text-[#F59E0B] rounded-xl border border-yellow-400/20">
-              <Sparkles className="w-5 h-5" />
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 text-[#F59E0B] rounded-2xl border border-amber-200/80 shadow-xs">
+              <Sparkles className="w-5 h-5 text-[#F59E0B]" />
             </div>
             <div>
-              <h3 className="text-sm font-bold tracking-wide text-white">Automated Academic Intelligence Insights</h3>
-              <p className="text-[11px] text-blue-200">Key trends and performance highlights calculated from live continuous assessment data</p>
+              <h3 className="text-base font-bold text-[#0F172A] tracking-tight font-['Plus_Jakarta_Sans']">
+                Automated Academic Intelligence Insights
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                Key trends and performance highlights calculated from live continuous assessment data
+              </p>
             </div>
           </div>
-          <span className="text-[10px] font-extrabold bg-blue-500/20 text-blue-200 border border-blue-400/30 px-3 py-1 rounded-full uppercase">
+          <span className="self-start sm:self-auto text-[10px] font-extrabold bg-blue-50 text-[#1E3A8A] border border-blue-200 px-3 py-1 rounded-full uppercase tracking-wider">
             Live Analysis
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
           {insights.map((stmt, idx) => (
-            <div key={idx} className="flex items-start gap-2 bg-white/5 border border-white/10 p-3 rounded-2xl backdrop-blur-xs">
-              <CheckCircle2 className="w-4 h-4 text-[#F59E0B] shrink-0 mt-0.5" />
-              <span className="text-slate-100 font-medium leading-relaxed">{stmt}</span>
+            <div key={idx} className="flex items-start gap-2.5 bg-slate-50 border border-slate-200/70 p-3.5 rounded-2xl hover:bg-blue-50/30 transition-colors">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <span className="text-[#0F172A] font-semibold leading-relaxed">{stmt}</span>
             </div>
           ))}
         </div>

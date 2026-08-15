@@ -26,15 +26,103 @@ let memoryStore = {
     principalRemark: 'Exemplary academic effort, commendable discipline, and steady progress across all subjects. Keep striving for excellence!',
     updatedAt: new Date().toISOString()
   },
+  notifications: [
+    {
+      id: 'notif-1',
+      headline: 'Official Notice: Results for the 2024/2025 Academic Session (Third Term) are now available online!',
+      message: 'All students, parents, and guardians can now check, verify, and print official continuous assessment & examination report slips using their 7-digit Registration ID.',
+      tag: '2024/2025 Result Release',
+      category: 'results',
+      urgency: 'high',
+      academicSession: '2024/2025',
+      term: 'Third Term',
+      linkText: 'Check Result Now',
+      targetAction: 'check_result',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ] as any[],
   admins: [
     {
+      id: 'admin-super-1',
       email: 'fariat@gmail.com',
       password: 'Adewale_@09',
       name: 'Adewale (System Admin)',
-      role: 'System Super Administrator'
+      role: 'System Super Administrator',
+      assignedClass: 'All Classes',
+      assignedSubject: 'All Subjects',
+      permissions: [
+        'academic_structure',
+        'examination_scores',
+        'school_branding',
+        'analytics_reports',
+        'notices_announcements',
+        'staff_management'
+      ],
+      mustChangePassword: false,
+      isFirstLogin: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: 'System Root'
+    },
+    {
+      id: 'admin-teacher-1',
+      email: 'grace.adeleke@royalacademy.edu.ng',
+      password: 'RoyalTeacher@2025',
+      name: 'Mrs. Grace Adeleke',
+      role: 'Teacher / Exam Officer',
+      assignedClass: 'JSS 1 Gold',
+      assignedSubject: 'Mathematics',
+      phone: '+234 803 123 4567',
+      permissions: ['examination_scores', 'analytics_reports'],
+      mustChangePassword: true,
+      isFirstLogin: true,
+      temporaryPassword: 'RoyalTeacher@2025',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: 'Adewale (System Admin)'
     }
+  ] as any[]
+};
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
+  'System Super Administrator': [
+    'academic_structure',
+    'examination_scores',
+    'school_branding',
+    'analytics_reports',
+    'notices_announcements',
+    'staff_management'
+  ],
+  'Teacher / Exam Officer': [
+    'examination_scores',
+    'analytics_reports'
+  ],
+  'Class Teacher': [
+    'academic_structure',
+    'examination_scores'
+  ],
+  'Subject Teacher': [
+    'examination_scores'
+  ],
+  'Academic Administrator': [
+    'academic_structure',
+    'examination_scores',
+    'analytics_reports',
+    'notices_announcements'
   ]
 };
+
+export function resolvePermissions(role?: string, customPermissions?: string[]): string[] {
+  if (Array.isArray(customPermissions) && customPermissions.length > 0) {
+    return customPermissions;
+  }
+  if (role && (role.toLowerCase().includes('super') || role.toLowerCase().includes('principal'))) {
+    return DEFAULT_ROLE_PERMISSIONS['System Super Administrator'];
+  }
+  return DEFAULT_ROLE_PERMISSIONS[role || ''] || ['examination_scores'];
+}
 
 export async function connectToMongoDB() {
   if (isMongoConnected && dbInstance) {
@@ -614,7 +702,257 @@ export async function batchUpdateStudentsPrincipalRemark(remark: string) {
   });
 }
 
-// Admin Auth
+// Admin Auth & Staff Accounts Management
+export async function getAllAdmins() {
+  if (isMongoConnected && dbInstance) {
+    try {
+      const list = await dbInstance
+        .collection('admins')
+        .find({}, { projection: { _id: 0 } })
+        .sort({ createdAt: -1 })
+        .toArray();
+      if (list && list.length > 0) return list;
+    } catch (e) {
+      console.warn('[MongoDB] Failed fetching admins from DB:', e);
+    }
+  }
+  return memoryStore.admins;
+}
+
+export async function getAdminByEmail(email: string) {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  if (isMongoConnected && dbInstance) {
+    try {
+      return await dbInstance
+        .collection('admins')
+        .findOne({ email: normalizedEmail }, { projection: { _id: 0 } });
+    } catch (e) {
+      console.warn('[MongoDB] Failed getting admin by email:', e);
+    }
+  }
+  return memoryStore.admins.find(a => a.email.toLowerCase() === normalizedEmail) || null;
+}
+
+export async function createAdmin(adminData: any) {
+  const cleanEmail = String(adminData.email || '').trim().toLowerCase();
+  const rawPassword = String(adminData.password || adminData.temporaryPassword || 'Teacher@2025').trim();
+  const cleanRole = adminData.role || 'Teacher / Exam Officer';
+  const cleanName = adminData.name || 'Staff Administrator';
+  const permissions = resolvePermissions(cleanRole, adminData.permissions);
+
+  const newAdmin = {
+    id: adminData.id || `admin-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    email: cleanEmail,
+    name: cleanName,
+    role: cleanRole,
+    password: rawPassword,
+    temporaryPassword: rawPassword,
+    assignedClass: adminData.assignedClass || 'All Classes',
+    assignedSubject: adminData.assignedSubject || 'All Subjects',
+    phone: adminData.phone || '',
+    permissions,
+    mustChangePassword: adminData.mustChangePassword !== false, // Defaults to TRUE for new admins/teachers!
+    isFirstLogin: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    createdBy: adminData.createdBy || 'Adewale (System Admin)'
+  };
+
+  if (isMongoConnected && dbInstance) {
+    try {
+      await dbInstance.collection('admins').updateOne(
+        { email: cleanEmail },
+        { $set: newAdmin },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.error('[MongoDB] Insert admin failed:', e);
+    }
+  }
+
+  const existingIdx = memoryStore.admins.findIndex(a => a.email.toLowerCase() === cleanEmail);
+  if (existingIdx !== -1) {
+    memoryStore.admins[existingIdx] = newAdmin;
+  } else {
+    memoryStore.admins.unshift(newAdmin);
+  }
+
+  return newAdmin;
+}
+
+export async function updateAdmin(idOrEmail: string, updateData: any) {
+  const key = String(idOrEmail || '').trim().toLowerCase();
+  const payload: any = {
+    ...updateData,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (updateData.role && (!updateData.permissions || updateData.permissions.length === 0)) {
+    payload.permissions = resolvePermissions(updateData.role);
+  }
+
+  if (isMongoConnected && dbInstance) {
+    try {
+      await dbInstance.collection('admins').updateOne(
+        { $or: [{ id: idOrEmail }, { email: key }] },
+        { $set: payload }
+      );
+    } catch (e) {
+      console.error('[MongoDB] Update admin failed:', e);
+    }
+  }
+
+  const idx = memoryStore.admins.findIndex(
+    a => a.id === idOrEmail || a.email.toLowerCase() === key
+  );
+  if (idx !== -1) {
+    memoryStore.admins[idx] = { ...memoryStore.admins[idx], ...payload };
+    return memoryStore.admins[idx];
+  }
+  return null;
+}
+
+export async function resetAdminPassword(idOrEmail: string, temporaryPassword: string) {
+  const key = String(idOrEmail || '').trim().toLowerCase();
+  const cleanPass = String(temporaryPassword || 'RoyalTeacher@2025').trim();
+  const payload = {
+    password: cleanPass,
+    temporaryPassword: cleanPass,
+    mustChangePassword: true, // Forces teacher to change password on next login
+    isFirstLogin: true,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (isMongoConnected && dbInstance) {
+    try {
+      await dbInstance.collection('admins').updateOne(
+        { $or: [{ id: idOrEmail }, { email: key }] },
+        { $set: payload }
+      );
+    } catch (e) {
+      console.error('[MongoDB] Reset admin password failed:', e);
+    }
+  }
+
+  const idx = memoryStore.admins.findIndex(
+    a => a.id === idOrEmail || a.email.toLowerCase() === key
+  );
+  if (idx !== -1) {
+    memoryStore.admins[idx] = { ...memoryStore.admins[idx], ...payload };
+    return memoryStore.admins[idx];
+  }
+  return null;
+}
+
+export async function changeAdminPassword(email: string, currentPass: string, newPass: string) {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  const cleanNewPass = String(newPass || '').trim();
+
+  // Find admin in DB or Memory
+  let admin: any = null;
+  if (isMongoConnected && dbInstance) {
+    admin = await dbInstance.collection('admins').findOne({ email: normalizedEmail });
+  }
+  if (!admin) {
+    admin = memoryStore.admins.find(a => a.email.toLowerCase() === normalizedEmail);
+  }
+
+  // Also check environment root admin
+  const envAdminEmail = (process.env.ADMIN_EMAIL || 'fariat@gmail.com').trim().toLowerCase();
+  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Adewale_@09';
+
+  if (!admin && normalizedEmail === envAdminEmail && currentPass === envAdminPassword) {
+    admin = {
+      id: 'admin-super-1',
+      email: normalizedEmail,
+      name: 'Adewale (System Admin)',
+      role: 'System Super Administrator',
+      password: envAdminPassword,
+      mustChangePassword: false,
+    };
+  }
+
+  if (!admin) {
+    throw new Error('Administrator account not found.');
+  }
+
+  if (admin.password !== currentPass && !(normalizedEmail === envAdminEmail && currentPass === envAdminPassword)) {
+    throw new Error('Current temporary password does not match.');
+  }
+
+  if (cleanNewPass.length < 6) {
+    throw new Error('New password must be at least 6 characters long.');
+  }
+
+  if (cleanNewPass === currentPass) {
+    throw new Error('Your new password must be different from your temporary password.');
+  }
+
+  const payload = {
+    password: cleanNewPass,
+    temporaryPassword: '',
+    mustChangePassword: false,
+    isFirstLogin: false,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (isMongoConnected && dbInstance) {
+    await dbInstance.collection('admins').updateOne(
+      { email: normalizedEmail },
+      { $set: payload },
+      { upsert: true }
+    );
+  }
+
+  const idx = memoryStore.admins.findIndex(a => a.email.toLowerCase() === normalizedEmail);
+  if (idx !== -1) {
+    memoryStore.admins[idx] = { ...memoryStore.admins[idx], ...payload };
+    return {
+      name: memoryStore.admins[idx].name,
+      email: memoryStore.admins[idx].email,
+      role: memoryStore.admins[idx].role,
+      assignedClass: memoryStore.admins[idx].assignedClass,
+      assignedSubject: memoryStore.admins[idx].assignedSubject,
+      permissions: resolvePermissions(memoryStore.admins[idx].role, memoryStore.admins[idx].permissions),
+      mustChangePassword: false,
+      isFirstLogin: false
+    };
+  }
+
+  return {
+    name: admin.name || 'Staff Admin',
+    email: normalizedEmail,
+    role: admin.role || 'Teacher / Exam Officer',
+    permissions: resolvePermissions(admin.role, admin.permissions),
+    mustChangePassword: false,
+    isFirstLogin: false
+  };
+}
+
+export async function deleteAdmin(idOrEmail: string) {
+  const key = String(idOrEmail || '').trim().toLowerCase();
+  
+  // Protect super admin root
+  if (key === 'fariat@gmail.com' || key === 'admin-super-1') {
+    throw new Error('Root Super Administrator account cannot be deleted.');
+  }
+
+  if (isMongoConnected && dbInstance) {
+    try {
+      await dbInstance.collection('admins').deleteOne({
+        $or: [{ id: idOrEmail }, { email: key }]
+      });
+    } catch (e) {
+      console.error('[MongoDB] Delete admin failed:', e);
+    }
+  }
+
+  memoryStore.admins = memoryStore.admins.filter(
+    a => a.id !== idOrEmail && a.email.toLowerCase() !== key
+  );
+  return true;
+}
+
 export async function verifyAdmin(email: string, pass: string) {
   const normalizedEmail = (email || '').trim().toLowerCase();
   const envAdminEmail = (process.env.ADMIN_EMAIL || 'fariat@gmail.com').trim().toLowerCase();
@@ -625,9 +963,15 @@ export async function verifyAdmin(email: string, pass: string) {
   // 1. Check environment variable configured admin
   if (normalizedEmail === envAdminEmail && pass === envAdminPassword) {
     return {
+      id: 'admin-super-1',
       name: 'Adewale (System Admin)',
       email: normalizedEmail,
-      role: 'System Super Administrator'
+      role: 'System Super Administrator',
+      assignedClass: 'All Classes',
+      assignedSubject: 'All Subjects',
+      permissions: DEFAULT_ROLE_PERMISSIONS['System Super Administrator'],
+      mustChangePassword: false,
+      isFirstLogin: false,
     };
   }
 
@@ -636,9 +980,15 @@ export async function verifyAdmin(email: string, pass: string) {
     const admin = await dbInstance.collection('admins').findOne({ email: normalizedEmail });
     if (admin && admin.password === pass) {
       return {
+        id: admin.id || `admin-${admin._id}`,
         name: admin.name || 'System Admin',
         email: admin.email,
-        role: admin.role || 'System Super Administrator'
+        role: admin.role || 'Teacher / Exam Officer',
+        assignedClass: admin.assignedClass || 'All Classes',
+        assignedSubject: admin.assignedSubject || 'All Subjects',
+        permissions: resolvePermissions(admin.role, admin.permissions),
+        mustChangePassword: Boolean(admin.mustChangePassword),
+        isFirstLogin: Boolean(admin.isFirstLogin),
       };
     }
   }
@@ -646,8 +996,100 @@ export async function verifyAdmin(email: string, pass: string) {
   // 3. Check Memory Store
   const memoryAdmin = memoryStore.admins.find(a => a.email.toLowerCase() === normalizedEmail);
   if (memoryAdmin && memoryAdmin.password === pass) {
-    return { name: memoryAdmin.name, email: memoryAdmin.email, role: memoryAdmin.role };
+    return {
+      id: memoryAdmin.id || 'admin-mem',
+      name: memoryAdmin.name,
+      email: memoryAdmin.email,
+      role: memoryAdmin.role,
+      assignedClass: memoryAdmin.assignedClass || 'All Classes',
+      assignedSubject: memoryAdmin.assignedSubject || 'All Subjects',
+      permissions: resolvePermissions(memoryAdmin.role, memoryAdmin.permissions),
+      mustChangePassword: Boolean(memoryAdmin.mustChangePassword),
+      isFirstLogin: Boolean(memoryAdmin.isFirstLogin),
+    };
   }
 
   return null;
 }
+
+// Notifications / Announcements Management
+export async function getAllNotifications() {
+  if (isMongoConnected && dbInstance) {
+    try {
+      const list = await dbInstance.collection('notifications').find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).toArray();
+      if (list && list.length > 0) return list;
+    } catch (e) {
+      console.warn('[MongoDB] Failed fetching notifications from DB:', e);
+    }
+  }
+  return memoryStore.notifications;
+}
+
+export async function createNotification(notifData: any) {
+  const newNotif = {
+    id: notifData.id || `notif-${Date.now()}`,
+    headline: notifData.headline || 'Important Academic Notice',
+    message: notifData.message || '',
+    tag: notifData.tag || 'Notice',
+    category: notifData.category || 'results',
+    urgency: notifData.urgency || 'normal',
+    academicSession: notifData.academicSession || '2024/2025',
+    term: notifData.term || 'Third Term',
+    linkText: notifData.linkText || 'Check Result Now',
+    targetAction: notifData.targetAction || 'check_result',
+    isActive: notifData.isActive !== false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...notifData
+  };
+
+  if (isMongoConnected && dbInstance) {
+    try {
+      await dbInstance.collection('notifications').insertOne({ ...newNotif });
+    } catch (e) {
+      console.error('[MongoDB] Insert notification failed:', e);
+    }
+  }
+
+  memoryStore.notifications.unshift(newNotif);
+  return newNotif;
+}
+
+export async function updateNotification(id: string, updateData: any) {
+  const payload = { ...updateData, updatedAt: new Date().toISOString() };
+
+  if (isMongoConnected && dbInstance) {
+    try {
+      await dbInstance.collection('notifications').updateOne(
+        { id },
+        { $set: payload },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.error('[MongoDB] Update notification failed:', e);
+    }
+  }
+
+  const idx = memoryStore.notifications.findIndex(n => n.id === id);
+  if (idx !== -1) {
+    memoryStore.notifications[idx] = { ...memoryStore.notifications[idx], ...payload };
+    return memoryStore.notifications[idx];
+  } else {
+    const fresh = { id, ...payload };
+    memoryStore.notifications.unshift(fresh);
+    return fresh;
+  }
+}
+
+export async function deleteNotification(id: string) {
+  if (isMongoConnected && dbInstance) {
+    try {
+      await dbInstance.collection('notifications').deleteOne({ id });
+    } catch (e) {
+      console.error('[MongoDB] Delete notification failed:', e);
+    }
+  }
+  memoryStore.notifications = memoryStore.notifications.filter(n => n.id !== id);
+  return true;
+}
+
