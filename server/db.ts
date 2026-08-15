@@ -46,9 +46,9 @@ let memoryStore = {
   admins: [
     {
       id: 'admin-super-1',
-      email: 'fariat@gmail.com',
-      password: 'Adewale_@09',
-      name: 'Adewale (System Admin)',
+      email: 'admin@royalacademy.edu.ng',
+      password: process.env.ADMIN_PASSWORD || 'Admin@Secure2025',
+      name: 'System Super Administrator',
       role: 'System Super Administrator',
       assignedClass: 'All Classes',
       assignedSubject: 'All Subjects',
@@ -81,7 +81,7 @@ let memoryStore = {
       temporaryPassword: 'RoyalTeacher@2025',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      createdBy: 'Adewale (System Admin)'
+      createdBy: 'System Super Administrator'
     }
   ] as any[]
 };
@@ -755,7 +755,7 @@ export async function createAdmin(adminData: any) {
     isFirstLogin: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    createdBy: adminData.createdBy || 'Adewale (System Admin)'
+    createdBy: adminData.createdBy || 'System Administrator'
   };
 
   if (isMongoConnected && dbInstance) {
@@ -858,14 +858,14 @@ export async function changeAdminPassword(email: string, currentPass: string, ne
   }
 
   // Also check environment root admin
-  const envAdminEmail = (process.env.ADMIN_EMAIL || 'fariat@gmail.com').trim().toLowerCase();
-  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Adewale_@09';
+  const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng').trim().toLowerCase();
+  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Admin@Secure2025';
 
   if (!admin && normalizedEmail === envAdminEmail && currentPass === envAdminPassword) {
     admin = {
       id: 'admin-super-1',
       email: normalizedEmail,
-      name: 'Adewale (System Admin)',
+      name: 'System Super Administrator',
       role: 'System Super Administrator',
       password: envAdminPassword,
       mustChangePassword: false,
@@ -931,9 +931,10 @@ export async function changeAdminPassword(email: string, currentPass: string, ne
 
 export async function deleteAdmin(idOrEmail: string) {
   const key = String(idOrEmail || '').trim().toLowerCase();
+  const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng').trim().toLowerCase();
   
   // Protect super admin root
-  if (key === 'fariat@gmail.com' || key === 'admin-super-1') {
+  if (key === envAdminEmail || key === 'admin-super-1') {
     throw new Error('Root Super Administrator account cannot be deleted.');
   }
 
@@ -955,8 +956,8 @@ export async function deleteAdmin(idOrEmail: string) {
 
 export async function verifyAdmin(email: string, pass: string) {
   const normalizedEmail = (email || '').trim().toLowerCase();
-  const envAdminEmail = (process.env.ADMIN_EMAIL || 'fariat@gmail.com').trim().toLowerCase();
-  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Adewale_@09';
+  const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@royalacademy.edu.ng').trim().toLowerCase();
+  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Admin@Secure2025';
 
   if (!pass) return null;
 
@@ -964,7 +965,7 @@ export async function verifyAdmin(email: string, pass: string) {
   if (normalizedEmail === envAdminEmail && pass === envAdminPassword) {
     return {
       id: 'admin-super-1',
-      name: 'Adewale (System Admin)',
+      name: 'System Super Administrator',
       email: normalizedEmail,
       role: 'System Super Administrator',
       assignedClass: 'All Classes',

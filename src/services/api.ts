@@ -372,8 +372,8 @@ export const api = {
       return [
         {
           id: 'admin-super-1',
-          email: 'fariat@gmail.com',
-          name: 'Adewale (System Admin)',
+          email: 'admin@royalacademy.edu.ng',
+          name: 'Portal Administrator',
           role: 'System Super Administrator',
           assignedClass: 'All Classes',
           assignedSubject: 'All Subjects',

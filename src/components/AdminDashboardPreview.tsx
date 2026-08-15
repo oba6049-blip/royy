@@ -65,8 +65,8 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
 
   // Inline login state if logged out
   const [internalAdmin, setInternalAdmin] = useState<AdminUser | null>({
-    name: 'Adewale (System Admin)',
-    email: 'fariat@gmail.com',
+    name: 'Portal Administrator',
+    email: 'admin@royalacademy.edu.ng',
     role: 'System Super Administrator'
   });
   
@@ -220,7 +220,7 @@ export const AdminDashboardPreview: React.FC<AdminDashboardPreviewProps> = ({
                       required
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder="fariat@gmail.com"
+                      placeholder="admin@royalacademy.edu.ng"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/10"
                     />
                   </div>

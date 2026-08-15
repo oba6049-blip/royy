@@ -451,7 +451,7 @@ app.post('/api/admins', async (req, res) => {
       phone: phone || '',
       mustChangePassword: true, // Forces first-time password reset
       isFirstLogin: true,
-      createdBy: createdBy || 'Adewale (System Admin)'
+      createdBy: createdBy || 'System Administrator'
     });
 
     res.status(201).json({

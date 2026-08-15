@@ -143,9 +143,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, AdminModulePermission[]> =
 
 export function isUserSuperAdmin(user?: { role?: string; email?: string } | null): boolean {
   if (!user) return false;
-  const email = (user.email || '').trim().toLowerCase();
   const role = (user.role || '').toLowerCase();
-  return email === 'fariat@gmail.com' || role.includes('super') || role.includes('principal') || role.includes('proprietor');
+  return role.includes('super') || role.includes('principal') || role.includes('proprietor');
 }
 
 export function resolveAdminPermissions(

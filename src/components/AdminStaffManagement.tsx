@@ -317,8 +317,8 @@ export const AdminStaffManagement: React.FC<AdminStaffManagementProps> = ({
     if (!selectedAdmin) return;
 
     if (
-      selectedAdmin.email.toLowerCase() === 'fariat@gmail.com' ||
-      selectedAdmin.id === 'admin-super-1'
+      selectedAdmin.id === 'admin-super-1' ||
+      selectedAdmin.role.toLowerCase().includes('super')
     ) {
       onTriggerToast('The root Super Administrator account cannot be deleted.');
       setIsDeleteModalOpen(false);
@@ -805,7 +805,7 @@ export const AdminStaffManagement: React.FC<AdminStaffManagementProps> = ({
                               </button>
 
                               {/* Delete Admin */}
-                              {admin.email.toLowerCase() !== 'fariat@gmail.com' && (
+                              {admin.id !== 'admin-super-1' && !admin.role?.toLowerCase().includes('super') && (
                                 <button
                                   type="button"
                                   onClick={() => handleOpenDeleteModal(admin)}
