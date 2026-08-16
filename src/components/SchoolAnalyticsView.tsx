@@ -47,15 +47,12 @@ export const SchoolAnalyticsView: React.FC<SchoolAnalyticsViewProps> = ({
   const [selectedTier, setSelectedTier] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Get list of unique classes
+  // Get list of unique classes derived strictly from admin created classList
   const allClassNames = useMemo(() => {
     return Array.from(
-      new Set([
-        ...classList.map((c) => c.name),
-        ...students.map((s) => s.className).filter(Boolean),
-      ])
+      new Set(classList.map((c) => c.name.trim()).filter(Boolean))
     );
-  }, [classList, students]);
+  }, [classList]);
 
   // Helper to extract student average score
   const getStudentAvg = (s: any): number => {

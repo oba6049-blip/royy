@@ -135,7 +135,7 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
       if (archiveCurrentResult && student.subjects && student.subjects.length > 0) {
         const currentSession = student.academicSession || '2024/2025 Academic Session';
         const currentTerm = student.term || 'First Term';
-        const currentClass = student.className || 'JSS 1';
+        const currentClass = student.className || classList[0]?.name || '';
 
         // Check if current term already exists in history
         const existingIdx = updatedTermRecords.findIndex(r =>

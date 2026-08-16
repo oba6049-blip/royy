@@ -247,7 +247,7 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
       const trimmedSess = (sess || '').trim();
       if (!trimmedCls && !trimmedSess) return;
 
-      const finalCls = trimmedCls || selectedStudent.className || 'JSS 1';
+      const finalCls = trimmedCls || selectedStudent.className || classList[0]?.name || '';
       const finalSess = trimmedSess || selectedStudent.academicSession || '2024/2025 Academic Session';
 
       const normCls = cleanClass(finalCls);
@@ -269,7 +269,7 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
       ? (activeAdminSessionObj.year.includes('Academic') ? activeAdminSessionObj.year : `${activeAdminSessionObj.year} Academic Session`)
       : '2024/2025 Academic Session';
 
-    const currentClass = selectedStudent.className || 'JSS 1';
+    const currentClass = selectedStudent.className || classList[0]?.name || '';
     const currentSession = selectedStudent.academicSession || activeAdminSessionYear;
 
     // 1a. Add past stages found in historical term records
@@ -1523,12 +1523,12 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
                   const activeAdminSessionYear = activeAdminSessionObj
                     ? (activeAdminSessionObj.year.includes('Academic') ? activeAdminSessionObj.year : `${activeAdminSessionObj.year} Academic Session`)
                     : '2024/2025 Academic Session';
-                  setNewStageClass(classList[0]?.name || 'JSS 2');
+                  setNewStageClass(classList[0]?.name || '');
                   setNewStageSession(selectedStudent.academicSession || activeAdminSessionYear);
                   setIsAddStageModalOpen(true);
                 }}
                 className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1.5 border border-slate-200 transition-all shadow-2xs"
-                title="Add a new class level (e.g. JSS 2, SSS 1) to this student's journey"
+                title="Add an academic stage to this student's journey"
               >
                 <PlusCircle className="w-3.5 h-3.5 text-slate-600" />
                 <span>+ Add Class Level</span>
@@ -1847,14 +1847,7 @@ export const AdminResultManagement: React.FC<AdminResultManagementProps> = ({
                     <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
                   {classList.length === 0 && (
-                    <>
-                      <option value="JSS 1">JSS 1</option>
-                      <option value="JSS 2">JSS 2</option>
-                      <option value="JSS 3">JSS 3</option>
-                      <option value="SSS 1">SSS 1</option>
-                      <option value="SSS 2">SSS 2</option>
-                      <option value="SSS 3">SSS 3</option>
-                    </>
+                    <option value="" disabled>No classes created yet — create in Class Management</option>
                   )}
                 </select>
               </div>

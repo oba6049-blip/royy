@@ -299,15 +299,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     });
   }, [terms]);
 
-  // Dynamic Class and Subject Options derived from master state
+  // Dynamic Class and Subject Options derived strictly from admin created classList
   const allClassNames = React.useMemo(() => {
     return Array.from(
-      new Set([
-        ...classList.map(c => c.name).filter(Boolean),
-        ...students.map(s => s.className).filter(Boolean),
-      ])
+      new Set(classList.map(c => c.name.trim()).filter(Boolean))
     );
-  }, [classList, students]);
+  }, [classList]);
 
   const allSubjectNames = React.useMemo(() => {
     return Array.from(
@@ -565,7 +562,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       if (!sess || !trm) return;
       const nS = normSess(sess);
       const nT = normTerm(trm);
-      const studentClass = cls || fetchedStudent.className || 'JSS 1 Gold';
+      const studentClass = cls || fetchedStudent.className || classList[0]?.name || '';
       const nC = normClass(studentClass);
 
       // Only include terms and sessions that exist on the system when defined
@@ -776,7 +773,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       fetchedStudent.termRecords || [],
       fetchedStudent.academicSession || (fetchedStudent as any).session || '2025/2026 Academic Session',
       fetchedStudent.term || 'First Term',
-      fetchedStudent.className || 'JSS 1 Gold',
+      fetchedStudent.className || classList[0]?.name || '',
       updatedSubjects,
       overallTotal,
       overallAverage,
@@ -1260,7 +1257,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           recs.push({
             academicSession: sessionYear,
             term: t.name,
-            className: st.className || 'JSS 1 Gold',
+            className: st.className || classList[0]?.name || '',
             subjects: [],
             overallTotal: 0,
             overallAverage: 0,
@@ -1354,7 +1351,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           recs.push({
             academicSession: sessionYear,
             term: created.name,
-            className: st.className || 'JSS 1 Gold',
+            className: st.className || classList[0]?.name || '',
             subjects: [],
             overallTotal: 0,
             overallAverage: 0,
@@ -1522,7 +1519,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         fullName: studentData.fullName || studentData.name || 'Student Name',
         passportUrl: studentData.passportUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
         gender: studentData.gender || 'Male',
-        className: studentData.className || 'JSS 1 Gold',
+        className: studentData.className || classList[0]?.name || '',
         academicSession: studentData.academicSession || studentData.session || '2024/2025 Academic Session',
         term: studentData.term || 'Third Term (2024/2025)',
         dateOfBirth: studentData.dateOfBirth || '2008-05-12',
@@ -1872,11 +1869,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
       const targetSession = editingStudent.academicSession || (editingStudent as any).session || '2025/2026 Academic Session';
       const targetTerm = editingStudent.term || 'First Term';
-      const targetClass = editingStudent.className || 'JSS 1 Gold';
-
+      const targetClass = editingStudent.className || classList[0]?.name || '';
       // Find original un-edited student record from state
       const originalStudent = students.find(s => s.studentId === editingStudent.studentId) || editingStudent;
-      const originalClass = originalStudent.className || 'JSS 1 Gold';
+      const originalClass = originalStudent.className || classList[0]?.name || '';
       const originalTerm = originalStudent.term || 'First Term';
       const originalSession = originalStudent.academicSession || (originalStudent as any).session || '2025/2026 Academic Session';
 
@@ -2034,7 +2030,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
     const targetSession = student.academicSession || (student as any).session || activeSessionYear;
     const targetTerm = student.term || activeTermName;
-    const targetClass = student.className || 'JSS 1 Gold';
+    const targetClass = student.className || classList[0]?.name || '';
 
     let updatedTermRecords = [...(student.termRecords || [])];
     const recIdx = updatedTermRecords.findIndex(r => r.academicSession === targetSession && r.term === targetTerm);
@@ -2094,7 +2090,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
       const targetSession = st.academicSession || (st as any).session || activeSessionYear;
       const targetTerm = st.term || activeTermName;
-      const targetClass = st.className || 'JSS 1 Gold';
+      const targetClass = st.className || classList[0]?.name || '';
 
       let updatedTermRecords = [...(st.termRecords || [])];
       const recIdx = updatedTermRecords.findIndex(r => r.academicSession === targetSession && r.term === targetTerm);
@@ -4412,7 +4408,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                         Class Academic Reports & Master Broadsheets
                       </h2>
                       <p className="text-xs text-slate-500 mt-1">
-                        Select a class (e.g. JSS 1, JSS 2, SSS 1) to generate student score lists, teacher allocations, and printable master broadsheets strictly from database records.
+                        Select an admin-created class to generate student score lists, teacher allocations, and printable master broadsheets strictly from database records.
                       </p>
                     </div>
 
